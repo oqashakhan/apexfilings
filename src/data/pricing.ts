@@ -1,0 +1,45 @@
+import { PricingPlan } from '../types';
+
+export const PRICING_PLANS: PricingPlan[] = [
+  {
+    id: 'basic',
+    name: 'Basic',
+    subtitle: 'Standard Filing',
+    priceUsResident: 199,
+    priceNonUsResident: 229,
+    feeNotice: '+ state fee ($50-$300)',
+    description: "If you're operating with a lean budget and require essential setup.",
+    features: [
+      'US Company Formation in Any State',
+      'US Address with Mail Forwarding',
+      'Registered Agent Service (1 Full Year)',
+      'US Business Stripe Account Consultation',
+      'IRS EIN Confirmation Letter',
+      'Operating Agreement & Digital Vault',
+    ],
+    excludedFeatures: ['Priority Expedited Filing (Excluded)'],
+    isPopular: false,
+    ctaText: 'Get Basic',
+  },
+  {
+    id: 'premium',
+    name: 'Premium All-In',
+    badge: 'Priority Processing',
+    subtitle: 'Fastest Turnaround',
+    priceUsResident: 349,
+    priceNonUsResident: 397,
+    feeNotice: '+ state fee',
+    description: 'Enhanced, fully expedited VIP service with direct concierge care.',
+    features: [
+      'Everything in Basic Plan included',
+      'Expedited 24h State Document Rush Filing',
+      'FREE 30-min US CPA Tax & Compliance Consultation',
+      'Chat and Direct VIP Phone Support',
+      'FREE US Phone Number (1 Year Inbound)',
+      'Dedicated Personal Account Manager',
+      'Guaranteed Bank Account Setup Assistance (Mercury/Relay)',
+    ],
+    isPopular: true,
+    ctaText: 'Go Premium',
+  },
+];

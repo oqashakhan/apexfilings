@@ -1,0 +1,6 @@
+{
+  "name": "Apex Filings - US LLC Formation & Business Services",
+  "description": "Start and scale your US business from anywhere in the world. Form your LLC, obtain an EIN, open US banking, and stay compliant with Apex Filings.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
