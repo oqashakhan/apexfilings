@@ -1,0 +1,35 @@
+.formation-process { background: radial-gradient(ellipse at 50% 0, #fff0e8 0, transparent 26%), #fcfaf8; color: #171717; padding: 0 24px 72px; }
+.formation-intro { max-width: 850px; margin: auto; padding: 90px 0 88px; text-align: center; }
+.formation-eyebrow { color: #c53516; font-size: 11px; font-weight: 750; letter-spacing: .18em; }
+.formation-intro h1 { margin: 23px 0; font-size: clamp(36px,4.5vw,64px); line-height: 1.13; font-weight: 800; letter-spacing: -.055em; }
+.formation-intro h1 span { color: #f04623; }
+.formation-intro-copy { max-width: 610px; margin: auto; color: #65615e; font-size: 16px; line-height: 1.85; }
+.formation-scroll { display: inline-flex; align-items: center; gap: 12px; margin-top: 33px; min-height: 44px; font-size: 12px; font-weight: 650; }
+.formation-scroll svg { color: #f04623; }
+.formation-timeline { position: relative; max-width: 1080px; margin: auto; scroll-margin-top: 120px; }
+.formation-track { position: absolute; top: 0; bottom: 0; left: 42%; width: 2px; background: #e8e3de; }
+.formation-progress { height: 100%; background: #f04623; transform-origin: top; }
+.formation-stage { position: relative; display: grid; grid-template-columns: 42% 58%; min-height: 510px; padding-bottom: 100px; }
+.formation-stage:last-child { padding-bottom: 0; min-height: auto; }
+.formation-node { position: absolute; top: 0; left: calc(42% - 9px); width: 20px; height: 20px; display: grid; place-items: center; background: #fcfaf8; border: 2px solid #d8d1ca; border-radius: 50%; color: white; box-shadow: 0 0 0 8px #fcfaf8; transition: background .2s, border-color .2s; z-index: 1; }
+.is-active .formation-node { background: #f04623; border-color: #f04623; }
+.formation-stage-title { padding: 0 72px 0 12px; }
+.formation-step-number { color: #f04623; font-size: 48px; font-weight: 750; line-height: 1; letter-spacing: -.06em; }
+.formation-step-number span { color: #b4aca5; font-size: 11px; letter-spacing: .07em; font-weight: 500; }
+.formation-stage-title h2 { margin: 24px 0 15px; font-size: clamp(25px,2.5vw,34px); font-weight: 750; line-height: 1.25; letter-spacing: -.04em; }
+.formation-stage-title div > p { color: #79716b; font-size: 14px; line-height: 1.8; max-width: 280px; }
+.formation-story-card { align-self: start; margin: 0 0 0 60px; padding: 35px; background: #fff; border: 1px solid #eae4df; border-radius: 22px; box-shadow: 0 18px 50px -32px #58331c40; }
+.formation-stage:nth-of-type(even) .formation-story-card { background: #fffcfa; }
+.formation-card-top { display: flex; align-items: center; gap: 18px; }
+.formation-card-icon { display: grid; place-items: center; width: 56px; height: 56px; flex: none; border-radius: 16px; color: #f04623; background: #fff0e8; }
+.formation-card-top > span:last-child { color: #9b7765; font-size: 9px; font-weight: 750; letter-spacing: .12em; }
+.formation-description { margin: 25px 0; color: #5f5a56; font-size: 15px; line-height: 1.85; }
+.formation-story-card ul { display: grid; gap: 14px; border-top: 1px solid #f0eae5; padding-top: 23px; }
+.formation-story-card li { display: flex; align-items: center; gap: 12px; font-size: 12px; font-weight: 550; }
+.formation-story-card li svg { flex: none; color: #f04623; }
+.formation-start { display: flex; align-items: center; justify-content: center; gap: 18px; margin-top: 30px; min-height: 52px; padding: 12px 18px; border-radius: 12px; background: #f04623; color: #fff; font-size: 14px; font-weight: 700; transition: background .2s; }
+.formation-start:hover { background: #d83a1b; }
+.formation-process a:focus-visible { outline: 2px solid #f04623; outline-offset: 5px; }
+.formation-closing { text-align: center; margin: 75px auto 0; color: #857b72; font-size: 12px; }
+@media(max-width:767px) { .formation-process { padding: 0 20px 50px; } .formation-intro { padding: 55px 0 60px; } .formation-intro-copy { font-size: 14px; } .formation-track { left: 7px; } .formation-stage { grid-template-columns: 1fr; min-height: auto; padding: 0 0 65px 35px; gap: 24px; } .formation-node { left: -2px; } .formation-stage-title { padding: 0; } .formation-step-number { font-size: 32px; } .formation-stage-title h2 { margin: 15px 0 9px; font-size: 25px; } .formation-stage-title div > p { max-width: none; font-size: 13px; } .formation-story-card { margin: 0; padding: 23px; border-radius: 18px; } .formation-card-top { gap: 12px; } .formation-card-top > span:last-child { font-size: 8px; } .formation-card-icon { width: 44px; height: 44px; border-radius: 12px; } .formation-description { font-size: 13px; } .formation-story-card li { font-size: 12px; align-items: flex-start; } }
+@media(prefers-reduced-motion:reduce) { .formation-node,.formation-start { transition: none; } }

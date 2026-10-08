@@ -1,271 +1,117 @@
 import { useEffect, useRef, useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { ArrowLeft, ArrowRight, Building2, CircleHelp, Landmark, LockKeyhole } from 'lucide-react';
-import { useForm } from 'react-hook-form';
+import { ArrowLeft, ArrowRight, Building2, Check, CheckCircle2, ChevronDown, Eye, EyeOff, Globe2, LockKeyhole } from 'lucide-react';
+import { Controller, useForm } from 'react-hook-form';
+import { motion, useReducedMotion } from 'motion/react';
 import { z } from 'zod';
 import { US_STATES } from '../../data/usStates';
-import { registerApplicant, type RegistrationResult } from '../../lib/registerApplicant';
-import { BrandLogo } from '../ui/BrandLogo';
+import { COUNTRIES } from '../../data/countries';
+import { SearchSelect } from './SearchSelect';
+import './StartPage.css';
 
-const onboardingSchema = z.object({
-  businessType: z.string().min(1, 'Please select a business type.'),
-  formationState: z.string().refine((value) => US_STATES.some((state) => state.name === value), 'Please select a state from the list.'),
-  firstName: z.string().trim().min(1, 'Enter your first name.'),
-  lastName: z.string().trim().min(1, 'Enter your last name.'),
+const schema = z.object({
+  businessType: z.literal('LLC', { error: 'Select LLC to continue.' }),
+  country: z.string().refine(value => COUNTRIES.some(item => item.code === value), 'Choose your country from the list.'),
+  formationState: z.string().refine(value => US_STATES.some(item => item.code === value), 'Choose a state from the list.'),
+  businessName: z.string().trim().min(1, 'Enter your preferred business name.').max(150, 'Use 150 characters or fewer.'),
+  fullName: z.string().trim().min(1, 'Enter your full name.').max(150, 'Use 150 characters or fewer.'),
   email: z.string().trim().email('Enter a valid email address.'),
-  phone: z.string().trim().refine((value) => /^[+\d\s().-]+$/.test(value) && value.replace(/\D/g, '').length >= 7, 'Enter a valid phone number.'),
-  password: z.string().min(8, 'Password must be at least 8 characters.'),
+  password: z.string().min(8, 'Use at least 8 characters.'),
   confirmPassword: z.string().min(1, 'Confirm your password.'),
-  termsAccepted: z.boolean().refine(Boolean, 'Please agree before continuing.'),
-}).refine((value) => value.password === value.confirmPassword, {
-  path: ['confirmPassword'],
-  message: 'Passwords do not match.',
-});
+}).refine(values => values.password === values.confirmPassword, { path: ['confirmPassword'], message: 'Passwords do not match.' });
+type Answers = z.infer<typeof schema>;
+const fields: (keyof Answers)[][] = [['businessType'], ['country'], ['formationState'], ['businessName'], ['fullName', 'email', 'password', 'confirmPassword']];
+const labels = ['Business', 'Residence', 'State', 'Name', 'Account'];
+const questions = ['What type of business would you like to start?', 'Where do you currently live?', 'In which US state would you like to form your company?', 'What would you like to name your business?', 'Create your Apex Filings account'];
+const DRAFT_KEY = 'apex-registration-draft-v1';
+const draftFields = ['businessType', 'country', 'formationState', 'businessName', 'fullName', 'email'] as const;
 
-type OnboardingForm = z.infer<typeof onboardingSchema>;
-type Step = 1 | 2 | 3 | 4;
-
-const stepFields: Record<Step, (keyof OnboardingForm)[]> = {
-  1: ['businessType'],
-  2: ['formationState'],
-  3: ['firstName', 'lastName', 'email', 'phone'],
-  4: ['password', 'confirmPassword', 'termsAccepted'],
-};
-
-const options = [
-  { value: 'LLC', title: 'LLC', description: 'A flexible choice for many new businesses.', icon: Building2 },
-  { value: 'Corporation', title: 'Corporation', description: 'A formal structure often used by growing companies.', icon: Landmark },
-  { value: 'Not Sure Yet', title: 'Not Sure Yet', description: 'You can decide on the right structure later.', icon: CircleHelp },
-] as const;
-
-const fieldClasses = 'mt-1.5 block min-h-12 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-[#171717] outline-none transition-colors placeholder:text-slate-400 focus:border-[#F04623] focus:ring-2 focus:ring-orange-100';
-
-interface StartPageProps {
-  onBackToSite: () => void;
-  initialState?: string;
+function readDraft(): Partial<Answers> {
+  try {
+    const saved = JSON.parse(sessionStorage.getItem(DRAFT_KEY) ?? '{}');
+    const clean: Record<string, string> = {};
+    for (const field of draftFields) if (typeof saved?.[field] === 'string') clean[field] = saved[field];
+    return clean as Partial<Answers>;
+  } catch { return {}; }
 }
 
-export function StartPage({ onBackToSite, initialState }: StartPageProps) {
-  const [step, setStep] = useState<Step>(1);
-  const [submitError, setSubmitError] = useState('');
-  const [registration, setRegistration] = useState<RegistrationResult | null>(null);
+export function StartPage({ onBackToSite, initialState }: { onBackToSite: () => void; initialState?: string }) {
+  const [step, setStep] = useState(0);
+  const [showPassword, setShowPassword] = useState(false);
+  const [draftSaved, setDraftSaved] = useState(false);
+  const [storageUnavailable, setStorageUnavailable] = useState(false);
   const headingRef = useRef<HTMLHeadingElement>(null);
-  const selectedState = US_STATES.find((state) => state.code.toLowerCase() === initialState?.toLowerCase() || state.name.toLowerCase() === initialState?.toLowerCase());
-  const {
-    register,
-    watch,
-    trigger,
-    handleSubmit,
-    formState: { errors, isSubmitting },
-  } = useForm<OnboardingForm>({
-    resolver: zodResolver(onboardingSchema),
-    mode: 'onTouched',
-    defaultValues: {
-      businessType: '',
-      formationState: selectedState?.name ?? '',
-      firstName: '',
-      lastName: '',
-      email: '',
-      phone: '',
-      password: '',
-      confirmPassword: '',
-      termsAccepted: false,
-    },
+  const reduceMotion = useReducedMotion();
+  const [defaults] = useState(() => {
+    const selectedState = US_STATES.find(state => state.code.toLowerCase() === initialState?.toLowerCase() || state.name.toLowerCase() === initialState?.toLowerCase());
+    return { businessType: undefined, country: '', formationState: '', businessName: '', fullName: '', email: '', ...readDraft(), ...(selectedState ? { formationState: selectedState.code } : {}), password: '', confirmPassword: '' };
   });
-
+  const { register, control, watch, trigger, handleSubmit, setValue, formState: { errors, isSubmitting } } = useForm<Answers>({ resolver: zodResolver(schema), mode: 'onTouched', defaultValues: defaults });
+  const values = watch();
   useEffect(() => {
-    document.title = 'Start My Business | Apex Filings';
+    const subscription = watch(answers => {
+      const draft = Object.fromEntries(draftFields.map(key => [key, answers[key] ?? '']));
+      try { sessionStorage.setItem(DRAFT_KEY, JSON.stringify(draft)); setStorageUnavailable(false); } catch { setStorageUnavailable(true); }
+    });
+    return () => subscription.unsubscribe();
+  }, [watch]);
+  useEffect(() => {
+    document.title = 'Start Your Business | Apex Filings';
     return () => { document.title = 'Apex Filings | Start Your US Business With Confidence'; };
   }, []);
-
-  useEffect(() => {
-    headingRef.current?.focus();
-  }, [step]);
-
-  const nextStep = async () => {
-    const valid = await trigger(stepFields[step], { shouldFocus: true });
-    if (valid && step < 4) {
-      setStep((step + 1) as Step);
-      setSubmitError('');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
+  useEffect(() => { headingRef.current?.focus({ preventScroll: true }); }, [step, draftSaved]);
+  const move = (next: number) => { setStep(next); window.scrollTo({ top: 0, behavior: reduceMotion ? 'instant' : 'smooth' }); };
+  const saveDraft = () => {
+    // Registration has no backend yet. This is a draft, never an account creation.
+    // The session allowlist deliberately excludes both password fields.
+    setValue('password', ''); setValue('confirmPassword', ''); setDraftSaved(true);
   };
-
-  const submitRegistration = async (values: OnboardingForm) => {
-    setSubmitError('');
-    try {
-      const result = await registerApplicant({
-        businessType: values.businessType,
-        formationState: values.formationState,
-        firstName: values.firstName,
-        lastName: values.lastName,
-        email: values.email,
-        phone: values.phone,
-        password: values.password,
-      });
-      setRegistration(result);
-    } catch (error) {
-      setSubmitError(error instanceof Error ? error.message : 'Account creation is unavailable. Please try again later.');
-    }
-  };
-
-  const onFormSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (step === 4) {
-      void handleSubmit(submitRegistration)();
-    } else {
-      void nextStep();
-    }
+    if (step === 4) { await handleSubmit(saveDraft)(); return; }
+    if (await trigger(fields[step], { shouldFocus: true })) move(step + 1);
   };
+  const errorFor = (field: keyof Answers) => errors[field] ? <p id={`${field}-error`} className="wizard-error" role="alert">{errors[field]?.message}</p> : null;
 
-  return (
-    <main className="min-h-screen bg-[#fcf9f8] px-4 pb-16 pt-5 text-[#171717] sm:px-6 sm:pt-8">
-      <div className="mx-auto max-w-3xl">
-        <div className="flex items-center justify-between gap-4">
-          <a href="/" onClick={(event) => { event.preventDefault(); onBackToSite(); }} className="rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F04623]" aria-label="Apex Filings home">
-            <BrandLogo size="sm" />
-          </a>
-          <button type="button" onClick={onBackToSite} className="inline-flex min-h-11 items-center gap-2 rounded-lg px-2 text-sm font-medium text-slate-600 hover:text-[#F04623] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F04623]">
-            <ArrowLeft className="h-4 w-4" aria-hidden="true" /> Back to site
-          </button>
-        </div>
-
-        {registration ? (
-          <div className="mt-12 rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-sm sm:mt-16 sm:p-12">
-            <h1 className="text-3xl font-bold">You’re ready to get started.</h1>
-            <p className="mx-auto mt-4 max-w-md text-sm leading-relaxed text-slate-600">Your Apex Filings account has been created. Continue to your dashboard to complete your business formation.</p>
-            <a href={registration.dashboardUrl} className="mt-8 inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[#F04623] px-6 text-sm font-semibold text-white hover:bg-[#e03e1b] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F04623] focus-visible:ring-offset-2">
-              Go to My Dashboard <ArrowRight className="h-4 w-4" aria-hidden="true" />
-            </a>
+  return <main className="registration-wizard">
+    <header className="wizard-header">
+      <button className="wizard-back" type="button" aria-label="Back" onClick={() => { if (draftSaved) setDraftSaved(false); else if (step > 0) move(step - 1); else onBackToSite(); }}><ArrowLeft size={18} aria-hidden="true" /><span>Back</span></button>
+      <a href="/" className="wizard-brand" aria-label="Apex Filings home"><img src="/images/apex-navbar-logo.png" alt="" width="42" height="42" /><span>Apex Filings</span></a>
+    </header>
+    <div className="wizard-shell">
+      <div className="wizard-progress-caption"><span>LET’S BUILD YOUR NEXT CHAPTER</span><span>Step {step + 1} of 5</span></div>
+      <ol className="wizard-progress" aria-label="Registration progress">
+        {labels.map((label, index) => <li key={label} aria-current={step === index ? 'step' : undefined} data-complete={index < step}><span className="wizard-progress-bar" /><span className="wizard-progress-label">{index < step ? <Check size={12} aria-hidden="true" /> : <span>0{index + 1}</span>} {label}<span className="sr-only">{index < step ? ', completed' : index === step ? ', current step' : ''}</span></span></li>)}
+      </ol>
+      {draftSaved ? <section className="wizard-saved">
+        <CheckCircle2 size={40} className="text-[#F04623]" aria-hidden="true" />
+        <h1 ref={headingRef} tabIndex={-1}>Your details are ready.</h1>
+        <p>{storageUnavailable ? 'Your answers are retained while this page stays open.' : 'Your answers are saved for this browser tab’s session.'} Account creation is not available yet. No account has been created and nothing has been submitted.</p>
+        <p>Passwords have been cleared. You can review your details or contact us for help with your next steps.</p>
+        <button type="button" className="wizard-continue" onClick={() => { setDraftSaved(false); move(0); }}>Review My Details <ArrowRight size={18} /></button>
+        <a href="/contact" className="wizard-text-link">Contact Apex Filings</a>
+      </section> : <form onSubmit={submit} noValidate>
+        <motion.div key={step} initial={reduceMotion ? false : { opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .25 }} className="wizard-screen">
+          <div className="wizard-question-icon" aria-hidden="true">{step === 1 ? <Globe2 size={25} /> : step === 4 ? <LockKeyhole size={25} /> : <Building2 size={25} />}</div>
+          <h1 ref={headingRef} tabIndex={-1}>{questions[step]}</h1>
+          <p className="wizard-intro">{['A clear foundation for your next idea. Choose your business structure to begin.', 'Select your country of residence so we can understand your starting point.', 'Choose the state that fits your plans. You can review your choice later.', 'You can change this later. Final name availability depends on the relevant state’s records.', 'Your initial details are all we need here. Your full application comes later.'][step]}</p>
+          <div className="wizard-fields">
+            {step === 0 && <fieldset><legend className="sr-only">Business type</legend><label className="wizard-business-option"><input type="radio" value="LLC" {...register('businessType')} /><span className="wizard-option-icon"><Building2 size={25} /></span><span><strong>Limited Liability Company</strong><span>LLC · US business formation</span></span><span className="wizard-radio-check"><Check size={15} /></span></label>{errorFor('businessType')}<p className="wizard-hint">LLC formation is currently available through Apex Filings.</p></fieldset>}
+            {step === 1 && <Controller name="country" control={control} render={({ field }) => <SearchSelect id="country" label="Country of residence" options={COUNTRIES} value={field.value} onChange={field.onChange} onBlur={field.onBlur} inputRef={field.ref} error={errors.country?.message} />} />}
+            {step === 2 && <><Controller name="formationState" control={control} render={({ field }) => <SearchSelect id="formationState" label="Formation state" options={US_STATES} value={field.value} onChange={field.onChange} onBlur={field.onBlur} inputRef={field.ref} error={errors.formationState?.message} />} /><details className="wizard-state-help"><summary>Help me choose a state <ChevronDown size={16} /></summary><p>Consider where your business will operate, the state filing fee, and recurring reports and compliance costs. Operating in another state may involve additional registration requirements. Review official state requirements or consult a qualified adviser for your circumstances.</p><a href="/contact" target="_blank" rel="noreferrer">Ask our team about the process ↗</a></details></>}
+            {step === 3 && <div><label htmlFor="businessName">Preferred business name</label><input id="businessName" placeholder="Enter your preferred business name" autoComplete="organization" maxLength={150} {...register('businessName')} aria-invalid={!!errors.businessName} aria-describedby={errors.businessName ? 'businessName-error' : undefined} />{errorFor('businessName')}</div>}
+            {step === 4 && <>
+              <div className="wizard-integration-note">Account creation is not live yet. Continue to save your details for this session; no account will be created. Passwords are never saved.</div>
+              {(['fullName', 'email'] as const).map(field => <div key={field}><label htmlFor={field}>{field === 'fullName' ? 'Full Name' : 'Email Address'}</label><input id={field} type={field === 'email' ? 'email' : 'text'} autoComplete={field === 'email' ? 'email' : 'name'} {...register(field)} aria-invalid={!!errors[field]} aria-describedby={errors[field] ? `${field}-error` : undefined} />{errorFor(field)}</div>)}
+              {(['password', 'confirmPassword'] as const).map(field => <div key={field}><label htmlFor={field}>{field === 'password' ? 'Password' : 'Confirm Password'}</label><div className="wizard-password"><input id={field} type={showPassword ? 'text' : 'password'} autoComplete="new-password" {...register(field)} aria-invalid={!!errors[field]} aria-describedby={errors[field] ? `${field}-error` : field === 'password' ? 'password-help' : undefined} /><button type="button" aria-label={`${showPassword ? 'Hide' : 'Show'} ${field === 'password' ? 'password' : 'confirm password'}`} aria-pressed={showPassword} onClick={() => setShowPassword(current => !current)}>{showPassword ? <EyeOff size={18} /> : <Eye size={18} />}</button></div>{field === 'password' && <p id="password-help" className="wizard-hint">Use at least 8 characters.</p>}{errorFor(field)}</div>)}
+              <p className="wizard-hint">Terms of Service and Privacy Policy will be available before account registration launches.</p>
+            </>}
           </div>
-        ) : (
-          <div className="mt-8 sm:mt-12">
-            <div className="mx-auto max-w-xl">
-              <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-slate-500">
-                <span>Step {step} of 4</span>
-                <span>{step * 25}% complete</span>
-              </div>
-              <div role="progressbar" aria-label="Onboarding progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={step * 25} className="mt-3 h-2 overflow-hidden rounded-full bg-slate-200">
-                <div className="h-full rounded-full bg-[#F04623] transition-[width] duration-300" style={{ width: `${step * 25}%` }} />
-              </div>
-            </div>
-
-            <form onSubmit={onFormSubmit} noValidate className="mx-auto mt-8 max-w-xl rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-10">
-              {step === 1 && (
-                <div>
-                  <h1 ref={headingRef} tabIndex={-1} className="text-2xl font-bold tracking-tight outline-none sm:text-3xl">What would you like to start?</h1>
-                  <p className="mt-2 text-sm text-slate-600">Choose the business structure you're interested in.</p>
-                  <fieldset className="mt-7 space-y-3" aria-describedby={errors.businessType ? 'business-type-error' : undefined}>
-                    <legend className="sr-only">Business structure</legend>
-                    {options.map((option) => {
-                      const Icon = option.icon;
-                      return (
-                        <label key={option.value} className="block cursor-pointer">
-                          <input type="radio" value={option.value} {...register('businessType')} className="peer sr-only" />
-                          <span className="flex min-h-20 items-center gap-4 rounded-2xl border border-slate-200 px-4 py-3 transition-colors hover:border-orange-300 hover:bg-orange-50/40 peer-checked:border-[#F04623] peer-checked:bg-orange-50 peer-focus-visible:ring-2 peer-focus-visible:ring-[#F04623]">
-                            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-orange-50 text-[#F04623]"><Icon className="h-5 w-5" aria-hidden="true" /></span>
-                            <span><strong className="block text-sm text-[#171717]">{option.title}</strong><span className="mt-1 block text-xs text-slate-600">{option.description}</span></span>
-                          </span>
-                        </label>
-                      );
-                    })}
-                  </fieldset>
-                  {errors.businessType && <p id="business-type-error" role="alert" className="mt-2 text-sm text-red-700">{errors.businessType.message}</p>}
-                </div>
-              )}
-
-              {step === 2 && (
-                <div>
-                  <h1 ref={headingRef} tabIndex={-1} className="text-2xl font-bold tracking-tight outline-none sm:text-3xl">Where would you like to form your business?</h1>
-                  <p className="mt-2 text-sm text-slate-600">Search and choose a US state. You can review your choice later.</p>
-                  <div className="mt-7">
-                    <label htmlFor="formation-state" className="text-sm font-semibold">Formation state</label>
-                    <input id="formation-state" type="search" list="us-state-options" autoComplete="off" placeholder="Search or select a state" aria-invalid={!!errors.formationState} aria-describedby={errors.formationState ? 'formation-state-error' : 'formation-state-help'} className={fieldClasses} {...register('formationState')} />
-                    <datalist id="us-state-options">{US_STATES.map((state) => <option key={state.code} value={state.name} />)}</datalist>
-                    <p id="formation-state-help" className="mt-2 text-xs text-slate-500">All 50 US states are available. State fees are shown later when confirmed.</p>
-                    {errors.formationState && <p id="formation-state-error" role="alert" className="mt-2 text-sm text-red-700">{errors.formationState.message}</p>}
-                  </div>
-                </div>
-              )}
-
-              {step === 3 && (
-                <div>
-                  <h1 ref={headingRef} tabIndex={-1} className="text-2xl font-bold tracking-tight outline-none sm:text-3xl">Let's get to know you</h1>
-                  <p className="mt-2 text-sm text-slate-600">Just your contact details for now.</p>
-                  <div className="mt-7 grid gap-4 sm:grid-cols-2">
-                    <div>
-                      <label htmlFor="first-name" className="text-sm font-semibold">First name</label>
-                      <input id="first-name" type="text" autoComplete="given-name" aria-invalid={!!errors.firstName} aria-describedby={errors.firstName ? 'first-name-error' : undefined} className={fieldClasses} {...register('firstName')} />
-                      {errors.firstName && <p id="first-name-error" role="alert" className="mt-1 text-xs text-red-700">{errors.firstName.message}</p>}
-                    </div>
-                    <div>
-                      <label htmlFor="last-name" className="text-sm font-semibold">Last name</label>
-                      <input id="last-name" type="text" autoComplete="family-name" aria-invalid={!!errors.lastName} aria-describedby={errors.lastName ? 'last-name-error' : undefined} className={fieldClasses} {...register('lastName')} />
-                      {errors.lastName && <p id="last-name-error" role="alert" className="mt-1 text-xs text-red-700">{errors.lastName.message}</p>}
-                    </div>
-                    <div className="sm:col-span-2">
-                      <label htmlFor="contact-email" className="text-sm font-semibold">Email address</label>
-                      <input id="contact-email" type="email" autoComplete="email" aria-invalid={!!errors.email} aria-describedby={errors.email ? 'email-error' : undefined} className={fieldClasses} {...register('email')} />
-                      {errors.email && <p id="email-error" role="alert" className="mt-1 text-xs text-red-700">{errors.email.message}</p>}
-                    </div>
-                    <div className="sm:col-span-2">
-                      <label htmlFor="contact-phone" className="text-sm font-semibold">Phone number</label>
-                      <input id="contact-phone" type="tel" autoComplete="tel" placeholder="Include country code if outside the US" aria-invalid={!!errors.phone} aria-describedby={errors.phone ? 'phone-error' : undefined} className={fieldClasses} {...register('phone')} />
-                      {errors.phone && <p id="phone-error" role="alert" className="mt-1 text-xs text-red-700">{errors.phone.message}</p>}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {step === 4 && (
-                <div>
-                  <h1 ref={headingRef} tabIndex={-1} className="text-2xl font-bold tracking-tight outline-none sm:text-3xl">Create your Apex Filings account</h1>
-                  <p className="mt-2 text-sm leading-relaxed text-slate-600">Your account will let you save your progress, track your application, access documents, and continue your business formation.</p>
-                  <div className="mt-6 rounded-xl border border-orange-200 bg-orange-50 px-4 py-3 text-xs leading-relaxed text-orange-900">Account registration is being prepared. You can review this step, but no account or application can be created yet.</div>
-                  <div className="mt-6 space-y-4">
-                    <div>
-                      <label htmlFor="account-email" className="text-sm font-semibold">Email address</label>
-                      <input id="account-email" type="email" value={watch('email')} readOnly className={`${fieldClasses} bg-slate-50`} />
-                      <p className="mt-1 text-xs text-slate-500">Use Back to change your email address.</p>
-                    </div>
-                    <div>
-                      <label htmlFor="password" className="text-sm font-semibold">Password</label>
-                      <input id="password" type="password" autoComplete="new-password" aria-invalid={!!errors.password} aria-describedby={errors.password ? 'password-error' : 'password-help'} className={fieldClasses} {...register('password')} />
-                      <p id="password-help" className="mt-1 text-xs text-slate-500">Use at least 8 characters.</p>
-                      {errors.password && <p id="password-error" role="alert" className="mt-1 text-xs text-red-700">{errors.password.message}</p>}
-                    </div>
-                    <div>
-                      <label htmlFor="confirm-password" className="text-sm font-semibold">Confirm password</label>
-                      <input id="confirm-password" type="password" autoComplete="new-password" aria-invalid={!!errors.confirmPassword} aria-describedby={errors.confirmPassword ? 'confirm-password-error' : undefined} className={fieldClasses} {...register('confirmPassword')} />
-                      {errors.confirmPassword && <p id="confirm-password-error" role="alert" className="mt-1 text-xs text-red-700">{errors.confirmPassword.message}</p>}
-                    </div>
-                    <div>
-                      <label className="flex cursor-pointer items-start gap-3 text-sm text-slate-700">
-                        <input type="checkbox" aria-invalid={!!errors.termsAccepted} aria-describedby={errors.termsAccepted ? 'terms-error' : 'terms-help'} className="mt-0.5 h-5 w-5 shrink-0 accent-[#F04623]" {...register('termsAccepted')} />
-                        <span>I agree to the Terms of Service and Privacy Policy.</span>
-                      </label>
-                      <p id="terms-help" className="mt-1 pl-8 text-xs text-slate-500">These documents will be available before registration launches.</p>
-                      {errors.termsAccepted && <p id="terms-error" role="alert" className="mt-1 pl-8 text-xs text-red-700">{errors.termsAccepted.message}</p>}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {submitError && <p role="alert" className="mt-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{submitError}</p>}
-
-              <div className="mt-8 flex items-center justify-between gap-3 border-t border-slate-100 pt-6">
-                <button type="button" onClick={step === 1 ? onBackToSite : () => { setStep((step - 1) as Step); setSubmitError(''); }} className="inline-flex min-h-11 items-center gap-2 rounded-xl px-3 text-sm font-semibold text-slate-600 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F04623]">
-                  <ArrowLeft className="h-4 w-4" aria-hidden="true" /> Back
-                </button>
-                <button type="submit" disabled={isSubmitting || (step === 1 && !watch('businessType'))} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[#F04623] px-6 text-sm font-semibold text-white transition-colors hover:bg-[#e03e1b] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F04623] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
-                  {step === 4 ? (isSubmitting ? 'Creating account…' : 'Create account') : 'Continue'} <ArrowRight className="h-4 w-4" aria-hidden="true" />
-                </button>
-              </div>
-            </form>
-            <p className="mx-auto mt-5 flex max-w-xl items-center justify-center gap-2 text-center text-xs text-slate-500"><LockKeyhole className="h-3.5 w-3.5" aria-hidden="true" /> No payment or identity documents are requested here.</p>
-          </div>
-        )}
-      </div>
-    </main>
-  );
+          {storageUnavailable && <p className="wizard-hint" role="status">Browser session storage is unavailable. Keep this page open to retain your answers.</p>}
+          <button type="submit" className="wizard-continue" disabled={isSubmitting || (step === 0 && values.businessType !== 'LLC')}>{step === 4 ? 'Create Account & Continue' : 'Continue'}<ArrowRight size={18} aria-hidden="true" /></button>
+          <p className="wizard-footnote"><LockKeyhole size={13} aria-hidden="true" />{step === 4 ? 'Session draft only · registration coming soon' : 'No payment or documents needed at this stage'}</p>
+        </motion.div>
+      </form>}
+    </div>
+  </main>;
 }

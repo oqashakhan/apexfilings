@@ -109,7 +109,7 @@ export function ExclusiveBonusesSection() {
 
             <div className="mt-8 flex flex-wrap items-center gap-x-7 gap-y-5">
               <a
-                href="/start"
+                href="/how-it-works"
                 className="inline-flex min-h-14 items-center justify-center gap-3 rounded-xl bg-gradient-to-r from-[#F04623] to-[#FF682D] px-6 py-3.5 text-sm font-bold text-white shadow-[0_9px_20px_-10px_rgba(240,70,35,0.65)] transition-[filter,transform] hover:-translate-y-0.5 hover:brightness-105 motion-reduce:transition-none motion-reduce:hover:translate-y-0 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#F04623]"
               >
                 Start My Business

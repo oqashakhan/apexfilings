@@ -33,7 +33,7 @@ export function HeroSection({ onStart }: HeroSectionProps) {
             Start My Business <ArrowRight className="h-4 w-4" aria-hidden="true" />
           </button>
           <a
-            href="#why-us"
+            href="/how-it-works"
             className="inline-flex min-h-12 items-center justify-center rounded-xl border border-slate-300 bg-white px-7 py-3 text-sm font-semibold text-[#171717] transition-colors hover:border-orange-300 hover:bg-orange-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F04623] focus-visible:ring-offset-2 sm:text-base"
           >
             How It Works

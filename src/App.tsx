@@ -12,7 +12,6 @@ import { TestimonialsSection } from './components/sections/TestimonialsSection';
 import { TopStatesSection } from './components/sections/TopStatesSection';
 import { FAQSection } from './components/sections/FAQSection';
 import { ContactSection } from './components/sections/ContactSection';
-import { StartPage } from './components/start/StartPage';
 import { LoginPortalModal } from './components/modals/LoginPortalModal';
 import { PricingPage } from './components/pages/PricingPage';
 import { ContactPage } from './components/pages/ContactPage';
@@ -20,6 +19,8 @@ import { getServiceBySlug } from './data/services';
 import { PricingPlan, TopState } from './types';
 
 const WhyApexPage = lazy(() => import('./components/why/WhyApexPage').then((module) => ({ default: module.WhyApexPage })));
+const StartPage = lazy(() => import('./components/start/StartPage').then((module) => ({ default: module.StartPage })));
+const FormationProcessPage = lazy(() => import('./components/pages/FormationProcessPage').then((module) => ({ default: module.FormationProcessPage })));
 const ServiceDetailPage = lazy(() => import('./components/services/ServiceDetailPage').then((module) => ({ default: module.ServiceDetailPage })));
 
 export default function App() {
@@ -51,8 +52,8 @@ export default function App() {
   };
 
   const returnToSite = () => {
-    window.history.pushState(null, '', '/');
-    setPath('/');
+    window.history.pushState(null, '', `/how-it-works${window.location.search}`);
+    setPath('/how-it-works');
     window.scrollTo(0, 0);
   };
 
@@ -60,7 +61,7 @@ export default function App() {
   const handleSelectState = (state: TopState) => navigateToStart(state.id);
 
   if (routePath === '/start') {
-    return <StartPage onBackToSite={returnToSite} initialState={new URLSearchParams(window.location.search).get('state') ?? undefined} />;
+    return <Suspense fallback={<div className="min-h-screen bg-white" role="status">Loading registration…</div>}><StartPage onBackToSite={returnToSite} initialState={new URLSearchParams(window.location.search).get('state') ?? undefined} /></Suspense>;
   }
 
   const serviceSlug = routePath.startsWith('/services/') ? routePath.slice('/services/'.length) : null;
@@ -75,12 +76,13 @@ export default function App() {
       <main className="flex-1">
         {serviceSlug ? (
           selectedService ? <Suspense fallback={<div className="min-h-screen bg-white" />}><ServiceDetailPage service={selectedService} /></Suspense> : <section className="mx-auto min-h-[60vh] max-w-7xl px-4 py-24 text-center"><h1 className="text-3xl font-bold text-[#171717]">Service not found</h1><p className="mt-4 text-slate-600">Explore the services currently available through Apex Filings.</p><a href="/#services" className="mt-6 inline-flex text-sm font-semibold text-[#F04623] underline underline-offset-4">View all services</a></section>
-        ) : routePath === '/pricing' ? <PricingPage onSelectPlan={handleSelectPlan} />
+        ) : routePath === '/how-it-works' ? <Suspense fallback={<div className="min-h-screen" role="status">Loading your business journey…</div>}><FormationProcessPage /></Suspense>
+          : routePath === '/pricing' ? <PricingPage onSelectPlan={handleSelectPlan} />
           : routePath === '/contact' ? <ContactPage />
           : routePath === '/why-us' || routePath === '/about' ? <Suspense fallback={<div className="min-h-screen bg-white" />}><WhyApexPage /></Suspense> : <>
         {/* 1. Hero Section */}
         <HeroSection
-          onStart={() => navigateToStart()}
+          onStart={() => { window.history.pushState(null, '', '/how-it-works'); setPath('/how-it-works'); window.scrollTo(0, 0); }}
         />
 
         {/* 2. Trust Metrics Bar */}

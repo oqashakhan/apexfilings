@@ -65,7 +65,7 @@ function SectionIntro({ eyebrow, title, copy, center = false }: { eyebrow: strin
 
 function StartLink({ dark = false, className = '' }: { dark?: boolean; className?: string }) {
   return (
-    <a href="/start" className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-xl px-6 py-3 text-sm font-semibold transition-[transform,background-color] motion-safe:hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F04623] focus-visible:ring-offset-2 ${dark ? 'bg-white text-[#171717] hover:bg-orange-50' : 'bg-[#F04623] text-white shadow-md shadow-orange-500/20 hover:bg-[#e03e1b]'} ${className}`}>
+    <a href="/how-it-works" className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-xl px-6 py-3 text-sm font-semibold transition-[transform,background-color] motion-safe:hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F04623] focus-visible:ring-offset-2 ${dark ? 'bg-white text-[#171717] hover:bg-orange-50' : 'bg-[#F04623] text-white shadow-md shadow-orange-500/20 hover:bg-[#e03e1b]'} ${className}`}>
       Start My Business <ArrowRight className="h-4 w-4" aria-hidden="true" />
     </a>
   );

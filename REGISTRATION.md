@@ -1,0 +1,11 @@
+# Formation journey and initial registration
+
+- `/how-it-works` presents the five-stage scroll story. Public Start My Business links and the navbar Start Your Business link lead here. Its final CTA opens `/start` directly. Existing package/state selection actions are retained.
+- `/start` is the five-screen initial intake: LLC, residence, formation state, proposed business name, account details. The existing 50-state list is reused. Countries/territories use 249 ISO codes sourced in `src/data/countries.ts`, with names supplied by the browser's Intl.DisplayNames.
+- Answers are retained by React Hook Form while navigating Back/Continue. Only business type, country, state, business name, full name and email are allowlisted in `sessionStorage` under `apex-registration-draft-v1`. Refresh starts at screen one with those answers restored. Passwords remain in memory only and are cleared on draft completion. Storage failures fall back to in-memory answers and display a notice.
+- Authentication is **not implemented**: `src/lib/registerApplicant.ts` remains the existing throwing placeholder. The final screen validates inputs, saves a session draft and explicitly states no account was created or data submitted. No network registration request, payment, file upload or database change is made.
+- Before enabling real account creation, implement the registration API/session flow, decide the production request contract for the new residence/name/full-name fields, publish Terms and Privacy pages, and replace the draft-only submit handler in `StartPage.tsx` with the verified API result. Do not turn the draft confirmation into a success claim without a backend response.
+- Motion uses native scrolling (`useScroll`) and transform/opacity animation. Reduced-motion removes entrance movement; the progress line still reflects actual scroll position without smoothing or scroll interception.
+- `netlify.toml` builds to `dist`; `public/_redirects` supplies the SPA rewrite for direct navigation and refresh on both routes.
+
+Validation: `npm run lint`, `npm run build`, browser checks for CTA routes, reverse scroll progress, keyboard selectors, validation, Back/Continue, session restoration, and responsive layouts.

@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { Check, ChevronDown, CircleUserRound, Globe2, Menu, X } from 'lucide-react';
 import { NAVIGATION_ITEMS } from '../../data/navigation';
-import { SERVICES } from '../../data/services';
-import { BrandLogo } from '../ui/BrandLogo';
+import { ServicesMegaMenu } from './ServicesMegaMenu';
+import './Navbar.css';
 
 const linkClasses =
   'rounded-lg px-3 py-2.5 text-sm font-medium text-slate-700 transition-colors hover:bg-orange-50 hover:text-[#F04623] aria-[current=page]:bg-orange-50 aria-[current=page]:text-[#F04623] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F04623]';
@@ -34,8 +34,32 @@ export function Navbar({ onOpenClientPortal, language, onLanguageChange }: Navba
   const [servicesOpen, setServicesOpen] = useState(false);
   const [languageOpen, setLanguageOpen] = useState(false);
   const headerRef = useRef<HTMLElement>(null);
+  const servicesTriggerRef = useRef<HTMLButtonElement>(null);
+  const servicesRegionRef = useRef<HTMLDivElement>(null);
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const suppressFocusOpen = useRef(false);
+  const focusFirstLink = useRef(false);
   const copy = navigationCopy[language];
   const currentPath = window.location.pathname.replace(/\/$/, '') || '/';
+
+  const clearCloseTimer = () => {
+    if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
+    closeTimerRef.current = null;
+  };
+  const openServices = () => {
+    clearCloseTimer();
+    setServicesOpen(true);
+    setLanguageOpen(false);
+  };
+
+  useEffect(() => {
+    if (servicesOpen && focusFirstLink.current) {
+      servicesRegionRef.current?.querySelector<HTMLAnchorElement>('a')?.focus();
+      focusFirstLink.current = false;
+    }
+  }, [servicesOpen]);
+
+  useEffect(() => () => clearCloseTimer(), []);
 
   const changeLanguage = (code: Language) => {
     onLanguageChange(code);
@@ -67,37 +91,66 @@ export function Navbar({ onOpenClientPortal, language, onLanguageChange }: Navba
   }, []);
 
   const closeMenus = () => {
+    clearCloseTimer();
     setServicesOpen(false);
     setMobileMenuOpen(false);
     setLanguageOpen(false);
   };
 
-  const serviceLinks = SERVICES.map((service, index) => (
-    <a
-      key={service.id}
-      href={`/services/${service.id}`}
-      onClick={closeMenus}
-      className="block rounded-lg px-3 py-2.5 text-sm text-slate-700 transition-colors hover:bg-orange-50 hover:text-[#F04623] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F04623]"
-    >
-      {copy.serviceNames[index]}
-    </a>
-  ));
-
   return (
     <header ref={headerRef} className="sticky top-0 z-50 w-full border-b border-slate-200 bg-white/95 backdrop-blur-md">
-      <div className="mx-auto flex h-20 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
-        <a href="/#home" onClick={closeMenus} className="shrink-0 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F04623]" aria-label="Apex Filings Home">
-          <BrandLogo />
+      <div className="apex-nav-bar mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <a href="/#home" onClick={closeMenus} className="apex-nav-logo focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F04623]" aria-label="Apex Filings Home">
+          <img src="/images/apex-navbar-logo.png" alt="Apex Filings" width="60" height="60" />
+          <span className="apex-nav-company">Apex Filings</span>
         </a>
 
-        <nav className="hidden items-center gap-1 lg:flex" aria-label="Main navigation">
+        <nav className="hidden self-stretch items-center gap-1 lg:flex" aria-label="Main navigation">
           <a href={NAVIGATION_ITEMS[0].href} className={linkClasses}>{copy.home}</a>
-          <div className="relative">
+          <div
+            ref={servicesRegionRef}
+            className="flex self-stretch items-center"
+            onPointerEnter={(event) => { if (event.pointerType !== 'touch') openServices(); }}
+            onPointerLeave={(event) => {
+              if (event.pointerType === 'touch') return;
+              clearCloseTimer();
+              closeTimerRef.current = setTimeout(() => setServicesOpen(false), 140);
+            }}
+            onBlur={(event) => {
+              if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+                clearCloseTimer();
+                setServicesOpen(false);
+              }
+            }}
+            onKeyDown={(event) => {
+              if (event.key === 'Escape') {
+                event.preventDefault();
+                event.stopPropagation();
+                clearCloseTimer();
+                setServicesOpen(false);
+                suppressFocusOpen.current = true;
+                servicesTriggerRef.current?.focus();
+                suppressFocusOpen.current = false;
+              }
+            }}
+          >
             <button
+              ref={servicesTriggerRef}
               type="button"
               aria-expanded={servicesOpen}
               aria-controls="desktop-services-menu"
+              onFocus={(event) => {
+                if (!suppressFocusOpen.current && event.currentTarget.matches(':focus-visible')) openServices();
+              }}
+              onKeyDown={(event) => {
+                if (event.key === 'ArrowDown') {
+                  event.preventDefault();
+                  if (servicesOpen) servicesRegionRef.current?.querySelector<HTMLAnchorElement>('a')?.focus();
+                  else { focusFirstLink.current = true; openServices(); }
+                }
+              }}
               onClick={() => {
+                clearCloseTimer();
                 setServicesOpen((open) => !open);
                 setLanguageOpen(false);
               }}
@@ -107,12 +160,8 @@ export function Navbar({ onOpenClientPortal, language, onLanguageChange }: Navba
               <ChevronDown className={`h-4 w-4 transition-transform ${servicesOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
             </button>
             {servicesOpen && (
-              <div id="desktop-services-menu" className="absolute left-0 top-full mt-2 w-64 rounded-xl border border-slate-200 bg-white p-2 shadow-lg">
-                <a href="/#services" onClick={closeMenus} className="block rounded-lg px-3 py-2.5 text-sm font-semibold text-[#F04623] hover:bg-orange-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F04623]">
-                  {copy.allServices}
-                </a>
-                <div className="my-1 border-t border-slate-100" />
-                {serviceLinks}
+              <div id="desktop-services-menu" className="apex-services-position">
+                <ServicesMegaMenu language={language} onNavigate={closeMenus} />
               </div>
             )}
           </div>
@@ -121,7 +170,7 @@ export function Navbar({ onOpenClientPortal, language, onLanguageChange }: Navba
           ))}
         </nav>
 
-        <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
+        <div className="flex shrink-0 items-center justify-self-end gap-1.5 sm:gap-2">
           <div className="relative">
             <button
               type="button"
@@ -203,9 +252,8 @@ export function Navbar({ onOpenClientPortal, language, onLanguageChange }: Navba
               <ChevronDown className={`h-4 w-4 transition-transform ${servicesOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
             </button>
             {servicesOpen && (
-              <div id="mobile-services-menu" className="ml-3 border-l border-slate-200 pl-3">
-                <a href="/#services" onClick={closeMenus} className={`${linkClasses} block`}>{copy.allServices}</a>
-                {serviceLinks}
+              <div id="mobile-services-menu">
+                <ServicesMegaMenu language={language} onNavigate={closeMenus} mobile />
               </div>
             )}
             {NAVIGATION_ITEMS.slice(1).map((item) => (
