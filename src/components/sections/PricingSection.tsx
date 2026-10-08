@@ -5,6 +5,7 @@ import { PricingPlan } from '../../types';
 
 interface PricingSectionProps {
   onSelectPlan: (plan: PricingPlan, isNonUs: boolean) => void;
+  asPage?: boolean;
 }
 
 const basicFeatures = PRICING_PLANS.find((plan) => plan.id === 'basic')?.features ?? [];
@@ -21,7 +22,8 @@ function includesFeature(plan: PricingPlan, feature: string) {
     (plan.features.some((item) => item.startsWith('Everything in Basic')) && basicFeatures.includes(feature));
 }
 
-export function PricingSection({ onSelectPlan }: PricingSectionProps) {
+export function PricingSection({ onSelectPlan, asPage = false }: PricingSectionProps) {
+  const Heading = asPage ? 'h1' : 'h2';
   const [isNonUsResident, setIsNonUsResident] = useState(true);
   const [comparisonOpen, setComparisonOpen] = useState(false);
   const comparisonRef = useRef<HTMLDivElement>(null);
@@ -40,9 +42,9 @@ export function PricingSection({ onSelectPlan }: PricingSectionProps) {
 
         <div className="relative mx-auto max-w-2xl text-center">
           <span className="text-xs font-bold uppercase tracking-[0.18em] text-[#E54723]">Clear pricing, confident choices</span>
-          <h2 id="pricing-title" className="mt-4 text-4xl font-bold tracking-tight text-[#191D2A] sm:text-5xl lg:text-[3.5rem]">
+          <Heading id="pricing-title" className="mt-4 text-4xl font-bold tracking-tight text-[#191D2A] sm:text-5xl lg:text-[3.5rem]">
             Choose Your Package
-          </h2>
+          </Heading>
           <p className="mx-auto mt-4 max-w-xl text-base leading-relaxed text-slate-600 sm:text-lg">
             Choose the formation package that fits your business. Compare what is included before you begin.
           </p>

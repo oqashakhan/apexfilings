@@ -14,6 +14,8 @@ import { FAQSection } from './components/sections/FAQSection';
 import { ContactSection } from './components/sections/ContactSection';
 import { StartPage } from './components/start/StartPage';
 import { LoginPortalModal } from './components/modals/LoginPortalModal';
+import { PricingPage } from './components/pages/PricingPage';
+import { ContactPage } from './components/pages/ContactPage';
 import { getServiceBySlug } from './data/services';
 import { PricingPlan, TopState } from './types';
 
@@ -72,7 +74,9 @@ export default function App() {
       <main className="flex-1">
         {serviceSlug ? (
           selectedService ? <Suspense fallback={<div className="min-h-screen bg-white" />}><ServiceDetailPage service={selectedService} /></Suspense> : <section className="mx-auto min-h-[60vh] max-w-7xl px-4 py-24 text-center"><h1 className="text-3xl font-bold text-[#171717]">Service not found</h1><p className="mt-4 text-slate-600">Explore the services currently available through Apex Filings.</p><a href="/#services" className="mt-6 inline-flex text-sm font-semibold text-[#F04623] underline underline-offset-4">View all services</a></section>
-        ) : path === '/why-us' ? <Suspense fallback={<div className="min-h-screen bg-white" />}><WhyApexPage /></Suspense> : <>
+        ) : path.replace(/\/$/, '') === '/pricing' ? <PricingPage onSelectPlan={handleSelectPlan} />
+          : path.replace(/\/$/, '') === '/contact' ? <ContactPage />
+          : path === '/why-us' ? <Suspense fallback={<div className="min-h-screen bg-white" />}><WhyApexPage /></Suspense> : <>
         {/* 1. Hero Section */}
         <HeroSection
           onStart={() => navigateToStart()}

@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Send, CheckCircle2, MessageSquare, Mail, Clock } from 'lucide-react';
 
-export function ContactSection() {
+export function ContactSection({ asPage = false }: { asPage?: boolean }) {
+  const Heading = asPage ? 'h1' : 'h2';
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -9,8 +10,9 @@ export function ContactSection() {
     message: '',
   });
 
-  const [status, setStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
+  const [status, setStatus] = useState<'idle' | 'draft'>('idle');
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const emailDraft = `mailto:support@apexfiling.com?subject=${encodeURIComponent(formData.subject.trim())}&body=${encodeURIComponent(`${formData.message.trim()}\n\nName: ${formData.name.trim()}\nReply to: ${formData.email.trim()}`)}`;
 
   const validate = () => {
     const errs: Record<string, string> = {};
@@ -34,16 +36,10 @@ export function ContactSection() {
     }
 
     setErrors({});
-    setStatus('submitting');
-
-    // Simulate clean dispatch for frontend UI (future backend will connect to /api/inquiries)
-    setTimeout(() => {
-      setStatus('success');
-    }, 600);
+    setStatus('draft');
   };
 
   const handleReset = () => {
-    setFormData({ name: '', email: '', subject: '', message: '' });
     setStatus('idle');
     setErrors({});
   };
@@ -57,33 +53,33 @@ export function ContactSection() {
             <div className="lg:col-span-7 space-y-6">
               <div>
                 <span className="text-[#F04623] text-xs font-semibold tracking-wider uppercase">
-                  Direct Support
+                  {asPage ? 'Contact Apex Filings' : 'Direct Support'}
                 </span>
-                <h2 className="text-2xl sm:text-3xl font-extrabold text-[#0F172A] mt-1">
-                  Ready to Start Your Business?
-                </h2>
+                <Heading className="text-2xl sm:text-3xl font-extrabold text-[#0F172A] mt-1">
+                  {asPage ? "Let's Talk About Your Business" : 'Ready to Start Your Business?'}
+                </Heading>
                 <p className="text-slate-600 text-xs sm:text-sm mt-1">
-                  Start your US business with a simple and guided process from Apex Filings.
+                  {asPage ? 'Questions about formation, packages, or your next steps? Share a few details with our team.' : 'Start your US business with a simple and guided process from Apex Filings.'}
                 </p>
               </div>
 
-              {status === 'success' ? (
-                <div className="p-6 rounded-2xl bg-emerald-50 border border-emerald-200 text-center space-y-3 animate-in fade-in">
+              {status === 'draft' ? (
+                <div role="status" className="p-6 rounded-2xl bg-emerald-50 border border-emerald-200 text-center space-y-3">
                   <div className="w-12 h-12 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto">
                     <CheckCircle2 className="w-6 h-6" />
                   </div>
-                  <h3 className="text-base font-bold text-slate-900">Message Received!</h3>
+                  <h3 className="text-base font-bold text-slate-900">Your email draft is ready</h3>
                   <p className="text-xs text-slate-600 max-w-sm mx-auto">
-                    Thank you, <strong className="text-slate-800">{formData.name}</strong>. An
-                    incorporation specialist will review your inquiry and respond to{' '}
-                    <strong className="text-slate-800">{formData.email}</strong> within 8 minutes.
+                    Open your email app to review and send your message to support@apexfiling.com. Your message has not been sent yet.
                   </p>
+                  <a href={emailDraft} className="inline-flex rounded-xl bg-[#F04623] px-5 py-3 text-sm font-semibold text-white focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#F04623]">Open Email App</a>
+                  <p className="text-xs text-slate-600">No email app configured? You can email support@apexfiling.com directly.</p>
                   <button
                     onClick={handleReset}
                     type="button"
                     className="mt-2 px-4 py-2 bg-white border border-emerald-300 rounded-lg text-xs font-medium text-emerald-700 hover:bg-emerald-100/50 transition-colors"
                   >
-                    Send Another Inquiry
+                    Edit Message
                   </button>
                 </div>
               ) : (
@@ -176,12 +172,12 @@ export function ContactSection() {
 
                   <button
                     type="submit"
-                    disabled={status === 'submitting'}
                     className="w-full sm:w-auto px-8 py-3 rounded-xl bg-gradient-to-r from-[#e03e1b] via-[#F04623] to-[#fb923c] hover:brightness-105 text-white font-semibold text-xs transition-all shadow-md shadow-orange-500/20 disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
                   >
-                    <span>{status === 'submitting' ? 'Submitting...' : 'Send Message'}</span>
+                    <span>Prepare Email</span>
                     <Send className="w-3.5 h-3.5" />
                   </button>
+                  <p className="text-xs leading-relaxed text-slate-500">We’ll prepare your message for your email app. Review and send it there.</p>
                 </form>
               )}
             </div>

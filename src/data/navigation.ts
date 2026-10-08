@@ -2,9 +2,9 @@ import { NavItem } from '../types';
 
 export const NAVIGATION_ITEMS: NavItem[] = [
   { label: 'Home', href: '/#home' },
-  { label: 'Pricing', href: '/#pricing' },
+  { label: 'Pricing', href: '/pricing' },
   { label: 'About', href: '/why-us' },
-  { label: 'Contact', href: '/#contact' },
+  { label: 'Contact', href: '/contact' },
 ];
 
 export const FOOTER_LINKS = {
@@ -17,8 +17,8 @@ export const FOOTER_LINKS = {
   ],
   company: [
     { label: 'About Apex Filings', href: '/why-us' },
-    { label: 'Contact Support', href: '/#contact' },
-    { label: 'Pricing Plans', href: '/#pricing' },
+    { label: 'Contact Support', href: '/contact' },
+    { label: 'Pricing Plans', href: '/pricing' },
     { label: 'FAQ & Guides', href: '/#faq' },
     { label: 'Client Reviews', href: '/#testimonials' },
   ],

@@ -5,7 +5,7 @@ import { SERVICES } from '../../data/services';
 import { BrandLogo } from '../ui/BrandLogo';
 
 const linkClasses =
-  'rounded-lg px-3 py-2.5 text-sm font-medium text-slate-700 transition-colors hover:bg-orange-50 hover:text-[#F04623] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F04623]';
+  'rounded-lg px-3 py-2.5 text-sm font-medium text-slate-700 transition-colors hover:bg-orange-50 hover:text-[#F04623] aria-[current=page]:bg-orange-50 aria-[current=page]:text-[#F04623] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F04623]';
 
 export type Language = 'en' | 'es' | 'fr' | 'pt';
 
@@ -35,6 +35,7 @@ export function Navbar({ onOpenClientPortal, language, onLanguageChange }: Navba
   const [languageOpen, setLanguageOpen] = useState(false);
   const headerRef = useRef<HTMLElement>(null);
   const copy = navigationCopy[language];
+  const currentPath = window.location.pathname.replace(/\/$/, '') || '/';
 
   const changeLanguage = (code: Language) => {
     onLanguageChange(code);
@@ -116,7 +117,7 @@ export function Navbar({ onOpenClientPortal, language, onLanguageChange }: Navba
             )}
           </div>
           {NAVIGATION_ITEMS.slice(1).map((item) => (
-            <a key={item.label} href={item.href} className={linkClasses}>{copy[item.label.toLowerCase() as 'pricing' | 'about' | 'contact']}</a>
+            <a key={item.label} href={item.href} aria-current={currentPath === item.href ? 'page' : undefined} className={linkClasses}>{copy[item.label.toLowerCase() as 'pricing' | 'about' | 'contact']}</a>
           ))}
         </nav>
 
@@ -208,7 +209,7 @@ export function Navbar({ onOpenClientPortal, language, onLanguageChange }: Navba
               </div>
             )}
             {NAVIGATION_ITEMS.slice(1).map((item) => (
-              <a key={item.label} href={item.href} onClick={closeMenus} className={linkClasses}>{copy[item.label.toLowerCase() as 'pricing' | 'about' | 'contact']}</a>
+              <a key={item.label} href={item.href} aria-current={currentPath === item.href ? 'page' : undefined} onClick={closeMenus} className={linkClasses}>{copy[item.label.toLowerCase() as 'pricing' | 'about' | 'contact']}</a>
             ))}
           </div>
         </nav>
