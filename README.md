@@ -18,7 +18,7 @@ Apex Filings empowers international and domestic founders to form and maintain U
 
 ## 2. Technology Stack
 
-- **Framework:** React 19 / Next.js-ready componentized architecture
+- **Framework:** React 19 with Vite; client-side routes are handled in `src/App.tsx` (no Next.js or React Router).
 - **Language:** TypeScript (Strict typing)
 - **Styling:** Tailwind CSS with Plus Jakarta Sans typography
 - **Icons:** Lucide React
@@ -28,6 +28,15 @@ Apex Filings empowers international and domestic founders to form and maintain U
 ---
 
 ## 3. Project Architecture & Folder Structure
+
+### Netlify deployment
+
+`netlify.toml` sets the build command to `npm run build` and the publish directory to `dist`.
+Vite copies `public/_redirects` into `dist/_redirects`. Its `/* /index.html 200` rule lets Netlify serve the React entry point for direct route requests and refreshes.
+
+Supported page routes include `/pricing`, `/contact`, `/why-us` (also available as `/about`), `/start`, and `/services/:serviceId`. Trailing slashes are accepted.
+
+After changing deployment configuration, redeploy the site. For a manual Netlify upload, upload the entire freshly built `dist` folder, including `_redirects`, rather than the source folder.
 
 ```
 ├── src/

@@ -24,6 +24,7 @@ const ServiceDetailPage = lazy(() => import('./components/services/ServiceDetail
 
 export default function App() {
   const [path, setPath] = useState(window.location.pathname);
+  const routePath = path.replace(/\/+$/, '') || '/';
 
   const [loginModalOpen, setLoginModalOpen] = useState(false);
   const [language, setLanguage] = useState<Language>(() => {
@@ -58,11 +59,11 @@ export default function App() {
   const handleSelectPlan = (_plan: PricingPlan) => navigateToStart();
   const handleSelectState = (state: TopState) => navigateToStart(state.id);
 
-  if (path === '/start') {
+  if (routePath === '/start') {
     return <StartPage onBackToSite={returnToSite} initialState={new URLSearchParams(window.location.search).get('state') ?? undefined} />;
   }
 
-  const serviceSlug = path.startsWith('/services/') ? path.slice('/services/'.length).replace(/\/$/, '') : null;
+  const serviceSlug = routePath.startsWith('/services/') ? routePath.slice('/services/'.length) : null;
   const selectedService = serviceSlug ? getServiceBySlug(serviceSlug) : undefined;
 
   return (
@@ -74,9 +75,9 @@ export default function App() {
       <main className="flex-1">
         {serviceSlug ? (
           selectedService ? <Suspense fallback={<div className="min-h-screen bg-white" />}><ServiceDetailPage service={selectedService} /></Suspense> : <section className="mx-auto min-h-[60vh] max-w-7xl px-4 py-24 text-center"><h1 className="text-3xl font-bold text-[#171717]">Service not found</h1><p className="mt-4 text-slate-600">Explore the services currently available through Apex Filings.</p><a href="/#services" className="mt-6 inline-flex text-sm font-semibold text-[#F04623] underline underline-offset-4">View all services</a></section>
-        ) : path.replace(/\/$/, '') === '/pricing' ? <PricingPage onSelectPlan={handleSelectPlan} />
-          : path.replace(/\/$/, '') === '/contact' ? <ContactPage />
-          : path === '/why-us' ? <Suspense fallback={<div className="min-h-screen bg-white" />}><WhyApexPage /></Suspense> : <>
+        ) : routePath === '/pricing' ? <PricingPage onSelectPlan={handleSelectPlan} />
+          : routePath === '/contact' ? <ContactPage />
+          : routePath === '/why-us' || routePath === '/about' ? <Suspense fallback={<div className="min-h-screen bg-white" />}><WhyApexPage /></Suspense> : <>
         {/* 1. Hero Section */}
         <HeroSection
           onStart={() => navigateToStart()}
