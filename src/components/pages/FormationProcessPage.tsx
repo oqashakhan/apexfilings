@@ -47,7 +47,7 @@ export function FormationProcessPage() {
   const startHref = state ? `/start?state=${encodeURIComponent(state)}` : '/start';
   useEffect(() => {
     document.title = 'How It Works | Apex Filings';
-    return () => { document.title = 'Apex Filings | Start Your US Business With Confidence'; };
+    return () => { document.title = 'US LLC Formation for Non-Residents | Apex Filings'; };
   }, []);
   return <div className="formation-process">
     <header className="formation-intro">

@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, BadgeCheck, BriefcaseBusiness, Building2, Check, CircleHelp, Eye, EyeOff, FileCheck2, Globe2, LockKeyhole, MapPin, Search, ShieldCheck, Sparkles, Users, Wallet } from 'lucide-react';
-import { PRICING_PLANS } from '../../data/pricing';
-import { US_STATES } from '../../data/usStates';
+import { PRICING_DISCLAIMER, PRICING_PLANS } from '../../data/pricing';
+import { estimatedInitialTotal, STATE_DATA_NOTICE, US_STATES } from '../../data/usStates';
+import { StateFeeDetails } from '../StateFeeDetails';
 import { registerApplicant } from '../../lib/registerApplicant';
 import './FormationWizard.css';
 
@@ -34,7 +35,7 @@ type FormValues = {
 
 function findState(value: string | null) {
   if (!value) return undefined;
-  return US_STATES.find(state => state.code.toLowerCase() === value.toLowerCase() || state.name.toLowerCase().replace(/\s+/g, '-') === value.toLowerCase().replace(/\s+/g, '-'));
+  return US_STATES.find(state => state.availableForFormation && (state.code.toLowerCase() === value.toLowerCase() || state.slug === value.toLowerCase().replace(/\s+/g, '-')));
 }
 
 export function FormationWizard() {
@@ -66,8 +67,10 @@ export function FormationWizard() {
   const titleRef = useRef<HTMLHeadingElement>(null);
   const selectedState = US_STATES.find(state => state.code === stateCode);
   const selectedPlan = PRICING_PLANS.find(plan => plan.id === planId);
+  const basicFeatureCount = PRICING_PLANS.find(plan => plan.id === 'basic')?.features.length ?? 0;
   const servicePrice = selectedPlan ? residency === 'us' ? selectedPlan.priceUsResident : selectedPlan.priceNonUsResident : null;
-  const filteredStates = US_STATES.filter(state => `${state.name} ${state.code}`.toLowerCase().includes(search.trim().toLowerCase()));
+  const initialTotal = servicePrice == null ? null : estimatedInitialTotal(servicePrice, selectedState);
+  const filteredStates = US_STATES.filter(state => state.availableForFormation && `${state.name} ${state.code}`.toLowerCase().includes(search.trim().toLowerCase()));
   const change = <K extends keyof FormValues>(key: K, value: FormValues[K]) => { setValues(previous => ({ ...previous, [key]: value })); setError(''); };
   const move = (next: number) => {
     setError('');
@@ -86,7 +89,7 @@ export function FormationWizard() {
 
   useEffect(() => {
     document.title = 'Form Your LLC | Apex Filings';
-    return () => { document.title = 'Apex Filings | Start Your US Business With Confidence'; };
+    return () => { document.title = 'US LLC Formation for Non-Residents | Apex Filings'; };
   }, []);
   useEffect(() => { titleRef.current?.focus({ preventScroll: true }); }, [step]);
 
@@ -196,14 +199,14 @@ export function FormationWizard() {
             <div className="formation-state-grid">{popularCodes.map(code => { const state = US_STATES.find(item => item.code === code)!; return <button key={code} type="button" className={`formation-state-card ${stateCode === code ? 'selected' : ''}`} aria-pressed={stateCode === code} onClick={() => { setStateCode(code); setError(''); }}><span className="formation-choice-icon"><MapPin size={20} /></span><strong>{state.name}</strong><small>Form an LLC in {state.name}</small>{stateCode === code && <BadgeCheck size={20} className="formation-choice-check" />}</button>; })}</div>
             <label className="formation-field" htmlFor="state-search"><span>Search all states</span><span className="formation-search"><Search size={18} aria-hidden="true" /><input id="state-search" value={search} onChange={event => setSearch(event.target.value)} placeholder="Search by state name or abbreviation" /></span></label>
             {search.trim() && <div className="formation-search-results" aria-label="Matching states">{filteredStates.length ? filteredStates.map(state => <button key={state.code} type="button" onClick={() => { setStateCode(state.code); setSearch(''); setError(''); }}>{state.name} <span>{state.code}</span></button>) : <p>No states match your search.</p>}</div>}
-            {selectedState && <div className="formation-prefill"><BadgeCheck size={18} /> Selected: <strong>{selectedState.name}</strong></div>}
+            {selectedState && <><div className="formation-prefill"><BadgeCheck size={18} /> Selected: <strong>{selectedState.name}</strong></div><StateFeeDetails state={selectedState} className="mt-4" /></>}
           </>}
           {step === 3 && <>
             <h1 ref={titleRef} tabIndex={-1}>Choose Your Formation Package</h1>
             <p className="formation-lead">Compare Apex Filings service fees. Government filing fees depend on your selected state and must be confirmed before checkout.</p>
-            <fieldset className="formation-residency"><legend>Residency for package pricing</legend><div><button type="button" aria-pressed={residency === 'us'} className={residency === 'us' ? 'active' : ''} onClick={() => setResidency('us')}>US resident</button><button type="button" aria-pressed={residency === 'non-us'} className={residency === 'non-us' ? 'active' : ''} onClick={() => setResidency('non-us')}>Outside the US</button></div></fieldset>
-            <div className="formation-plan-grid">{PRICING_PLANS.map(plan => <button key={plan.id} type="button" className={`formation-plan-card ${planId === plan.id ? 'selected' : ''}`} aria-pressed={planId === plan.id} onClick={() => { setPlanId(plan.id); setError(''); }}><span className="formation-plan-top"><span><small>{plan.subtitle}</small><strong>{plan.name}</strong></span>{planId === plan.id ? <BadgeCheck size={22} /> : <span className="formation-empty-radio" />}</span><span className="formation-plan-price">${residency === 'us' ? plan.priceUsResident : plan.priceNonUsResident} <small>+ state filing fee</small></span><span className="formation-plan-description">{plan.description}</span><span className="formation-plan-features">{plan.features.slice(0, 5).map(feature => <span key={feature}><Check size={15} />{feature}</span>)}</span><span className="formation-plan-select">{planId === plan.id ? 'Selected package' : 'Select package'} <ArrowRight size={17} /></span></button>)}</div>
-            <div className="formation-fee-note"><Globe2 size={19} /><span><strong>About state fees</strong> Your package price is the Apex Filings service fee. The government filing fee and final total are pending confirmation for {selectedState?.name || 'your state'}.</span></div>
+            <fieldset className="formation-residency"><legend>Your residency</legend><div><button type="button" aria-pressed={residency === 'us'} className={residency === 'us' ? 'active' : ''} onClick={() => setResidency('us')}>US resident</button><button type="button" aria-pressed={residency === 'non-us'} className={residency === 'non-us' ? 'active' : ''} onClick={() => setResidency('non-us')}>Outside the US</button></div></fieldset>
+            <div className="formation-plan-grid">{PRICING_PLANS.map(plan => <button key={plan.id} type="button" className={`formation-plan-card ${planId === plan.id ? 'selected' : ''}`} aria-pressed={planId === plan.id} onClick={() => { setPlanId(plan.id); setError(''); }}><span className="formation-plan-top"><span><small>{plan.subtitle}</small><strong>{plan.name}</strong>{plan.badge && <small className="formation-card-meta">{plan.badge}</small>}</span>{planId === plan.id ? <BadgeCheck size={22} /> : <span className="formation-empty-radio" />}</span><span className="formation-plan-price">${residency === 'us' ? plan.priceUsResident : plan.priceNonUsResident} <small>{plan.feeNotice}</small></span><span className="formation-plan-description">{plan.description}</span><span className="formation-plan-features">{plan.id === 'advanced' && <span><Check size={15} />Includes all {basicFeatureCount} Basic services, plus:</span>}{(plan.id === 'advanced' ? plan.features.slice(basicFeatureCount) : plan.features).map(feature => <span key={feature}><Check size={15} />{feature}</span>)}</span><span className="formation-plan-select">{planId === plan.id ? 'Selected package' : 'Select package'} <ArrowRight size={17} /></span></button>)}</div>
+            <div className="formation-fee-note"><Globe2 size={19} /><span><strong>Estimated initial total: {initialTotal == null ? 'Pending fee verification' : `$${initialTotal}`}</strong> This estimate combines the package price and supplied state filing fee only. Annual / biennial obligations are separate. It is not a final payable amount. {STATE_DATA_NOTICE} {PRICING_DISCLAIMER}</span></div>
           </>}
           {step === 4 && <>
             <h1 ref={titleRef} tabIndex={-1}>Save Your Progress — Create Your Account</h1>
@@ -227,12 +230,15 @@ export function FormationWizard() {
           {step === 7 && <>
             <h1 ref={titleRef} tabIndex={-1}>Review Your Business Formation</h1><p className="formation-lead">Check your selections before moving to checkout.</p>
             <div className="formation-review">{[['Structure', 'Limited Liability Company'], ['Formation state', selectedState?.name || '—'], ['Package', selectedPlan?.name || '—'], ['Preferred name', values.businessName || '—'], ['Main activity', values.activity || '—'], ['Members', values.owners], ['EIN assistance', values.einHelp ? 'Requested' : 'Not requested']].map(([label, value]) => <div key={label}><span>{label}</span><strong>{value}</strong></div>)}</div>
-            <div className="formation-review-price"><span>Apex Filings service fee</span><strong>${servicePrice}</strong><span>Government state filing fee</span><strong>Pending confirmation</strong><span>Final total</span><strong>Available after fee confirmation</strong></div>
+            <div className="formation-review-price"><span>Apex Filings service fee</span><strong>${servicePrice}</strong><span>Estimated state filing fee</span><strong>{selectedState?.filingFee == null ? 'Not provided' : `$${selectedState.filingFee}`}</strong><span>Estimated initial total</span><strong>{initialTotal == null ? 'Pending fee verification' : `$${initialTotal}`}</strong><span>Annual / biennial state obligation</span><strong>{selectedState?.recurringFeeDescription ?? 'Not provided'}</strong><span>Estimated online processing</span><strong>{selectedState?.processingTimeLabel ?? 'Not listed'}</strong><span>Final payable amount</span><strong>Pending confirmation</strong></div>
+            {selectedState?.notes.length ? <p className="formation-muted">Reporting / source note: {selectedState.notes.join('; ')}</p> : null}
+            <p className="formation-muted">{STATE_DATA_NOTICE} {PRICING_DISCLAIMER}</p>
             <div className="formation-edit-links"><button type="button" onClick={() => move(2)}>Edit state</button><button type="button" onClick={() => move(3)}>Edit package</button><button type="button" onClick={() => move(5)}>Edit business details</button></div>
           </>}
           {step === 8 && <>
             <h1 ref={titleRef} tabIndex={-1}>Complete Your Business Formation Order</h1><p className="formation-lead">Your formation choices are ready. Payment will be available after the state filing fee and total are verified.</p>
-            <div className="formation-checkout"><ShieldCheck size={28} /><h2>Secure checkout integration pending</h2><p>No payment method will be collected on this page. No order has been placed and no charge has been made.</p><div><span>Apex Filings service fee</span><strong>${servicePrice}</strong></div><div><span>Government filing fee</span><strong>Pending confirmation</strong></div><div><span>Total</span><strong>Not available yet</strong></div></div>
+            <div className="formation-checkout"><ShieldCheck size={28} /><h2>Secure checkout integration pending</h2><p>No payment method will be collected on this page. No order has been placed and no charge has been made.</p><div><span>Selected state</span><strong>{selectedState?.name}</strong></div><div><span>Selected package</span><strong>{selectedPlan?.name}</strong></div><div><span>Apex Filings service fee</span><strong>${servicePrice}</strong></div><div><span>Estimated state filing fee</span><strong>{selectedState?.filingFee == null ? 'Not provided' : `$${selectedState.filingFee}`}</strong></div><div><span>Estimated initial total</span><strong>{initialTotal == null ? 'Pending fee verification' : `$${initialTotal}`}</strong></div><div><span>Annual / biennial state obligation</span><strong>{selectedState?.recurringFeeDescription ?? 'Not provided'}</strong></div><div><span>Estimated online processing</span><strong>{selectedState?.processingTimeLabel ?? 'Not listed'}</strong></div><div><span>Final payable amount</span><strong>Not available yet</strong></div></div>
+            <p className="formation-muted">{STATE_DATA_NOTICE} {PRICING_DISCLAIMER}</p>
             <a href="/contact" className="formation-contact-link">Contact Apex Filings about your formation <ArrowRight size={17} /></a>
           </>}
           {error && <p className="formation-error" role="alert">{error}</p>}

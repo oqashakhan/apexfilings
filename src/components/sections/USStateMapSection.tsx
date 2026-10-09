@@ -1,7 +1,8 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowRight, Check, MapPin, Search, X } from 'lucide-react';
+import { ArrowRight, MapPin, Search, X } from 'lucide-react';
 import { PRICING_PLANS } from '../../data/pricing';
-import { US_STATES } from '../../data/usStates';
+import { estimatedInitialTotal, US_STATES } from '../../data/usStates';
+import { StateFeeDetails } from '../StateFeeDetails';
 import { useScrollReveal } from '../../hooks/useScrollReveal';
 import '../us-map/USStateMap.css';
 
@@ -22,7 +23,7 @@ export function USStateMapSection({ onStartState }: USStateMapSectionProps) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [selectedCode, setSelectedCode] = useState<string | null>(null);
   const [planId, setPlanId] = useState('basic');
-  const [nonUsResident, setNonUsResident] = useState(true);
+  const nonUsResident = true;
   useScrollReveal(sectionRef);
 
   useEffect(() => {
@@ -36,11 +37,12 @@ export function USStateMapSection({ onStartState }: USStateMapSectionProps) {
 
   const matches = useMemo(() => {
     const term = query.trim().toLowerCase();
-    return term ? US_STATES.filter((state) => state.name.toLowerCase().includes(term)) : [];
+    return term ? US_STATES.filter((state) => state.availableForFormation && state.name.toLowerCase().includes(term)) : [];
   }, [query]);
   const selectedState = US_STATES.find((state) => state.code === selectedCode);
   const activePlan = PRICING_PLANS.find((plan) => plan.id === planId) ?? PRICING_PLANS[0];
-  const visibleFeatures = activePlan.features.slice(0, 4);
+  const servicePrice = nonUsResident ? activePlan.priceNonUsResident : activePlan.priceUsResident;
+  const initialTotal = estimatedInitialTotal(servicePrice, selectedState);
 
   const selectState = (state: State) => {
     setSelectedCode(state.code);
@@ -65,7 +67,7 @@ export function USStateMapSection({ onStartState }: USStateMapSectionProps) {
             id="us-state-search"
             type="search"
             autoComplete="off"
-            placeholder="Search for a US state..."
+            placeholder="Search for a state (for example, Wyoming)"
             value={query}
             role="combobox"
             aria-autocomplete="list"
@@ -121,7 +123,7 @@ export function USStateMapSection({ onStartState }: USStateMapSectionProps) {
             <p className="us-map-visual__footnote">Alaska and Hawaii are shown as insets. You can also use search to select smaller states.</p>
           </div>
 
-          <aside ref={previewRef} className="us-map-preview" aria-live="polite" aria-label="Selected state and LLC package preview">
+          <aside ref={previewRef} className={`us-map-preview ${selectedState ? 'us-map-preview--selected' : ''}`} aria-live="polite" aria-label="Selected state and LLC package preview">
             {selectedState ? (
               <div className="us-map-preview__selected" key={selectedState.code}>
                 <div className="flex items-start justify-between gap-4">
@@ -136,26 +138,23 @@ export function USStateMapSection({ onStartState }: USStateMapSectionProps) {
                     requestAnimationFrame(() => searchRef.current?.querySelector('input')?.focus());
                   }}><X size={18} aria-hidden="true" /></button>
                 </div>
-                <p className="mt-3 text-sm leading-6 text-slate-600">Explore a package for your selected state. You can review your choice in the registration flow.</p>
+                <p className="mt-3 text-sm leading-6 text-slate-600">Choose a package for your selected state. You can review or change your choice in the registration flow.</p>
+                <StateFeeDetails state={selectedState} className="mt-4" />
 
                 <div className="us-map-preview__switch mt-5" role="group" aria-label="Package">
                   {PRICING_PLANS.map((plan) => <button key={plan.id} type="button" aria-pressed={planId === plan.id} onClick={() => setPlanId(plan.id)}>{plan.name}</button>)}
                 </div>
                 <div className="mt-4 flex items-end justify-between gap-3">
-                  <div><span className="text-3xl font-bold tabular-nums text-[#171717]">${nonUsResident ? activePlan.priceNonUsResident : activePlan.priceUsResident}</span><span className="ml-1 text-xs font-medium text-slate-500">+ state fee</span></div>
+                  <div><span className="text-3xl font-bold tabular-nums text-[#171717]">${servicePrice}</span><span className="ml-1 text-xs font-medium text-slate-500">+ applicable state filing fee</span></div>
                   <span className="text-[11px] font-semibold text-slate-500">Package price</span>
                 </div>
-                <div className="mt-3 flex items-center gap-2 text-xs text-slate-600"><span>Pricing for:</span><button type="button" className="us-map-preview__residency" onClick={() => setNonUsResident((value) => !value)} aria-label={`Pricing for ${nonUsResident ? 'non-US' : 'US'} residents. Switch residency`}>{nonUsResident ? 'Non-US resident' : 'US resident'} ↔</button></div>
+                <p className="mt-2 text-xs font-semibold text-[#171717]">Estimated initial total: {initialTotal == null ? 'Pending fee verification' : `$${initialTotal}`}</p>
+                <p className="mt-1 text-[11px] leading-4 text-slate-500">Excludes annual / biennial obligations and any additional third-party charges; not a final payable amount.</p>
+                <div className="mt-3 flex items-center gap-2 text-xs text-slate-600"><span>Pricing for:</span><span className="us-map-preview__residency">Non-US resident</span><span>(US resident pricing on hold)</span></div>
 
-                <div className="mt-6 border-t border-[#EEE7E2] pt-5">
-                  <h4 className="text-xs font-bold uppercase tracking-[0.13em] text-[#171717]">Included in {activePlan.name}</h4>
-                  <ul className="mt-3 space-y-2.5">
-                    {visibleFeatures.map((feature) => <li key={feature} className="flex items-start gap-2.5 text-sm leading-5 text-slate-600"><Check size={15} className="mt-0.5 shrink-0 text-[#E54723]" strokeWidth={2.5} aria-hidden="true" /><span>{feature}</span></li>)}
-                  </ul>
-                  {activePlan.features.length > visibleFeatures.length && <a href="/pricing" className="mt-3 inline-flex text-xs font-semibold text-[#C6381B] underline underline-offset-4">View all package inclusions</a>}
-                </div>
+                <a href="/pricing" className="mt-5 inline-flex text-xs font-semibold text-[#C6381B] underline underline-offset-4">View all package inclusions</a>
                 <button type="button" className="us-map-preview__cta mt-6" onClick={() => onStartState(selectedState.code, planId, nonUsResident)}>Start LLC in {selectedState.name} <ArrowRight size={17} aria-hidden="true" /></button>
-                <p className="mt-3 text-center text-[11px] leading-5 text-slate-500">Applicable state filing fee is additional.</p>
+                <p className="mt-3 text-center text-[11px] leading-5 text-slate-500">Applicable state filing fee is additional. Government fees and processing times require confirmation before filing.</p>
               </div>
             ) : (
               <div className="us-map-preview__empty">

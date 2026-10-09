@@ -5,29 +5,29 @@ const bonuses = [
   {
     id: 'concierge',
     title: 'Dedicated Concierge',
-    description: 'Direct support through WhatsApp and Slack.',
-    detail: 'Connect with your dedicated account manager for guidance on your business setup and next steps.',
+    description: 'Ask about one-to-one support options.',
+    detail: 'Our team can explain available support channels and any separate service terms.',
     icon: MessageCircle,
   },
   {
     id: 'banking',
     title: 'Business Banking',
-    description: 'Introductions to Mercury, Wise, and Relay.',
-    detail: 'Get guidance as you explore banking options for your business. Each provider makes its own eligibility and approval decisions.',
+    description: 'Explore application assistance for eligible providers.',
+    detail: 'Get guidance preparing an application. Each banking provider makes its own eligibility and approval decisions.',
     icon: Landmark,
   },
   {
     id: 'branding',
     title: 'Brand Identity',
-    description: 'Three custom vector logos for your business.',
-    detail: 'Start shaping your business identity with three custom vector logos you can use across your brand materials.',
+    description: 'Explore custom branding and logo support.',
+    detail: 'Ask our team about available design services and any separate pricing.',
     icon: Brush,
   },
   {
     id: 'tax',
     title: 'Tax Strategy',
-    description: 'A free CPA consultation to plan your next steps.',
-    detail: 'Bring your US business tax and compliance questions to the 30-minute CPA consultation included in your Premium package.',
+    description: 'Discuss options for a CPA consultation.',
+    detail: 'Ask about availability and any separate charges. Tax advice is provided by qualified professionals.',
     icon: FileText,
   },
 ];
@@ -45,32 +45,32 @@ export function ExclusiveBonusesSection() {
   return (
     <section
       id="bonuses"
-      aria-labelledby="premium-benefits-title"
+      aria-labelledby="additional-support-title"
       className="relative overflow-hidden bg-[#FFFAF7] py-20 lg:py-28"
     >
       <div className="relative mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8">
         <div className="grid items-center gap-8 lg:grid-cols-2 lg:gap-6 xl:gap-10">
           <div className="relative z-10">
             <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#E54723] sm:text-sm">
-              Exclusive benefits
+              Additional support
             </p>
             <h2
-              id="premium-benefits-title"
+              id="additional-support-title"
               className="mt-3 text-4xl font-extrabold leading-[1.08] tracking-tight text-[#101828] sm:text-5xl xl:text-[3.35rem]"
             >
               More Value for
-              <span className="mt-1 block text-[#F04623]">A Smarter Start</span>
+              <span className="mt-1 block text-[#F04623]">a Smarter Start</span>
             </h2>
             <p className="mt-5 max-w-xl text-base leading-7 text-[#536078]">
-              Get more than business formation. Premium brings personal guidance, banking introductions,
-              branding support, and a CPA consultation together to help you start with confidence.
+              Explore optional support beyond your LLC formation package, from business banking guidance
+              to branding, tax consultation, and one-to-one help. Availability and separate charges may apply.
             </p>
             <span className="mt-5 inline-flex items-center gap-2 rounded-full border border-[#F5DCCF] bg-[#FFF0E8] px-3 py-1.5 text-xs font-semibold text-[#B93E1F]">
               <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
-              Premium clients only
+              Optional services · ask for details
             </span>
 
-            <div id="premium-benefit-cards" className="mt-7 grid gap-3 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+            <div id="additional-support-cards" className="mt-7 grid gap-3 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
               {bonuses.map((bonus) => {
                 const Icon = bonus.icon;
                 const expanded = expandedBenefits.includes(bonus.id);
@@ -83,7 +83,7 @@ export function ExclusiveBonusesSection() {
                     <button
                       type="button"
                       aria-expanded={expanded}
-                      aria-controls={`premium-benefit-${bonus.id}`}
+                      aria-controls={`additional-support-${bonus.id}`}
                       onClick={() => toggleBenefit(bonus.id)}
                       className="group flex min-h-28 w-full items-center gap-3 rounded-2xl p-4 text-left focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-[#F04623]"
                     >
@@ -99,7 +99,7 @@ export function ExclusiveBonusesSection() {
                         aria-hidden="true"
                       />
                     </button>
-                    <div id={`premium-benefit-${bonus.id}`} hidden={!expanded} className="px-4 pb-4">
+                    <div id={`additional-support-${bonus.id}`} hidden={!expanded} className="px-4 pb-4">
                       <p className="border-t border-[#F1EBE7] pt-3 text-xs leading-5 text-[#536078]">{bonus.detail}</p>
                     </div>
                   </div>
@@ -119,30 +119,38 @@ export function ExclusiveBonusesSection() {
                 type="button"
                 onClick={() => setExpandedBenefits(allExpanded ? [] : bonuses.map((bonus) => bonus.id))}
                 aria-expanded={allExpanded}
-                aria-controls="premium-benefit-cards"
+                aria-controls="additional-support-cards"
                 className="group inline-flex min-h-11 items-center gap-3 border-b border-[#F04623] py-2 text-sm font-semibold text-[#101828] transition-colors hover:text-[#F04623] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#F04623]"
               >
-                {allExpanded ? 'Hide Benefit Details' : 'See All Benefits'}
+                {allExpanded ? 'Hide Option Details' : 'See All Options'}
                 <ArrowRight className={`h-4 w-4 text-[#F04623] transition-transform motion-reduce:transition-none ${allExpanded ? '-rotate-90' : 'group-hover:translate-x-1 motion-reduce:group-hover:translate-x-0'}`} aria-hidden="true" />
               </button>
             </div>
           </div>
 
-          <div className="relative mx-auto w-full max-w-2xl lg:w-[108%] lg:max-w-none lg:justify-self-start">
-            <div className="aspect-[960/864] overflow-hidden">
-              <img
-                src="/images/premium-benefits.png"
-                alt="Illustration of business tools for banking, payments, branding, and tax support on a laptop."
-                width="1821"
-                height="864"
-                loading="lazy"
-                decoding="async"
-                className="h-full w-full object-cover object-right mix-blend-multiply"
-                style={{
-                  maskImage: 'linear-gradient(to right, transparent, black 3%, black 97%, transparent), linear-gradient(to bottom, transparent, black 4%, black 95%, transparent)',
-                  maskComposite: 'intersect',
-                }}
-              />
+          <div aria-hidden="true" className="relative mx-auto flex min-h-[420px] w-full max-w-2xl items-center justify-center overflow-hidden rounded-[2rem] bg-gradient-to-br from-[#FFF1E8] via-[#FFFAF7] to-[#FFE0CF] p-5 sm:min-h-[520px] sm:p-10 lg:min-h-[580px]">
+            <div className="absolute -right-24 -top-20 h-72 w-72 rounded-full border border-[#F9BEA4] bg-[#FFE1D0]/60" />
+            <div className="absolute -bottom-28 -left-24 h-72 w-72 rounded-full border border-[#F9BEA4] bg-white/45" />
+            <div className="relative w-full max-w-lg overflow-hidden rounded-[1.5rem] border border-[#F0D9CE] bg-white shadow-[0_32px_75px_-35px_rgba(109,47,20,0.38)]">
+              <div className="flex items-center justify-between border-b border-[#F4E8E2] px-5 py-4">
+                <div className="flex items-center gap-2">
+                  <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#FFF2EA]"><img src="/images/apex-navbar-logo.png" alt="" className="h-6 w-6 object-contain" loading="lazy" /></span>
+                  <span className="text-sm font-bold text-[#171717]">Apex Filings</span>
+                </div>
+                <div className="flex gap-1.5"><span className="h-2 w-2 rounded-full bg-[#F6C9B6]" /><span className="h-2 w-2 rounded-full bg-[#F6C9B6]" /><span className="h-2 w-2 rounded-full bg-[#F6C9B6]" /></div>
+              </div>
+              <div className="p-5 sm:p-7">
+                <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#E54723]">Optional services</span>
+                <h3 className="mt-2 text-xl font-bold tracking-tight text-[#101828] sm:text-2xl">Support for what comes next</h3>
+                <p className="mt-2 text-xs leading-5 text-[#667085] sm:text-sm">Explore available help beyond your formation package.</p>
+                <div className="mt-6 grid grid-cols-2 gap-3">
+                  {bonuses.map((bonus) => {
+                    const Icon = bonus.icon;
+                    return <div key={bonus.id} className="rounded-2xl border border-[#F1E8E3] bg-[#FFFBF9] p-3.5 sm:p-5"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#FFF0E9] text-[#F04623]"><Icon size={21} strokeWidth={1.8} /></span><span className="mt-3 block text-xs font-semibold text-[#1D2939] sm:text-sm">{bonus.title}</span></div>;
+                  })}
+                </div>
+                <div className="mt-5 rounded-xl bg-[#FFF2EA] px-4 py-3 text-xs font-medium text-[#9B442D]">Availability and separate charges may apply.</div>
+              </div>
             </div>
           </div>
         </div>

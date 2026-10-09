@@ -5,7 +5,7 @@ import { ContactSection } from '../sections/ContactSection';
 export function ContactPage({ consultation = false }: { consultation?: boolean }) {
   useEffect(() => {
     document.title = consultation ? 'Request a Free Consultation | Apex Filings' : 'Contact Our Team | Apex Filings';
-    return () => { document.title = 'Apex Filings | Start Your US Business With Confidence'; };
+    return () => { document.title = 'US LLC Formation for Non-Residents | Apex Filings'; };
   }, [consultation]);
 
   return (

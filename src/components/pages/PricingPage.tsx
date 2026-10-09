@@ -6,7 +6,7 @@ import type { PricingPlan } from '../../types';
 export function PricingPage({ onSelectPlan }: { onSelectPlan: (plan: PricingPlan, isNonUs: boolean) => void }) {
   useEffect(() => {
     document.title = 'Pricing & Packages | Apex Filings';
-    return () => { document.title = 'Apex Filings | Start Your US Business With Confidence'; };
+    return () => { document.title = 'US LLC Formation for Non-Residents | Apex Filings'; };
   }, []);
 
   return (

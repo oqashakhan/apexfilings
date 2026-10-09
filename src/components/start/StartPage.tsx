@@ -12,7 +12,7 @@ import './StartPage.css';
 const schema = z.object({
   businessType: z.literal('LLC', { error: 'Select LLC to continue.' }),
   country: z.string().refine(value => COUNTRIES.some(item => item.code === value), 'Choose your country from the list.'),
-  formationState: z.string().refine(value => US_STATES.some(item => item.code === value), 'Choose a state from the list.'),
+  formationState: z.string().refine(value => US_STATES.some(item => item.availableForFormation && item.code === value), 'Choose a state from the list.'),
   businessName: z.string().trim().min(1, 'Enter your preferred business name.').max(150, 'Use 150 characters or fewer.'),
   fullName: z.string().trim().min(1, 'Enter your full name.').max(150, 'Use 150 characters or fewer.'),
   email: z.string().trim().email('Enter a valid email address.'),
@@ -43,7 +43,7 @@ export function StartPage({ onBackToSite, initialState }: { onBackToSite: () => 
   const headingRef = useRef<HTMLHeadingElement>(null);
   const reduceMotion = useReducedMotion();
   const [defaults] = useState(() => {
-    const selectedState = US_STATES.find(state => state.code.toLowerCase() === initialState?.toLowerCase() || state.name.toLowerCase() === initialState?.toLowerCase());
+    const selectedState = US_STATES.find(state => state.availableForFormation && (state.code.toLowerCase() === initialState?.toLowerCase() || state.name.toLowerCase() === initialState?.toLowerCase()));
     return { businessType: undefined, country: '', formationState: '', businessName: '', fullName: '', email: '', ...readDraft(), ...(selectedState ? { formationState: selectedState.code } : {}), password: '', confirmPassword: '' };
   });
   const { register, control, watch, trigger, handleSubmit, setValue, formState: { errors, isSubmitting } } = useForm<Answers>({ resolver: zodResolver(schema), mode: 'onTouched', defaultValues: defaults });
@@ -57,7 +57,7 @@ export function StartPage({ onBackToSite, initialState }: { onBackToSite: () => 
   }, [watch]);
   useEffect(() => {
     document.title = 'Start Your Business | Apex Filings';
-    return () => { document.title = 'Apex Filings | Start Your US Business With Confidence'; };
+    return () => { document.title = 'US LLC Formation for Non-Residents | Apex Filings'; };
   }, []);
   useEffect(() => { headingRef.current?.focus({ preventScroll: true }); }, [step, draftSaved]);
   const move = (next: number) => { setStep(next); window.scrollTo({ top: 0, behavior: reduceMotion ? 'instant' : 'smooth' }); };
@@ -98,7 +98,7 @@ export function StartPage({ onBackToSite, initialState }: { onBackToSite: () => 
           <div className="wizard-fields">
             {step === 0 && <fieldset><legend className="sr-only">Business type</legend><label className="wizard-business-option"><input type="radio" value="LLC" {...register('businessType')} /><span className="wizard-option-icon"><Building2 size={25} /></span><span><strong>Limited Liability Company</strong><span>LLC · US business formation</span></span><span className="wizard-radio-check"><Check size={15} /></span></label>{errorFor('businessType')}<p className="wizard-hint">LLC formation is currently available through Apex Filings.</p></fieldset>}
             {step === 1 && <Controller name="country" control={control} render={({ field }) => <SearchSelect id="country" label="Country of residence" options={COUNTRIES} value={field.value} onChange={field.onChange} onBlur={field.onBlur} inputRef={field.ref} error={errors.country?.message} />} />}
-            {step === 2 && <><Controller name="formationState" control={control} render={({ field }) => <SearchSelect id="formationState" label="Formation state" options={US_STATES} value={field.value} onChange={field.onChange} onBlur={field.onBlur} inputRef={field.ref} error={errors.formationState?.message} />} /><details className="wizard-state-help"><summary>Help me choose a state <ChevronDown size={16} /></summary><p>Consider where your business will operate, the state filing fee, and recurring reports and compliance costs. Operating in another state may involve additional registration requirements. Review official state requirements or consult a qualified adviser for your circumstances.</p><a href="/contact" target="_blank" rel="noreferrer">Ask our team about the process ↗</a></details></>}
+            {step === 2 && <><Controller name="formationState" control={control} render={({ field }) => <SearchSelect id="formationState" label="Formation state" options={US_STATES.filter(state => state.availableForFormation)} value={field.value} onChange={field.onChange} onBlur={field.onBlur} inputRef={field.ref} error={errors.formationState?.message} />} /><details className="wizard-state-help"><summary>Help me choose a state <ChevronDown size={16} /></summary><p>Consider where your business will operate, the state filing fee, and recurring reports and compliance costs. Operating in another state may involve additional registration requirements. Review official state requirements or consult a qualified adviser for your circumstances.</p><a href="/contact" target="_blank" rel="noreferrer">Ask our team about the process ↗</a></details></>}
             {step === 3 && <div><label htmlFor="businessName">Preferred business name</label><input id="businessName" placeholder="Enter your preferred business name" autoComplete="organization" maxLength={150} {...register('businessName')} aria-invalid={!!errors.businessName} aria-describedby={errors.businessName ? 'businessName-error' : undefined} />{errorFor('businessName')}</div>}
             {step === 4 && <>
               <div className="wizard-integration-note">Account creation is not live yet. Continue to save your details for this session; no account will be created. Passwords are never saved.</div>

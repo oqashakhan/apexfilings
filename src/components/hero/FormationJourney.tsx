@@ -25,7 +25,7 @@ const journeySteps: JourneyStepData[] = [
   { number: '01', title: 'Choose Your State', kind: 'state', icon: MapPin },
   { number: '02', title: 'Form Your LLC', kind: 'llc', icon: FileText },
   { number: '03', title: 'Get Your EIN', kind: 'ein', icon: IdCard },
-  { number: '04', title: 'Business Ready', kind: 'ready', icon: Check },
+  { number: '04', title: 'Your Business Is Ready', kind: 'ready', icon: Check },
 ];
 
 const trustPills = [
@@ -84,10 +84,10 @@ function JourneyStep({ step, index, activeStep, setActiveStep }: {
               <path d="M2 2h1m2 0h1m2 0h1M3 4h1m2 0h1m2 0h1M2 6h1m2 0h1m2 0h1" stroke="#fff" strokeWidth="1" />
             </svg>
           </div>
-          <div className="journey-step__identity-name">Rapid Ventures LLC</div>
+          <div className="journey-step__identity-name">Rapid Ventures LLC <span className="ml-1 rounded-full bg-[#fff0ea] px-1.5 py-0.5 align-middle text-[9px] font-bold uppercase tracking-wide text-[#c52e0f]">Sample</span></div>
           <p className="journey-step__identity-type">US Limited Liability Company</p>
           <div className="journey-step__ready-status">
-            <span>Business Ready</span>
+            <span>Your Business Is Ready</span>
             <span className="journey-step__active-status"><Check size={13} strokeWidth={3} aria-hidden="true" /> Active</span>
           </div>
         </>

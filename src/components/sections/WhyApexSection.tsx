@@ -4,18 +4,18 @@ import { useScrollReveal } from '../../hooks/useScrollReveal';
 
 const reasons = [
   {
-    title: 'A guided start',
-    description: 'Understand each step as you begin forming your US business.',
+    title: 'A Guided Start',
+    description: 'Understand every step as you begin forming your US business.',
     icon: ClipboardList,
   },
   {
-    title: 'Services in one place',
-    description: 'Explore formation and the supporting services your business may need.',
+    title: 'All Your Services in One Place',
+    description: 'Form your LLC and find the supporting services your business may need, such as EIN, registered agent and compliance.',
     icon: Building2,
   },
   {
-    title: 'Built for global founders',
-    description: 'Start online and find a clearer path forward, wherever you are.',
+    title: 'Built for Global Founders',
+    description: 'Start online and find a clear path forward, wherever you live.',
     icon: Globe2,
   },
 ];
@@ -31,10 +31,10 @@ export function WhyApexSection() {
             Why Apex Filings
           </p>
           <h2 id="home-why-title" className="mt-6 max-w-xl text-3xl font-extrabold leading-tight tracking-tight text-[#171717] sm:text-4xl lg:text-[2.75rem]">
-            A clearer way to <span className="text-[#F04623]">start your US business.</span>
+            A Clearer Way to <span className="text-[#F04623]">Start Your US Business</span>
           </h2>
           <p className="mt-5 max-w-xl text-base leading-8 text-slate-600">
-            Starting a business can feel complicated. Apex Filings brings guidance, formation services, and your next steps into one simpler experience.
+            Starting a business in another country can feel complicated. Apex Filings brings guidance, formation services and your next steps together in one simple experience.
           </p>
 
           <div className="mt-8 space-y-5">
@@ -53,7 +53,7 @@ export function WhyApexSection() {
 
           <div className="mt-9 flex flex-col gap-3 sm:flex-row">
             <a href="/why-us" className="polish-button polish-primary inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[#F04623] px-6 py-3 text-sm font-semibold text-white shadow-md shadow-orange-500/20 transition-[transform,background-color] motion-safe:hover:-translate-y-0.5 hover:bg-[#e03e1b] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F04623] focus-visible:ring-offset-2">
-              Discover Why Apex Filings <ArrowRight className="h-4 w-4" aria-hidden="true" />
+              Why Choose Apex Filings <ArrowRight className="h-4 w-4" aria-hidden="true" />
             </a>
             <a href="/start" className="polish-button inline-flex min-h-12 items-center justify-center rounded-xl border border-slate-300 bg-white px-6 py-3 text-sm font-semibold text-[#171717] transition-colors hover:border-orange-300 hover:bg-orange-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F04623] focus-visible:ring-offset-2">
               Start My Business
@@ -65,7 +65,7 @@ export function WhyApexSection() {
           <div className="pointer-events-none absolute inset-[18%] rounded-full bg-orange-100/70 blur-3xl" aria-hidden="true" />
           <img
             src="/images/why-apex-filings.webp"
-            alt="Illustration of a founder using Apex Filings, with business-service and global-access visuals"
+            alt="Founder using a laptop to form a US LLC online with Apex Filings"
             width="1536"
             height="1024"
             loading="lazy"

@@ -1,4 +1,5 @@
 import { TOP_STATES } from '../../data/states';
+import { STATE_DATA_NOTICE, US_STATES } from '../../data/usStates';
 import { TopState } from '../../types';
 
 interface TopStatesSectionProps {
@@ -34,7 +35,9 @@ export function TopStatesSection({ onSelectState }: TopStatesSectionProps) {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {TOP_STATES.map((state) => (
+          {TOP_STATES.map((state) => {
+            const stateData = US_STATES.find((item) => item.name === state.name);
+            return (
             <div
               key={state.id}
               onClick={() => onSelectState(state)}
@@ -57,17 +60,15 @@ export function TopStatesSection({ onSelectState }: TopStatesSectionProps) {
                 <p className="text-xs text-slate-500 mb-4 leading-relaxed">{state.description}</p>
               </div>
 
-              <div className="border-t border-slate-200 pt-3 flex justify-between text-xs text-slate-700">
-                <span>
-                  State Fee: <strong>${state.stateFee}</strong>
-                </span>
-                <span>
-                  Speed: <strong>{state.speed}</strong>
-                </span>
+              <div className="space-y-1.5 border-t border-slate-200 pt-3 text-xs text-slate-700">
+                <p>Filing fee: <strong>{stateData?.filingFee == null ? 'Not provided' : `$${stateData.filingFee}`}</strong></p>
+                <p>Annual / biennial: <strong>{stateData?.recurringFeeDescription ?? 'Not provided'}</strong></p>
+                <p>Online processing estimate: <strong>{stateData?.processingTimeLabel ?? 'Not listed'}</strong></p>
               </div>
             </div>
-          ))}
+          ); })}
         </div>
+        <p className="mx-auto mt-5 max-w-3xl text-center text-xs leading-5 text-slate-600">{STATE_DATA_NOTICE} Online processing is not an approval guarantee.</p>
       </div>
     </section>
   );

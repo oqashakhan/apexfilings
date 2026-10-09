@@ -1,10 +1,8 @@
 import { TestimonialItem, TrustStat } from '../types';
 
 export const TRUST_STATS: TrustStat[] = [
-  { value: 3000, suffix: '+', label: 'Businesses Formed', icon: 'building' },
-  { value: 4000, suffix: '+', label: 'Clients Served', icon: 'users' },
-  { value: 150, suffix: '+', label: 'Countries Reached', icon: 'globe' },
-  { value: 7, suffix: '+', label: 'Years of Experience', icon: 'award' },
+  { value: 4329, suffix: '', label: 'Businesses Formed', icon: 'building' },
+  { value: 5, suffix: '', label: 'Years of Experience', icon: 'award' },
 ];
 
 export const TESTIMONIALS: TestimonialItem[] = [

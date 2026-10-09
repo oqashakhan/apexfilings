@@ -47,6 +47,13 @@ export default function App() {
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
+  useEffect(() => {
+    const canonicalPath = routePath === '/about' ? '/why-us' : routePath;
+    const canonicalUrl = `https://apexfiling.com${canonicalPath}`;
+    document.querySelector<HTMLLinkElement>('link[rel="canonical"]')?.setAttribute('href', canonicalUrl);
+    document.querySelector<HTMLMetaElement>('meta[property="og:url"]')?.setAttribute('content', canonicalUrl);
+  }, [routePath]);
+
   const navigateToHowItWorks = () => {
     window.history.pushState(null, '', '/how-it-works');
     setPath('/how-it-works');
@@ -122,7 +129,7 @@ export default function App() {
         {/* 6. Transparent Pricing */}
         <PricingSection onSelectPlan={handleSelectPlan} />
 
-        {/* 7. Exclusive Bonuses for Premium Clients */}
+        {/* 7. Optional business support */}
         <ExclusiveBonusesSection />
 
         {/* 8. Proven Track Record / Testimonials */}

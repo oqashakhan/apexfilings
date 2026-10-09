@@ -4,26 +4,26 @@ import { ArrowUpRight, Building2, Globe2, ShieldCheck } from 'lucide-react';
 const advantages = [
   {
     number: '01',
-    title: 'A recognized foundation',
-    summary: 'Establish a clear business identity for partners and customers.',
-    detail: 'A registered US entity gives your business a defined name and structure to present when you work with customers, vendors, and service providers.',
+    title: 'A Recognized Foundation',
+    summary: 'Give your business a clear identity for partners and customers.',
+    detail: 'A registered US company gives your business a defined name and structure to present when you work with customers, vendors and service providers.',
     points: ['A registered business identity', 'A clearer starting point for contracts', 'A structure partners can review'],
     icon: Globe2,
   },
   {
     number: '02',
-    title: 'A layer of protection',
-    summary: 'Separate your business obligations from your personal affairs.',
-    detail: 'An LLC can help limit an owner’s personal liability in most instances. The protection depends on how the business is formed and operated, and on applicable state law.',
-    points: ['A separate legal business entity', 'Defined ownership and operations', 'Protection that depends on your circumstances'],
+    title: 'A Layer of Protection',
+    summary: 'A US LLC can help separate your business obligations from your personal affairs.',
+    detail: '',
+    points: [],
     icon: ShieldCheck,
   },
   {
     number: '03',
-    title: 'Space to grow',
+    title: 'Space to Grow',
     summary: 'Build on a structure designed for your next stage of business.',
-    detail: 'The right US business structure can support the way you plan to operate, enter agreements, and grow. Filing, tax, and ownership requirements vary by state and entity type.',
-    points: ['A formal base for operations', 'Options as your business evolves', 'A path shaped by your goals'],
+    detail: '',
+    points: [],
     icon: Building2,
   },
 ];
@@ -46,7 +46,7 @@ export function USAdvantageSection() {
             Why Incorporate in the US?
           </h2>
           <p className="mt-4 max-w-xl text-base leading-relaxed text-slate-600">
-            A US business can give your plans a clear foundation. Explore the reasons founders consider it, and what each could mean for you.
+            A US company can give your plans a clear foundation. Explore the main reasons founders choose the US, and what each one could mean for you.
           </p>
         </div>
 
@@ -60,7 +60,7 @@ export function USAdvantageSection() {
                 key={advantage.number}
                 type="button"
                 aria-pressed={isActive}
-                aria-controls="us-advantage-detail"
+                aria-controls={index === 0 ? 'us-advantage-detail' : undefined}
                 onClick={() => setActiveIndex(index)}
                 className={`group relative flex min-h-[250px] w-full flex-col overflow-hidden rounded-[1.65rem] border p-6 text-left shadow-sm transition-[transform,background-color,border-color,box-shadow,color] duration-300 motion-reduce:transition-none sm:p-7 lg:min-h-[270px] lg:p-8 ${
                   isActive
@@ -88,7 +88,7 @@ export function USAdvantageSection() {
           })}
         </div>
 
-        <div
+        {activeIndex === 0 && <div
           id="us-advantage-detail"
           role="region"
           aria-label={`${active.title} details`}
@@ -116,7 +116,8 @@ export function USAdvantageSection() {
               ))}
             </ul>
           </div>
-        </div>
+        </div>}
+        <p className="mt-5 text-xs text-slate-500">This is general information, not legal advice.</p>
       </div>
     </section>
   );

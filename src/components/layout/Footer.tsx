@@ -104,6 +104,7 @@ export function Footer({ language, onLanguageChange }: FooterProps) {
 
         {/* Legal Disclaimer Paragraph */}
         <div className="border-t border-neutral-800 pt-8 text-[11px] text-neutral-500 leading-relaxed space-y-2">
+          <p>Apex Filings is a business formation service and is not a law firm. We do not provide legal or tax advice.</p>
           <p>
             <strong className="text-neutral-400">Disclaimer:</strong> Apex Filings is not a law firm
             and does not provide legal, tax, or investment advice. The materials and information

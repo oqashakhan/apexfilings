@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
-import { ArrowRight, Check, ChevronDown, Flag, Gem, Minus } from 'lucide-react';
-import { PRICING_PLANS } from '../../data/pricing';
+import { useState } from 'react';
+import { ArrowRight, Check, Flag, Gem, Minus } from 'lucide-react';
+import { PRICING_DISCLAIMER, PRICING_PLANS, pricingComparisonLabel } from '../../data/pricing';
 import { PricingPlan } from '../../types';
 
 interface PricingSectionProps {
@@ -9,30 +9,15 @@ interface PricingSectionProps {
 }
 
 const basicFeatures = PRICING_PLANS.find((plan) => plan.id === 'basic')?.features ?? [];
-const comparisonFeatures = Array.from(
-  new Set(
-    PRICING_PLANS.flatMap((plan) =>
-      plan.features.filter((feature) => !feature.startsWith('Everything in Basic')),
-    ),
-  ),
-);
+const comparisonFeatures = Array.from(new Set(PRICING_PLANS.flatMap((plan) => plan.features)));
 
 function includesFeature(plan: PricingPlan, feature: string) {
-  return plan.features.includes(feature) ||
-    (plan.features.some((item) => item.startsWith('Everything in Basic')) && basicFeatures.includes(feature));
+  return plan.features.includes(feature);
 }
 
 export function PricingSection({ onSelectPlan, asPage = false }: PricingSectionProps) {
   const Heading = asPage ? 'h1' : 'h2';
   const [isNonUsResident, setIsNonUsResident] = useState(true);
-  const [comparisonOpen, setComparisonOpen] = useState(false);
-  const comparisonRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!comparisonOpen) return;
-    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    comparisonRef.current?.scrollIntoView({ behavior: reducedMotion ? 'instant' : 'smooth', block: 'start' });
-  }, [comparisonOpen]);
 
   return (
     <section id="pricing" aria-labelledby="pricing-title" className="bg-white px-4 py-20 sm:px-6 lg:px-8 lg:py-28">
@@ -43,18 +28,19 @@ export function PricingSection({ onSelectPlan, asPage = false }: PricingSectionP
         <div className="relative mx-auto max-w-2xl text-center">
           <span className="text-xs font-bold uppercase tracking-[0.18em] text-[#E54723]">Clear pricing, confident choices</span>
           <Heading id="pricing-title" className="mt-4 text-4xl font-bold tracking-tight text-[#191D2A] sm:text-5xl lg:text-[3.5rem]">
-            Choose Your Package
+            Choose Your US LLC Formation Package
           </Heading>
           <p className="mx-auto mt-4 max-w-xl text-base leading-relaxed text-slate-600 sm:text-lg">
             Choose the formation package that fits your business. Compare what is included before you begin.
           </p>
 
-          <div className="mt-8 inline-flex rounded-full border border-[#DEE4EA] bg-white p-1 shadow-sm" role="group" aria-label="Residency for pricing">
+          <div className="mt-8 inline-flex rounded-full border border-[#DEE4EA] bg-white p-1 shadow-sm" role="group" aria-label="Your residency">
             <button
               type="button"
-              onClick={() => setIsNonUsResident(false)}
+              disabled
+              title="US resident pricing is not yet available"
               aria-pressed={!isNonUsResident}
-              className={`rounded-full px-4 py-2.5 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#F04623] ${!isNonUsResident ? 'bg-[#191D2A] text-white' : 'text-slate-600 hover:text-[#191D2A]'}`}
+              className="cursor-not-allowed rounded-full px-4 py-2.5 text-sm font-semibold text-slate-400"
             >
               US resident
             </button>
@@ -67,6 +53,7 @@ export function PricingSection({ onSelectPlan, asPage = false }: PricingSectionP
               Non-US resident
             </button>
           </div>
+          <p className="mt-2 text-xs text-slate-500">US resident pricing is not yet available. Showing Non-US resident package prices.</p>
         </div>
 
         <div className="relative mx-auto mt-12 grid max-w-[850px] gap-5 md:grid-cols-2 lg:mt-14">
@@ -81,11 +68,12 @@ export function PricingSection({ onSelectPlan, asPage = false }: PricingSectionP
                 className={`relative flex min-h-[355px] flex-col overflow-hidden rounded-[1.35rem] border p-6 shadow-[0_14px_35px_-30px_rgba(16,24,40,0.4)] sm:p-7 lg:p-8 ${featured ? 'border-[#ED5226] bg-gradient-to-br from-[#FF5418] to-[#F46D44] text-white' : 'border-[#E2E7EC] bg-white text-[#191D2A]'}`}
               >
                 {featured && (
-                  <span className="absolute -right-5 top-8 w-36 rotate-45 bg-[#252525] py-1 text-center text-[10px] font-bold uppercase tracking-[0.12em] text-white shadow-sm">
-                    Popular
+                  <span className="absolute -right-5 top-8 hidden w-36 rotate-45 bg-[#252525] py-1 text-center text-[10px] font-bold uppercase tracking-[0.12em] text-white shadow-sm sm:block">
+                    {plan.badge}
                   </span>
                 )}
                 <div className="relative">
+                  {featured && <span className="mb-4 inline-flex rounded-full bg-[#252525] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-white sm:hidden">{plan.badge}</span>}
                   <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 text-sm font-semibold ${featured ? 'border-white/60 bg-white text-[#191D2A]' : 'border-[#E2E7EC] bg-[#FAFBFC] text-[#191D2A]'}`}>
                     <Icon className="h-4 w-4 text-[#F04623]" strokeWidth={2} aria-hidden="true" />
                     {plan.name}
@@ -97,6 +85,7 @@ export function PricingSection({ onSelectPlan, asPage = false }: PricingSectionP
                   </div>
                   <p className={`mt-2 text-sm font-semibold ${featured ? 'text-white/90' : 'text-slate-600'}`}>{plan.subtitle}</p>
                   <p className={`mt-5 max-w-[32ch] text-sm leading-6 ${featured ? 'text-white/90' : 'text-slate-600'}`}>{plan.description}</p>
+                  <p className={`mt-4 text-xs font-semibold ${featured ? 'text-white/95' : 'text-[#344054]'}`}>{featured ? `All ${basicFeatures.length} Basic services, plus ${plan.features.length - basicFeatures.length} additional services` : `${plan.features.length} services included`}</p>
                 </div>
 
                 <button
@@ -111,43 +100,32 @@ export function PricingSection({ onSelectPlan, asPage = false }: PricingSectionP
             );
           })}
         </div>
+        <p className="relative mx-auto mt-7 max-w-3xl text-center text-xs leading-5 text-slate-600">{PRICING_DISCLAIMER}</p>
 
         <div className="relative mt-12 text-center">
           <button
             type="button"
-            onClick={() => setComparisonOpen((open) => !open)}
-            aria-expanded={comparisonOpen}
-            aria-controls="pricing-comparison"
+            onClick={() => document.getElementById('pricing-comparison')?.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth', block: 'start' })}
             className="inline-flex min-h-14 items-center gap-3 rounded-full border-2 border-white bg-[#F04623] px-8 py-3 text-sm font-bold uppercase tracking-[0.08em] text-white shadow-[0_3px_0_#C43515,0_12px_22px_-12px_rgba(240,70,35,0.75)] transition-[background-color,transform] hover:-translate-y-0.5 hover:bg-[#E03E1B] motion-reduce:transition-none motion-reduce:hover:translate-y-0 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#F04623]"
           >
-            {comparisonOpen ? 'Hide comparison' : 'Compare packages'}
-            <ChevronDown className={`h-4 w-4 transition-transform motion-reduce:transition-none ${comparisonOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
+            Compare what's included
+            <ArrowRight className="h-4 w-4" aria-hidden="true" />
           </button>
-          <p className="mt-4 text-xs text-slate-500">Package price plus applicable state filing fee.</p>
         </div>
 
         <div
           id="pricing-comparison"
-          ref={comparisonRef}
-          className={`${comparisonOpen ? 'block' : 'hidden'} relative mt-12 scroll-mt-24 rounded-2xl border border-[#DFE5EB] bg-white p-5 sm:p-8`}
+          className="relative mt-12 scroll-mt-24 rounded-2xl border border-[#DFE5EB] bg-white p-5 sm:p-8"
         >
-          <h3 className="text-xl font-bold text-[#191D2A] sm:text-2xl">Compare what’s included</h3>
-          <p className="mt-2 text-sm text-slate-600">Review the services listed in each package.</p>
-          <div className="mt-7 grid gap-4 md:hidden">
-            {PRICING_PLANS.map((plan) => (
-              <div key={plan.id} className="rounded-xl border border-[#E5E9ED] bg-[#FAFBFC] p-5">
-                <h4 className="font-bold text-[#191D2A]">{plan.name}</h4>
-                <p className="mt-1 text-sm font-semibold text-[#E54723]">
-                  ${isNonUsResident ? plan.priceNonUsResident : plan.priceUsResident} {plan.feeNotice}
-                </p>
-                <ul className="mt-5 space-y-3">
-                  {comparisonFeatures.filter((feature) => includesFeature(plan, feature)).map((feature) => (
-                    <li key={feature} className="flex items-start gap-2.5 text-sm leading-5 text-[#344054]">
-                      <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#E54723]" strokeWidth={2.5} aria-hidden="true" />
-                      <span>{feature}</span>
-                    </li>
-                  ))}
-                </ul>
+          <h3 className="text-xl font-bold text-[#191D2A] sm:text-2xl">Compare What's Included</h3>
+          <p className="mt-2 text-sm text-slate-600">Review the services included in each package.</p>
+          <div className="mt-7 grid gap-3 md:hidden" role="list" aria-label="Package service comparison">
+            {comparisonFeatures.map((feature) => (
+              <div key={feature} role="listitem" className="rounded-xl border border-[#E5E9ED] bg-[#FAFBFC] p-4">
+                <p className="text-sm font-semibold leading-5 text-[#344054]">{pricingComparisonLabel(feature)}</p>
+                <div className="mt-3 grid grid-cols-2 gap-3">
+                  {PRICING_PLANS.map((plan) => <span key={plan.id} className="inline-flex items-center gap-2 text-xs font-medium text-[#344054]">{includesFeature(plan, feature) ? <Check className="h-4 w-4 shrink-0 text-[#E54723]" aria-label="Included" /> : <Minus className="h-4 w-4 shrink-0 text-slate-400" aria-label="Not included" />}{plan.id === 'basic' ? 'Basic' : 'Advanced'}</span>)}
+                </div>
               </div>
             ))}
           </div>
@@ -156,13 +134,13 @@ export function PricingSection({ onSelectPlan, asPage = false }: PricingSectionP
               <thead className="bg-[#F6F8FA] text-[#191D2A]">
                 <tr>
                   <th scope="col" className="w-1/2 px-5 py-4 font-bold">Included service</th>
-                  {PRICING_PLANS.map((plan) => <th key={plan.id} scope="col" className="px-5 py-4 text-center font-bold">{plan.name}</th>)}
+                  {PRICING_PLANS.map((plan) => <th key={plan.id} scope="col" className="px-5 py-4 text-center font-bold">{plan.id === 'basic' ? 'Basic' : 'Advanced'}</th>)}
                 </tr>
               </thead>
               <tbody>
                 {comparisonFeatures.map((feature) => (
                   <tr key={feature} className="border-t border-[#E9EDF0]">
-                    <th scope="row" className="px-5 py-3.5 font-medium leading-5 text-[#344054]">{feature}</th>
+                    <th scope="row" className="px-5 py-3.5 font-medium leading-5 text-[#344054]">{pricingComparisonLabel(feature)}</th>
                     {PRICING_PLANS.map((plan) => (
                       <td key={plan.id} className="px-5 py-3.5 text-center">
                         {includesFeature(plan, feature) ? (

@@ -10,7 +10,7 @@ export function TestimonialsSection() {
             Proven Track Record
           </span>
           <h2 className="text-3xl sm:text-4xl font-extrabold text-[#0F172A] mt-2">
-            Trusted by entrepreneurs from 150+ countries
+            Trusted by entrepreneurs around the world
           </h2>
           <p className="text-slate-600 text-sm mt-3">
             Read how cross-border founders used Apex Filings to establish their entities and scale

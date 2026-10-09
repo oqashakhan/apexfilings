@@ -43,8 +43,6 @@ export interface TopState {
   tag: string;
   tagVariant: 'emerald' | 'brand' | 'slate';
   description: string;
-  stateFee: number;
-  speed: string;
 }
 
 export interface FAQItem {

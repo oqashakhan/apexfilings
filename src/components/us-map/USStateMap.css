@@ -22,6 +22,7 @@
 .us-state-map__tooltip[data-visible="true"] { opacity: 1; transform: translateY(-100%) scale(1); }
 .us-state-map__tooltip-arrow { color: #f04623; font-size: 16px; line-height: 1; }
 .us-map-preview { position: sticky; top: 98px; min-width: 0; min-height: 360px; overflow: hidden; border: 1px solid #ebe1dc; border-radius: 22px; background: #fff; box-shadow: 0 20px 50px -40px #44302873; }
+.us-map-preview--selected { position: static; }
 .us-map-preview__selected { padding: 24px; animation: us-map-preview-enter 290ms cubic-bezier(.22, 1, .36, 1) both; }
 .us-map-preview__close { display: grid; flex: none; place-items: center; width: 34px; height: 34px; border: 1px solid #ebe1dc; border-radius: 10px; color: #60534d; cursor: pointer; }
 .us-map-preview__close:hover, .us-map-preview__close:focus-visible { border-color: #f04623; color: #d43b1b; outline: none; }

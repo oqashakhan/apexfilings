@@ -23,12 +23,12 @@ export function HeroSection({ onStart }: HeroSectionProps) {
         </p>
 
         <h1 data-polish-reveal="1" className="mx-auto mt-6 max-w-5xl text-4xl font-extrabold leading-[1.12] tracking-tight text-[#171717] sm:text-5xl lg:text-6xl">
-          Start Your US Business<br className="hidden sm:block" />{' '}
+          Start Your US LLC<br className="hidden sm:block" />{' '}
           <span className="text-[#F04623]">From Anywhere in the World</span>
         </h1>
 
         <p data-polish-reveal="2" className="mx-auto mt-6 max-w-2xl text-base leading-relaxed text-slate-600 sm:text-lg">
-          Apex Filings makes starting your US business simple, transparent, and completely online. Form your LLC, obtain an EIN, and manage your business from one place.
+          Apex Filings helps founders outside the US form a US LLC, get an EIN, and stay compliant. Simple, transparent and 100% online.
         </p>
 
         <div data-polish-reveal="3" className="mx-auto mt-8 flex max-w-md flex-col items-stretch justify-center gap-3 sm:max-w-none sm:flex-row sm:items-center">

@@ -3,6 +3,39 @@ import { useRef } from 'react';
 import { useScrollReveal } from '../../hooks/useScrollReveal';
 import { ServiceCard } from '../services/ServiceCard';
 
+const homeServiceCopy: Record<string, { description: string; benefits: string[]; cta: string }> = {
+  'llc-formation': {
+    description: 'Form your US LLC in the state that fits your business, with guided online filing and clear next steps.',
+    benefits: ['Help choosing your state', 'Simple online application', 'Clear next steps after filing'],
+    cta: 'Explore LLC Formation',
+  },
+  'registered-agent': {
+    description: 'Every US LLC needs a registered agent with a US address. We help you set one up and keep it on record.',
+    benefits: ['Required US address for official mail', 'Your details kept organized', 'Support for ongoing needs'],
+    cta: 'Explore Registered Agent',
+  },
+  ein: {
+    description: 'Get step-by-step help applying for your EIN, the tax ID your business needs for banking and taxes.',
+    benefits: ['Information checklist', 'Application guidance for non-US residents', 'Clear next steps'],
+    cta: 'Explore EIN Services',
+  },
+  'business-licenses': {
+    description: 'Find out which federal, state or local licenses your business activity may require.',
+    benefits: ['Review based on your activity', 'Location-specific considerations', 'Organized next steps'],
+    cta: 'Explore Business Licenses',
+  },
+  'annual-compliance': {
+    description: 'Stay on top of annual reports, state fees and other recurring deadlines.',
+    benefits: ['Recurring requirements explained', 'Organized business information', 'Next-step guidance'],
+    cta: 'Explore Annual Compliance',
+  },
+  'business-documents': {
+    description: 'Keep key records, such as formation documents and your operating agreement, organized and easy to find.',
+    benefits: ['Document guidance', 'Organized business details', 'Easy access anytime'],
+    cta: 'Explore Business Documents',
+  },
+};
+
 export function ServicesSection() {
   const revealRef = useRef<HTMLElement>(null);
   useScrollReveal(revealRef);
@@ -12,16 +45,16 @@ export function ServicesSection() {
         <div data-polish-reveal="0" className="mx-auto mb-12 max-w-3xl text-center">
           <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#F04623]">Our Services</p>
           <h2 id="services-title" className="mt-3 text-3xl font-extrabold leading-tight tracking-tight text-[#171717] sm:text-4xl">
-            Everything You Need to Start and Manage Your Business
+            Everything You Need to Start and Manage Your US Business
           </h2>
           <p className="mx-auto mt-4 max-w-2xl text-base leading-7 text-slate-600">
-            From forming your LLC to keeping your business organized, Apex Filings brings essential business services into one simple experience.
+            From forming your LLC to staying compliant every year, Apex Filings brings the essential business services together in one simple experience.
           </p>
         </div>
 
         <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3 lg:gap-6">
           {SERVICES.map((service, index) => (
-            <ServiceCard key={service.id} service={service} number={index + 1} />
+            <ServiceCard key={service.id} service={service} number={index + 1} cardCopy={homeServiceCopy[service.id]} />
           ))}
         </div>
       </div>
