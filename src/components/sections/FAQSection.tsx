@@ -37,7 +37,7 @@ export function FAQSection({ items = FAQS, eyebrow = 'Got Questions?', heading =
             return (
               <div
                 key={faq.id}
-                className="card-glass rounded-xl p-5 border-slate-200 transition-all hover:border-slate-300"
+                className="card-glass rounded-xl p-5 border-slate-200 transition-[transform,background-color,border-color,box-shadow,color] hover:border-slate-300"
               >
                 <button
                   type="button"

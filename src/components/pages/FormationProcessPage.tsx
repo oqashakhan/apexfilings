@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { motion, useMotionValueEvent, useReducedMotion, useScroll } from 'motion/react';
+import { motion, useMotionValueEvent, useScroll } from 'motion/react';
+import { useScrollReveal } from '../../hooks/useScrollReveal';
 import { ArrowDown, ArrowRight, Building2, Check, ClipboardList, FolderLock, Landmark, TrendingUp } from 'lucide-react';
 import './FormationProcessPage.css';
 
@@ -13,27 +14,29 @@ const stages = [
 
 function FormationStage({ stage, index, startHref }: { stage: typeof stages[number]; index: number; startHref: string }) {
   const ref = useRef<HTMLElement>(null);
-  const reduceMotion = useReducedMotion();
+  useScrollReveal(ref);
   const { scrollYProgress } = useScroll({ target: ref, offset: ['start 62%', 'end 62%'] });
   const [active, setActive] = useState(false);
-  useMotionValueEvent(scrollYProgress, 'change', value => setActive(value > 0));
-  useEffect(() => setActive(scrollYProgress.get() > 0), [scrollYProgress]);
-  const reveal = { initial: { opacity: reduceMotion ? 1 : 0, y: reduceMotion ? 0 : 24 }, whileInView: { opacity: 1, y: 0 }, viewport: { once: false, amount: 0.15 } };
+  const activeRef = useRef(false);
+  useMotionValueEvent(scrollYProgress, 'change', value => {
+    if (activeRef.current !== (value > 0)) { activeRef.current = value > 0; setActive(activeRef.current); }
+  });
+  useEffect(() => { activeRef.current = scrollYProgress.get() > 0; setActive(activeRef.current); }, [scrollYProgress]);
   const Icon = stage.icon;
   return <section ref={ref} className={`formation-stage ${active ? 'is-active' : ''}`} aria-labelledby={`formation-step-${index}`}>
     <span className="formation-node" aria-hidden="true">{active ? <Check size={13} /> : <span />}</span>
     <div className="formation-stage-title">
-      <motion.p {...reveal} transition={{ duration: reduceMotion ? 0 : .35 }} className="formation-step-number">0{index + 1}<span> / 05</span></motion.p>
-      <motion.div {...reveal} transition={{ duration: reduceMotion ? 0 : .45, delay: reduceMotion ? 0 : .05 }}>
+      <p data-polish-reveal="0" className="formation-step-number">0{index + 1}<span> / 05</span></p>
+      <div data-polish-reveal="1">
         <h2 id={`formation-step-${index}`}>{stage.title}</h2><p>{stage.subtitle}</p>
-      </motion.div>
+      </div>
     </div>
-    <motion.div {...reveal} transition={{ duration: reduceMotion ? 0 : .5, delay: reduceMotion ? 0 : .12 }} className="formation-story-card">
+    <div data-polish-reveal="2" className="formation-story-card">
       <div className="formation-card-top"><span className="formation-card-icon"><Icon size={27} strokeWidth={1.6} /></span><span>{stage.label}</span></div>
       <p className="formation-description">{stage.description}</p>
       <ul>{stage.checklist.map(item => <li key={item}><Check size={15} aria-hidden="true" /><span>{item}</span></li>)}</ul>
-      {index === 4 && <a href={startHref} className="formation-start">Start Your Business <ArrowRight size={18} aria-hidden="true" /></a>}
-    </motion.div>
+      {index === 4 && <a href={startHref} className="formation-start polish-button polish-primary">Start Your Business <ArrowRight size={18} aria-hidden="true" /></a>}
+    </div>
   </section>;
 }
 

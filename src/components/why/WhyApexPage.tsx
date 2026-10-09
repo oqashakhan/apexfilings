@@ -65,7 +65,7 @@ function SectionIntro({ eyebrow, title, copy, center = false }: { eyebrow: strin
 
 function StartLink({ dark = false, className = '' }: { dark?: boolean; className?: string }) {
   return (
-    <a href="/how-it-works" className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-xl px-6 py-3 text-sm font-semibold transition-[transform,background-color] motion-safe:hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F04623] focus-visible:ring-offset-2 ${dark ? 'bg-white text-[#171717] hover:bg-orange-50' : 'bg-[#F04623] text-white shadow-md shadow-orange-500/20 hover:bg-[#e03e1b]'} ${className}`}>
+    <a href="/how-it-works" className={`polish-button inline-flex min-h-12 items-center justify-center gap-2 rounded-xl px-6 py-3 text-sm font-semibold transition-[transform,background-color] motion-safe:hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F04623] focus-visible:ring-offset-2 ${dark ? 'bg-white text-[#171717] hover:bg-orange-50' : 'bg-[#F04623] text-white shadow-md shadow-orange-500/20 hover:bg-[#e03e1b]'} ${className}`}>
       Start My Business <ArrowRight className="h-4 w-4" aria-hidden="true" />
     </a>
   );
@@ -100,7 +100,7 @@ export function WhyApexPage() {
             <p className="mt-6 max-w-xl text-base leading-8 text-slate-600 sm:text-lg">Apex Filings simplifies the process of starting and managing your US business, giving you a clear path from formation to ongoing business needs.</p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <StartLink />
-              <a href="#how-it-works" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-6 py-3 text-sm font-semibold text-[#171717] transition-colors hover:border-orange-300 hover:bg-orange-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F04623] focus-visible:ring-offset-2">See How It Works <ArrowRight className="h-4 w-4" aria-hidden="true" /></a>
+              <a href="#how-it-works" className="polish-button inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-6 py-3 text-sm font-semibold text-[#171717] transition-colors hover:border-orange-300 hover:bg-orange-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F04623] focus-visible:ring-offset-2">See How It Works <ArrowRight className="h-4 w-4" aria-hidden="true" /></a>
             </div>
             <div className="mt-8 flex flex-wrap gap-x-6 gap-y-2 text-xs font-semibold text-slate-600 sm:text-sm">
               {['A guided start', 'Clear next steps', 'Support along the way'].map((point) => <span key={point} className="inline-flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-[#F04623]" aria-hidden="true" />{point}</span>)}
@@ -184,7 +184,7 @@ export function WhyApexPage() {
 
       <FAQSection items={whyFaqs} eyebrow="Choosing Apex Filings" heading="Questions About Working With Us" description="A few helpful answers before you start." />
 
-      <section className="bg-[#171717] py-20 text-white sm:py-24" aria-labelledby="why-final-cta"><div className="mx-auto max-w-5xl px-4 text-center sm:px-6 lg:px-8"><div className="mx-auto mb-6 h-1 w-12 rounded-full bg-[#F04623]" aria-hidden="true" /><h2 id="why-final-cta" className="mx-auto max-w-3xl text-3xl font-extrabold leading-tight tracking-tight sm:text-4xl">Ready to Turn Your Business Idea Into Something Real?</h2><p className="mx-auto mt-5 max-w-2xl text-base leading-7 text-neutral-300">Start your business formation journey with a simple process built to keep you informed from the beginning.</p><div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row"><StartLink dark /><a href="/#services" className="inline-flex min-h-12 items-center justify-center rounded-xl border border-neutral-600 px-6 py-3 text-sm font-semibold text-white transition-colors hover:border-[#F04623] hover:bg-neutral-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F04623]">Explore Services</a></div></div></section>
+      <section className="bg-[#171717] py-20 text-white sm:py-24" aria-labelledby="why-final-cta"><div className="mx-auto max-w-5xl px-4 text-center sm:px-6 lg:px-8"><div className="mx-auto mb-6 h-1 w-12 rounded-full bg-[#F04623]" aria-hidden="true" /><h2 id="why-final-cta" className="mx-auto max-w-3xl text-3xl font-extrabold leading-tight tracking-tight sm:text-4xl">Ready to Turn Your Business Idea Into Something Real?</h2><p className="mx-auto mt-5 max-w-2xl text-base leading-7 text-neutral-300">Start your business formation journey with a simple process built to keep you informed from the beginning.</p><div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row"><StartLink dark /><a href="/#services" className="polish-button inline-flex min-h-12 items-center justify-center rounded-xl border border-neutral-600 px-6 py-3 text-sm font-semibold text-white transition-colors hover:border-[#F04623] hover:bg-neutral-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F04623]">Explore Services</a></div></div></section>
     </div>
   );
 }

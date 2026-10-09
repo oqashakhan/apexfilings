@@ -22,7 +22,7 @@ export function TestimonialsSection() {
           {TESTIMONIALS.map((t) => (
             <div
               key={t.id}
-              className="card-glass p-8 rounded-2xl flex flex-col justify-between transition-all duration-300 hover:-translate-y-1 relative group"
+              className="card-glass p-8 rounded-2xl flex flex-col justify-between relative group"
             >
               <div>
                 {/* Star rating */}

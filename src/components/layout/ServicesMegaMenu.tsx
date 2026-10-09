@@ -66,7 +66,7 @@ export function ServicesMegaMenu({ language, onNavigate, mobile = false }: { lan
       </div>
       <div className="apex-services-footer">
         <a href="/#services" onClick={onNavigate} className="apex-services-all">{text.all}</a>
-        <a href="/how-it-works" onClick={onNavigate} className="apex-services-start">{text.start}<ArrowRight size={16} aria-hidden="true" /></a>
+        <a href="/how-it-works" onClick={onNavigate} className="apex-services-start polish-button polish-primary">{text.start}<ArrowRight size={16} aria-hidden="true" /></a>
       </div>
     </div>
   );

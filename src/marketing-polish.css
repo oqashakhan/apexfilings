@@ -1,0 +1,44 @@
+/* Public marketing only. The registration wizard deliberately has no scope class. */
+.marketing-site { --polish-ease: cubic-bezier(.22, 1, .36, 1); }
+@media (prefers-reduced-motion: no-preference) {
+  html:has(.marketing-site) { scroll-behavior: smooth; }
+  .marketing-site .polish-revealing { animation: polish-reveal 560ms var(--polish-ease) both; }
+  .marketing-site [data-polish-reveal="1"].polish-revealing { animation-delay: 65ms; }
+  .marketing-site [data-polish-reveal="2"].polish-revealing { animation-delay: 130ms; }
+}
+@keyframes polish-reveal { from { opacity: .05; transform: translateY(var(--reveal-distance, 18px)); } to { opacity: 1; transform: translateY(0); } }
+.marketing-site .polish-button { transition: translate 220ms var(--polish-ease), background-color 200ms ease, border-color 200ms ease, box-shadow 220ms ease, color 200ms ease; }
+.marketing-site .polish-button > .lucide-arrow-right { transition: translate 220ms var(--polish-ease); }
+.marketing-site .polish-button:focus-visible { outline: 2px solid #f04623; outline-offset: 4px; }
+.marketing-site .polish-card { transition: translate 240ms var(--polish-ease), border-color 220ms ease, box-shadow 240ms ease; }
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .marketing-site .polish-button:not(:disabled):hover { translate: 0 -2px; }
+  .marketing-site .polish-button:not(:disabled):hover > .lucide-arrow-right { translate: 3px 0; }
+  .marketing-site .polish-primary:not(:disabled):hover { box-shadow: 0 9px 20px -10px #bc3b2180; }
+  .marketing-site .polish-card:hover { translate: 0 -3px; }
+}
+.marketing-site .polish-button:not(:disabled):active { translate: 0 0; }
+.marketing-site .apex-site-header { box-shadow: 0 2px 14px -12px #34251e40; }
+.marketing-site .apex-site-header nav > a[aria-current="page"] { box-shadow: inset 0 -2px #f0462340; }
+.marketing-site .apex-services-panel { animation-duration: 220ms; animation-timing-function: var(--polish-ease); }
+.marketing-site .apex-service-item { transition-duration: 200ms; }
+.marketing-site .apex-service-arrow { transition-duration: 220ms; }
+.marketing-site .formation-journey__trust-pill { background: #ffffffde; box-shadow: 0 4px 13px -5px #4b302114; }
+@supports (backdrop-filter: blur(4px)) { .marketing-site .formation-journey__trust-pill { backdrop-filter: blur(4px); } }
+/* Existing hero atmosphere uses a gradient, avoiding a large filter-blur surface. */
+.marketing-site .hero-ambient { position: absolute; pointer-events: none; left: 50%; top: 48%; z-index: -1; width: min(90vw,70rem); height: 30rem; translate: -50% 0; background: radial-gradient(ellipse, #fed7aa24, transparent 70%); }
+/* Native scroll-linked decoration; unsupported browsers retain the static map. */
+@supports (animation-timeline: view()) {
+  @media (min-width: 1024px) and (prefers-reduced-motion: no-preference) {
+    .marketing-site .journey-map { animation: polish-map-drift linear both; animation-timeline: view(); animation-range: entry 0% exit 100%; }
+  }
+}
+@keyframes polish-map-drift { from { translate: 0 8px; } to { translate: 0 -8px; } }
+.marketing-site #testimonials .card-glass:hover { border-color: #e2e8f0; box-shadow: 0 1px 3px #0000000a, 0 1px 2px #00000008; }
+@media (max-width: 767px) { .marketing-site { --reveal-distance: 12px; } .marketing-site .polish-revealing { animation-duration: 460ms; } }
+@media (prefers-reduced-motion: reduce) {
+  html:has(.marketing-site) { scroll-behavior: auto; }
+  .marketing-site .polish-revealing { animation: none !important; }
+  .marketing-site :is(.polish-button, .polish-card, .polish-button > svg, .apex-service-item, .apex-service-arrow) { transition: none; translate: none; }
+  .marketing-site .apex-services-panel { animation: none; }
+}

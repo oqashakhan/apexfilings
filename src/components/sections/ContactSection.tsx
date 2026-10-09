@@ -1,18 +1,26 @@
 import React, { useState } from 'react';
 import { Send, CheckCircle2, MessageSquare, Mail, Clock } from 'lucide-react';
+import { SERVICES } from '../../data/services';
 
-export function ContactSection({ asPage = false }: { asPage?: boolean }) {
+export function ContactSection({ asPage = false, consultation = false }: { asPage?: boolean; consultation?: boolean }) {
   const Heading = asPage ? 'h1' : 'h2';
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     subject: '',
     message: '',
+    phone: '',
+    service: '',
+    contactMethod: 'Email',
   });
 
   const [status, setStatus] = useState<'idle' | 'draft'>('idle');
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const emailDraft = `mailto:support@apexfiling.com?subject=${encodeURIComponent(formData.subject.trim())}&body=${encodeURIComponent(`${formData.message.trim()}\n\nName: ${formData.name.trim()}\nReply to: ${formData.email.trim()}`)}`;
+  const emailSubject = consultation ? 'Free consultation request' : formData.subject.trim();
+  const emailBody = consultation
+    ? `Consultation request\n\nService of interest: ${formData.service}\nPreferred contact method: ${formData.contactMethod}\nPhone / WhatsApp: ${formData.phone.trim() || 'Not provided'}\nMessage: ${formData.message.trim() || 'Not provided'}\n\nName: ${formData.name.trim()}\nReply to: ${formData.email.trim()}`
+    : `${formData.message.trim()}\n\nName: ${formData.name.trim()}\nReply to: ${formData.email.trim()}`;
+  const emailDraft = `mailto:support@apexfiling.com?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
 
   const validate = () => {
     const errs: Record<string, string> = {};
@@ -22,8 +30,10 @@ export function ContactSection({ asPage = false }: { asPage?: boolean }) {
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
       errs.email = 'Please provide a valid email address.';
     }
-    if (!formData.subject.trim()) errs.subject = 'Please specify a subject.';
-    if (!formData.message.trim()) errs.message = 'Please provide your message.';
+    if (consultation && !formData.service) errs.service = 'Choose a service of interest.';
+    if (consultation && formData.contactMethod !== 'Email' && !formData.phone.trim()) errs.phone = 'Add a phone or WhatsApp number for this contact method.';
+    if (!consultation && !formData.subject.trim()) errs.subject = 'Please specify a subject.';
+    if (!consultation && !formData.message.trim()) errs.message = 'Please provide your message.';
     return errs;
   };
 
@@ -53,31 +63,31 @@ export function ContactSection({ asPage = false }: { asPage?: boolean }) {
             <div className="lg:col-span-7 space-y-6">
               <div>
                 <span className="text-[#F04623] text-xs font-semibold tracking-wider uppercase">
-                  {asPage ? 'Contact Apex Filings' : 'Direct Support'}
+                  {consultation ? 'Free consultation request' : asPage ? 'Contact Apex Filings' : 'Direct Support'}
                 </span>
                 <Heading className="text-2xl sm:text-3xl font-extrabold text-[#0F172A] mt-1">
-                  {asPage ? "Let's Talk About Your Business" : 'Ready to Start Your Business?'}
+                  {consultation ? 'Request a Free Consultation' : asPage ? "Let's Talk About Your Business" : 'Ready to Start Your Business?'}
                 </Heading>
                 <p className="text-slate-600 text-xs sm:text-sm mt-1">
-                  {asPage ? 'Questions about formation, packages, or your next steps? Share a few details with our team.' : 'Start your US business with a simple and guided process from Apex Filings.'}
+                  {consultation ? 'Tell us what you need help with. We’ll prepare an email request for you to review and send; no appointment is booked yet.' : asPage ? 'Questions about formation, packages, or your next steps? Share a few details with our team.' : 'Start your US business with a simple and guided process from Apex Filings.'}
                 </p>
               </div>
 
               {status === 'draft' ? (
-                <div role="status" className="p-6 rounded-2xl bg-emerald-50 border border-emerald-200 text-center space-y-3">
-                  <div className="w-12 h-12 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto">
-                    <CheckCircle2 className="w-6 h-6" />
+                <div role="status" className={`p-6 rounded-2xl text-center space-y-3 ${consultation ? 'bg-orange-50 border border-orange-200' : 'bg-emerald-50 border border-emerald-200'}`}>
+                  <div className={`w-12 h-12 rounded-full flex items-center justify-center mx-auto ${consultation ? 'bg-orange-100 text-[#F04623]' : 'bg-emerald-100 text-emerald-600'}`}>
+                    {consultation ? <Mail className="w-6 h-6" /> : <CheckCircle2 className="w-6 h-6" />}
                   </div>
-                  <h3 className="text-base font-bold text-slate-900">Your email draft is ready</h3>
+                  <h3 className="text-base font-bold text-slate-900">{consultation ? 'Your consultation request draft is ready' : 'Your email draft is ready'}</h3>
                   <p className="text-xs text-slate-600 max-w-sm mx-auto">
-                    Open your email app to review and send your message to support@apexfiling.com. Your message has not been sent yet.
+                    Open your email app to review and send {consultation ? 'your consultation request' : 'your message'} to support@apexfiling.com. {consultation ? 'No request has been sent or appointment booked yet.' : 'Your message has not been sent yet.'}
                   </p>
                   <a href={emailDraft} className="inline-flex rounded-xl bg-[#F04623] px-5 py-3 text-sm font-semibold text-white focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#F04623]">Open Email App</a>
                   <p className="text-xs text-slate-600">No email app configured? You can email support@apexfiling.com directly.</p>
-                  <button
+                    <button
                     onClick={handleReset}
                     type="button"
-                    className="mt-2 px-4 py-2 bg-white border border-emerald-300 rounded-lg text-xs font-medium text-emerald-700 hover:bg-emerald-100/50 transition-colors"
+                    className={`mt-2 px-4 py-2 bg-white border rounded-lg text-xs font-medium transition-colors ${consultation ? 'border-orange-300 text-[#c52e0f] hover:bg-orange-100/50' : 'border-emerald-300 text-emerald-700 hover:bg-emerald-100/50'}`}
                   >
                     Edit Message
                   </button>
@@ -95,7 +105,7 @@ export function ContactSection({ asPage = false }: { asPage?: boolean }) {
                         value={formData.name}
                         onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                         placeholder="Alex Morgan"
-                        className={`w-full bg-slate-50 border rounded-xl px-4 py-2.5 text-xs text-[#0F172A] placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500/20 transition-all ${
+                        className={`w-full bg-slate-50 border rounded-xl px-4 py-2.5 text-xs text-[#0F172A] placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500/20 transition-[transform,background-color,border-color,box-shadow,color] ${
                           errors.name
                             ? 'border-rose-300 focus:border-rose-500'
                             : 'border-slate-300 focus:border-[#F04623]'
@@ -116,7 +126,7 @@ export function ContactSection({ asPage = false }: { asPage?: boolean }) {
                         value={formData.email}
                         onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                         placeholder="alex@company.com"
-                        className={`w-full bg-slate-50 border rounded-xl px-4 py-2.5 text-xs text-[#0F172A] placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500/20 transition-all ${
+                        className={`w-full bg-slate-50 border rounded-xl px-4 py-2.5 text-xs text-[#0F172A] placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500/20 transition-[transform,background-color,border-color,box-shadow,color] ${
                           errors.email
                             ? 'border-rose-300 focus:border-rose-500'
                             : 'border-slate-300 focus:border-[#F04623]'
@@ -128,7 +138,30 @@ export function ContactSection({ asPage = false }: { asPage?: boolean }) {
                     </div>
                   </div>
 
-                  <div>
+                  {consultation ? <>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label htmlFor="consultation-phone" className="block text-xs font-medium text-slate-700 mb-1">Phone / WhatsApp (optional)</label>
+                        <input id="consultation-phone" type="tel" autoComplete="tel" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} aria-invalid={Boolean(errors.phone)} aria-describedby={errors.phone ? 'consultation-phone-error' : undefined} placeholder="+1 555 123 4567" className={`w-full bg-slate-50 border rounded-xl px-4 py-2.5 text-xs text-[#0F172A] placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500/20 ${errors.phone ? 'border-rose-300 focus:border-rose-500' : 'border-slate-300 focus:border-[#F04623]'}`} />
+                        {errors.phone && <span id="consultation-phone-error" className="text-[11px] text-rose-500 mt-1 block">{errors.phone}</span>}
+                      </div>
+                      <div>
+                        <label htmlFor="consultation-contact-method" className="block text-xs font-medium text-slate-700 mb-1">Preferred contact method</label>
+                        <select id="consultation-contact-method" value={formData.contactMethod} onChange={(e) => setFormData({ ...formData, contactMethod: e.target.value })} className="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-xs text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-[#F04623]">
+                          <option>Email</option><option>Phone</option><option>WhatsApp</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div>
+                      <label htmlFor="consultation-service" className="block text-xs font-medium text-slate-700 mb-1">Business service of interest</label>
+                      <select id="consultation-service" value={formData.service} onChange={(e) => setFormData({ ...formData, service: e.target.value })} aria-invalid={Boolean(errors.service)} aria-describedby={errors.service ? 'consultation-service-error' : undefined} className={`w-full bg-slate-50 border rounded-xl px-4 py-2.5 text-xs text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-orange-500/20 ${errors.service ? 'border-rose-300 focus:border-rose-500' : 'border-slate-300 focus:border-[#F04623]'}`}>
+                        <option value="">Select a service</option>
+                        {SERVICES.map(service => <option key={service.id} value={service.title}>{service.title}</option>)}
+                        <option value="Not sure yet">Not sure yet</option>
+                      </select>
+                      {errors.service && <span id="consultation-service-error" className="text-[11px] text-rose-500 mt-1 block">{errors.service}</span>}
+                    </div>
+                  </> : <div>
                     <label htmlFor="contact-subject" className="block text-xs font-medium text-slate-700 mb-1">
                       Subject
                     </label>
@@ -138,7 +171,7 @@ export function ContactSection({ asPage = false }: { asPage?: boolean }) {
                       value={formData.subject}
                       onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
                       placeholder="LLC formation inquiry for non-US resident"
-                      className={`w-full bg-slate-50 border rounded-xl px-4 py-2.5 text-xs text-[#0F172A] placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500/20 transition-all ${
+                      className={`w-full bg-slate-50 border rounded-xl px-4 py-2.5 text-xs text-[#0F172A] placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500/20 transition-[transform,background-color,border-color,box-shadow,color] ${
                         errors.subject
                           ? 'border-rose-300 focus:border-rose-500'
                           : 'border-slate-300 focus:border-[#F04623]'
@@ -147,11 +180,11 @@ export function ContactSection({ asPage = false }: { asPage?: boolean }) {
                     {errors.subject && (
                       <span className="text-[11px] text-rose-500 mt-1 block">{errors.subject}</span>
                     )}
-                  </div>
+                  </div>}
 
                   <div>
                     <label htmlFor="contact-message" className="block text-xs font-medium text-slate-700 mb-1">
-                      Message
+                      {consultation ? 'Short message (optional)' : 'Message'}
                     </label>
                     <textarea
                       id="contact-message"
@@ -159,7 +192,7 @@ export function ContactSection({ asPage = false }: { asPage?: boolean }) {
                       value={formData.message}
                       onChange={(e) => setFormData({ ...formData, message: e.target.value })}
                       placeholder="Tell us about your business goals and questions..."
-                      className={`w-full bg-slate-50 border rounded-xl px-4 py-2.5 text-xs text-[#0F172A] placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500/20 transition-all ${
+                      className={`w-full bg-slate-50 border rounded-xl px-4 py-2.5 text-xs text-[#0F172A] placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500/20 transition-[transform,background-color,border-color,box-shadow,color] ${
                         errors.message
                           ? 'border-rose-300 focus:border-rose-500'
                           : 'border-slate-300 focus:border-[#F04623]'
@@ -172,12 +205,12 @@ export function ContactSection({ asPage = false }: { asPage?: boolean }) {
 
                   <button
                     type="submit"
-                    className="w-full sm:w-auto px-8 py-3 rounded-xl bg-gradient-to-r from-[#e03e1b] via-[#F04623] to-[#fb923c] hover:brightness-105 text-white font-semibold text-xs transition-all shadow-md shadow-orange-500/20 disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
+                    className="w-full sm:w-auto px-8 py-3 rounded-xl bg-gradient-to-r from-[#e03e1b] via-[#F04623] to-[#fb923c] hover:brightness-105 text-white font-semibold text-xs transition-[transform,background-color,border-color,box-shadow,color] shadow-md shadow-orange-500/20 disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
                   >
-                    <span>Prepare Email</span>
+                    <span>{consultation ? 'Prepare Consultation Request' : 'Prepare Email'}</span>
                     <Send className="w-3.5 h-3.5" />
                   </button>
-                  <p className="text-xs leading-relaxed text-slate-500">We’ll prepare your message for your email app. Review and send it there.</p>
+                  <p className="text-xs leading-relaxed text-slate-500">{consultation ? 'We’ll prepare an email for you to review and send. This does not book an appointment.' : 'We’ll prepare your message for your email app. Review and send it there.'}</p>
                 </form>
               )}
             </div>

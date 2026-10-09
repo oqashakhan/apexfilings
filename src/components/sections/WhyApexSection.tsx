@@ -1,4 +1,6 @@
 import { ArrowRight, Building2, ClipboardList, Globe2 } from 'lucide-react';
+import { useRef } from 'react';
+import { useScrollReveal } from '../../hooks/useScrollReveal';
 
 const reasons = [
   {
@@ -19,10 +21,12 @@ const reasons = [
 ];
 
 export function WhyApexSection() {
+  const revealRef = useRef<HTMLElement>(null);
+  useScrollReveal(revealRef);
   return (
-    <section className="scroll-mt-20 bg-[#fcf9f8] py-20 sm:py-24 lg:py-28" id="why-us" aria-labelledby="home-why-title">
+    <section ref={revealRef} className="scroll-mt-20 bg-[#fcf9f8] py-20 sm:py-24 lg:py-28" id="why-us" aria-labelledby="home-why-title">
       <div className="mx-auto grid max-w-7xl items-center gap-10 px-4 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:gap-14 lg:px-8">
-        <div>
+        <div data-polish-reveal="0">
           <p className="inline-flex rounded-full border border-orange-200 bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-[#c52e0f]">
             Why Apex Filings
           </p>
@@ -48,16 +52,16 @@ export function WhyApexSection() {
           </div>
 
           <div className="mt-9 flex flex-col gap-3 sm:flex-row">
-            <a href="/why-us" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[#F04623] px-6 py-3 text-sm font-semibold text-white shadow-md shadow-orange-500/20 transition-[transform,background-color] motion-safe:hover:-translate-y-0.5 hover:bg-[#e03e1b] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F04623] focus-visible:ring-offset-2">
+            <a href="/why-us" className="polish-button polish-primary inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[#F04623] px-6 py-3 text-sm font-semibold text-white shadow-md shadow-orange-500/20 transition-[transform,background-color] motion-safe:hover:-translate-y-0.5 hover:bg-[#e03e1b] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F04623] focus-visible:ring-offset-2">
               Discover Why Apex Filings <ArrowRight className="h-4 w-4" aria-hidden="true" />
             </a>
-            <a href="/how-it-works" className="inline-flex min-h-12 items-center justify-center rounded-xl border border-slate-300 bg-white px-6 py-3 text-sm font-semibold text-[#171717] transition-colors hover:border-orange-300 hover:bg-orange-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F04623] focus-visible:ring-offset-2">
+            <a href="/start" className="polish-button inline-flex min-h-12 items-center justify-center rounded-xl border border-slate-300 bg-white px-6 py-3 text-sm font-semibold text-[#171717] transition-colors hover:border-orange-300 hover:bg-orange-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F04623] focus-visible:ring-offset-2">
               Start My Business
             </a>
           </div>
         </div>
 
-        <div className="relative mx-auto w-full max-w-2xl">
+        <div data-polish-reveal="1" className="relative mx-auto w-full max-w-2xl">
           <div className="pointer-events-none absolute inset-[18%] rounded-full bg-orange-100/70 blur-3xl" aria-hidden="true" />
           <img
             src="/images/why-apex-filings.webp"

@@ -60,9 +60,9 @@
 }
 
 .formation-journey--visible .journey-path__segment { stroke-dashoffset: 0; }
-.formation-journey--visible .journey-path__segment:nth-of-type(1) { transition-delay: .34s, 0s, 0s; }
-.formation-journey--visible .journey-path__segment:nth-of-type(2) { transition-delay: .76s, 0s, 0s; }
-.formation-journey--visible .journey-path__segment:nth-of-type(3) { transition-delay: 1.12s, 0s, 0s; }
+.formation-journey--visible .journey-path__segment:nth-of-type(1) { transition-delay: .1s, 0s, 0s; }
+.formation-journey--visible .journey-path__segment:nth-of-type(2) { transition-delay: .2s, 0s, 0s; }
+.formation-journey--visible .journey-path__segment:nth-of-type(3) { transition-delay: .3s, 0s, 0s; }
 .journey-path__segment--active { opacity: 1; stroke-width: 4; }
 
 .formation-journey__steps {
@@ -84,8 +84,8 @@
   border-radius: 20px;
   background: #fff;
   box-shadow: 0 14px 30px rgba(75, 48, 33, .09), 0 3px 8px rgba(75, 48, 33, .04);
-  opacity: 0;
-  transform: translateY(14px);
+  opacity: 1;
+  transform: none;
   transition: opacity .42s ease, transform .42s ease, box-shadow .25s ease, border-color .25s ease;
   outline: none;
 }
@@ -101,11 +101,11 @@
   box-shadow: 0 16px 34px rgba(240, 70, 35, .13), 0 3px 9px rgba(75, 48, 33, .04);
 }
 
-.formation-journey--visible .journey-step { opacity: 1; transform: translateY(0); }
-.formation-journey--visible .journey-step:nth-child(1) { transition-delay: .12s, .12s, 0s, 0s; }
-.formation-journey--visible .journey-step:nth-child(2) { transition-delay: .58s, .58s, 0s, 0s; }
-.formation-journey--visible .journey-step:nth-child(3) { transition-delay: .96s, .96s, 0s, 0s; }
-.formation-journey--visible .journey-step:nth-child(4) { transition-delay: 1.35s, 1.35s, 0s, 0s; }
+.formation-journey--visible .journey-step { animation: hero-step-enter .5s cubic-bezier(.22,1,.36,1) backwards; }
+.formation-journey--visible .journey-step:nth-child(2) { animation-delay: .065s; }
+.formation-journey--visible .journey-step:nth-child(3) { animation-delay: .13s; }
+.formation-journey--visible .journey-step:nth-child(4) { animation-delay: .195s; }
+@keyframes hero-step-enter { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
 .formation-journey--visible .journey-step:hover,
 .formation-journey--visible .journey-step:focus-visible {
   transform: translateY(-4px);
@@ -161,7 +161,7 @@
 .journey-step__identity-name { margin-top: 19px; color: #171717; font-size: clamp(14px, 1.5vw, 20px); font-weight: 850; line-height: 1.2; white-space: nowrap; }
 .journey-step__identity-type { margin-top: 5px; color: #64748b; font-size: 10px; }
 .journey-step__ready-status { display: flex; align-items: center; justify-content: space-between; gap: 5px; margin-top: 20px; padding: 7px; border: 1px solid #e6e9ee; border-radius: 9px; color: #171717; font-size: 10px; font-weight: 700; }
-.journey-step__active-status { display: inline-flex; align-items: center; gap: 2px; border-radius: 20px; background: #16a34a; padding: 4px 6px; color: #fff; font-size: 9px; font-weight: 800; text-transform: uppercase; opacity: 0; transition: opacity .25s ease 1.75s; }
+.journey-step__active-status { display: inline-flex; align-items: center; gap: 2px; border-radius: 20px; background: #16a34a; padding: 4px 6px; color: #fff; font-size: 9px; font-weight: 800; text-transform: uppercase; opacity: 0; transition: opacity .25s ease .45s; }
 .formation-journey--visible .journey-step__active-status { opacity: 1; }
 
 .formation-journey__trust { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 10px; }
@@ -205,6 +205,7 @@
   .journey-map, .journey-path__segment, .journey-step, .journey-step__number, .journey-step__active-status { transition: none !important; }
   .journey-map { opacity: .18; }
   .journey-path__segment { stroke-dashoffset: 0; }
-  .journey-step { opacity: 1; transform: none; }
+  .formation-journey--visible .journey-step, .journey-step { opacity: 1; transform: none; animation: none; }
+  .formation-journey--visible .journey-step:hover { transform: none; }
   .journey-step__active-status { opacity: 1; }
 }

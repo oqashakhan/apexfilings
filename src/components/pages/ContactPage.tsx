@@ -2,15 +2,15 @@ import { useEffect } from 'react';
 import { ArrowRight } from 'lucide-react';
 import { ContactSection } from '../sections/ContactSection';
 
-export function ContactPage() {
+export function ContactPage({ consultation = false }: { consultation?: boolean }) {
   useEffect(() => {
-    document.title = 'Contact Our Team | Apex Filings';
+    document.title = consultation ? 'Request a Free Consultation | Apex Filings' : 'Contact Our Team | Apex Filings';
     return () => { document.title = 'Apex Filings | Start Your US Business With Confidence'; };
-  }, []);
+  }, [consultation]);
 
   return (
     <>
-      <ContactSection asPage />
+      <ContactSection asPage consultation={consultation} />
       <div className="bg-white px-4 py-12 text-center">
         <p className="text-lg font-bold text-[#171717]">Still exploring your options?</p>
         <p className="mt-2 text-sm text-slate-600">Compare our formation packages and what each includes.</p>

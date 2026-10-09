@@ -62,7 +62,7 @@ export function USAdvantageSection() {
                 aria-pressed={isActive}
                 aria-controls="us-advantage-detail"
                 onClick={() => setActiveIndex(index)}
-                className={`group relative flex min-h-[250px] w-full flex-col overflow-hidden rounded-[1.65rem] border p-6 text-left shadow-sm transition-all duration-300 motion-reduce:transition-none sm:p-7 lg:min-h-[270px] lg:p-8 ${
+                className={`group relative flex min-h-[250px] w-full flex-col overflow-hidden rounded-[1.65rem] border p-6 text-left shadow-sm transition-[transform,background-color,border-color,box-shadow,color] duration-300 motion-reduce:transition-none sm:p-7 lg:min-h-[270px] lg:p-8 ${
                   isActive
                     ? 'border-[#F04623] bg-[#191F29] text-white shadow-[0_18px_38px_-25px_rgba(22,31,44,0.75)]'
                     : 'border-[#E9E4DF] bg-white text-[#17202E] hover:-translate-y-1 hover:border-[#F5A48F] hover:shadow-[0_18px_38px_-28px_rgba(22,31,44,0.45)] motion-reduce:hover:translate-y-0'

@@ -4,8 +4,15 @@ export interface RegistrationRequest {
   firstName: string;
   lastName: string;
   email: string;
-  phone: string;
+  phone?: string;
   password: string;
+  formationContext?: {
+    entrySource: string;
+    formationState: string;
+    planId: string;
+    residency: 'us' | 'non-us';
+    serviceId: string;
+  };
 }
 
 export interface RegistrationResult {

@@ -38,7 +38,7 @@ export function TopStatesSection({ onSelectState }: TopStatesSectionProps) {
             <div
               key={state.id}
               onClick={() => onSelectState(state)}
-              className="card-glass p-6 rounded-2xl border-slate-200 hover:border-orange-300 transition-all cursor-pointer group flex flex-col justify-between"
+              className="card-glass p-6 rounded-2xl border-slate-200 hover:border-orange-300 transition-[transform,background-color,border-color,box-shadow,color] cursor-pointer group flex flex-col justify-between"
             >
               <div>
                 <div className="flex items-center justify-between mb-4">
