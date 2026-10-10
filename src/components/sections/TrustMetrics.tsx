@@ -101,7 +101,7 @@ export function TrustMetrics() {
           <p className="mt-2 text-sm leading-relaxed text-slate-600 sm:text-base">Helping founders start and manage their US businesses from anywhere.</p>
         </div>
 
-        <dl className="mx-auto grid max-w-3xl grid-cols-2 overflow-hidden rounded-[1.75rem] border border-[#eae4e1] bg-white px-3 py-6 shadow-[0_16px_45px_-30px_rgba(23,23,23,0.28)] sm:px-6 sm:py-8 lg:px-4 lg:py-9">
+        <dl className="soft-glass mx-auto grid max-w-3xl grid-cols-2 overflow-hidden rounded-[1.75rem] border border-[#eae4e1] bg-white px-3 py-6 shadow-[0_16px_45px_-30px_rgba(23,23,23,0.28)] sm:px-6 sm:py-8 lg:px-4 lg:py-9">
           {TRUST_STATS.map((stat, index) => {
             const Icon = icons[stat.icon];
             return (

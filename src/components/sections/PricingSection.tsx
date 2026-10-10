@@ -65,7 +65,7 @@ export function PricingSection({ onSelectPlan, asPage = false }: PricingSectionP
             return (
               <article
                 key={plan.id}
-                className={`relative flex min-h-[355px] flex-col overflow-hidden rounded-[1.35rem] border p-6 shadow-[0_14px_35px_-30px_rgba(16,24,40,0.4)] sm:p-7 lg:p-8 ${featured ? 'border-[#ED5226] bg-gradient-to-br from-[#FF5418] to-[#F46D44] text-white' : 'border-[#E2E7EC] bg-white text-[#191D2A]'}`}
+                className={`pricing-card relative flex min-h-[355px] flex-col overflow-hidden rounded-[1.35rem] border p-6 shadow-[0_14px_35px_-30px_rgba(16,24,40,0.4)] sm:p-7 lg:p-8 ${featured ? 'pricing-card--featured border-[#ED5226] bg-gradient-to-br from-[#FF5418] to-[#F46D44] text-white' : 'soft-glass border-[#E2E7EC] bg-white text-[#191D2A]'}`}
               >
                 {featured && (
                   <span className="absolute -right-5 top-8 hidden w-36 rotate-45 bg-[#252525] py-1 text-center text-[10px] font-bold uppercase tracking-[0.12em] text-white shadow-sm sm:block">

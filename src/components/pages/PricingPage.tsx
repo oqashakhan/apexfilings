@@ -13,7 +13,7 @@ export function PricingPage({ onSelectPlan }: { onSelectPlan: (plan: PricingPlan
     <>
       <PricingSection asPage onSelectPlan={onSelectPlan} />
       <section className="bg-[#fcf9f8] px-4 py-16 sm:px-6 lg:px-8" aria-labelledby="pricing-help-title">
-        <div className="mx-auto flex max-w-5xl flex-col items-start gap-6 rounded-3xl border border-orange-100 bg-white p-7 sm:p-10 md:flex-row md:items-center md:justify-between">
+        <div className="accent-glass mx-auto flex max-w-5xl flex-col items-start gap-6 rounded-3xl border border-orange-100 bg-white p-7 sm:p-10 md:flex-row md:items-center md:justify-between">
           <div className="flex items-start gap-4">
             <span className="rounded-2xl bg-orange-50 p-3 text-[#F04623]"><MessageSquare className="h-6 w-6" aria-hidden="true" /></span>
             <div>

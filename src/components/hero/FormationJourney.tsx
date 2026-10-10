@@ -62,7 +62,7 @@ function JourneyStep({ step, index, activeStep, setActiveStep }: {
   const Icon = step.icon;
   return (
     <article
-      className={`journey-step journey-step--${step.kind}${activeStep === index ? ' journey-step--active' : ''}`}
+      className={`journey-step journey-step--${step.kind} premium-glass premium-glass--frosted${step.kind === 'ready' ? ' premium-glass--accent' : ''}${activeStep === index ? ' journey-step--active' : ''}`}
       tabIndex={0}
       aria-label={`Step ${step.number}: ${step.title}`}
       onMouseEnter={() => setActiveStep(index)}
@@ -163,7 +163,7 @@ export function FormationJourney() {
       </div>
       <div className="formation-journey__trust" aria-label="Apex Filings platform benefits">
         {trustPills.map(({ label, icon: Icon }) => (
-          <span className="formation-journey__trust-pill" key={label}>
+          <span className="formation-journey__trust-pill premium-glass" key={label}>
             <Icon size={17} strokeWidth={2.2} aria-hidden="true" /> {label}
           </span>
         ))}

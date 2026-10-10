@@ -27,8 +27,91 @@
 .marketing-site .apex-services-panel { animation-duration: 220ms; animation-timing-function: var(--polish-ease); }
 .marketing-site .apex-service-item { transition-duration: 200ms; }
 .marketing-site .apex-service-arrow { transition-duration: 220ms; }
-.marketing-site .formation-journey__trust-pill { background: #ffffffde; box-shadow: 0 4px 13px -5px #4b302114; }
-@supports (backdrop-filter: blur(4px)) { .marketing-site .formation-journey__trust-pill { backdrop-filter: blur(4px); } }
+/* Reusable light surfaces for selected public-site cards and panels. */
+.marketing-site .soft-glass {
+  background-color: rgba(255, 255, 255, .9);
+  border-color: rgba(224, 215, 210, .84);
+  box-shadow: 0 12px 32px -25px rgba(52, 37, 30, .27), 0 2px 8px rgba(52, 37, 30, .035), inset 0 1px rgba(255, 255, 255, .95);
+}
+.marketing-site .accent-glass {
+  background: linear-gradient(135deg, rgba(255, 247, 243, .96), rgba(255, 255, 255, .9) 76%);
+  border-color: rgba(240, 70, 35, .23);
+  box-shadow: 0 17px 42px -31px rgba(180, 69, 34, .32), 0 3px 10px rgba(80, 46, 32, .035), inset 0 1px rgba(255, 255, 255, .96);
+}
+.marketing-site .premium-glass {
+  background: rgba(255, 255, 255, .88);
+  border-color: rgba(225, 211, 204, .82);
+  box-shadow: 0 17px 38px -25px rgba(58, 37, 27, .29), 0 3px 9px rgba(58, 37, 27, .04), inset 0 1px rgba(255, 255, 255, .94);
+}
+.marketing-site .premium-glass--accent { border-color: rgba(240, 70, 35, .78); }
+.marketing-site .premium-glass--support { background: rgba(255, 255, 255, .92); }
+.marketing-site .premium-glass--support:is(:hover, :focus-within),
+.marketing-site .premium-glass--support.premium-glass--selected {
+  border-color: rgba(240, 70, 35, .42);
+  box-shadow: 0 15px 32px -24px rgba(180, 65, 32, .35), inset 0 1px rgba(255, 255, 255, .96);
+}
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .marketing-site .premium-glass--support:hover { transform: translateY(-2px); }
+}
+@supports (backdrop-filter: blur(7px)) {
+  @media (min-width: 1024px) {
+    .marketing-site .premium-glass--frosted {
+      background: rgba(255, 255, 255, .82);
+      -webkit-backdrop-filter: blur(10px);
+      backdrop-filter: blur(10px);
+    }
+  }
+}
+.marketing-site .why-reason-card { transition: translate 250ms var(--polish-ease), border-color 250ms ease, box-shadow 250ms ease; }
+.marketing-site .why-reason-card > span:first-child { background: rgba(255, 241, 234, .95); }
+.marketing-site .about-feature-card { transition: border-color 230ms ease, box-shadow 230ms ease; }
+.marketing-site .about-feature-card:is(:first-child, :last-child) {
+  background: linear-gradient(135deg, rgba(255, 248, 245, .95), rgba(255, 255, 255, .9));
+  border-color: rgba(240, 70, 35, .19);
+}
+.marketing-site .service-card { isolation: isolate; }
+.marketing-site #services .service-card:nth-child(-n+2) {
+  background-image: radial-gradient(circle at 90% 8%, rgba(255, 225, 211, .44), transparent 42%);
+}
+.marketing-site .service-card > div:first-child > span:last-child { transition: translate 240ms var(--polish-ease), background-color 240ms ease, box-shadow 240ms ease; }
+.marketing-site .pricing-card { transition: translate 260ms var(--polish-ease), border-color 240ms ease, box-shadow 260ms ease; }
+.marketing-site .pricing-card--featured {
+  border-color: rgba(255, 221, 206, .75);
+  box-shadow: 0 20px 44px -27px rgba(210, 67, 25, .48), inset 0 1px rgba(255, 255, 255, .34);
+}
+.marketing-site #additional-support-cards .premium-glass--support:first-child {
+  background: linear-gradient(130deg, rgba(255, 245, 239, .95), rgba(255, 255, 255, .89) 74%);
+  border-color: rgba(240, 70, 35, .22);
+}
+.marketing-site #additional-support-cards .premium-glass--support:first-child button > span:first-child {
+  box-shadow: inset 0 1px rgba(255, 255, 255, .9), 0 6px 14px -9px rgba(240, 70, 35, .4);
+}
+.marketing-site .us-map-preview { border-color: rgba(240, 70, 35, .2); }
+.marketing-site .us-state-map__tooltip,
+.marketing-site .us-map-search__results {
+  background: rgba(255, 255, 255, .97);
+  border-color: rgba(228, 210, 200, .9);
+  box-shadow: 0 18px 38px -26px rgba(59, 39, 28, .38), 0 3px 10px rgba(40, 29, 23, .05);
+}
+.marketing-site .apex-site-header { background: rgba(255, 255, 255, .95); border-color: rgba(224, 215, 210, .75); }
+.marketing-site .apex-services-panel {
+  background: rgba(255, 255, 255, .97);
+  border-color: rgba(228, 215, 208, .86);
+  box-shadow: 0 24px 54px -26px rgba(54, 37, 29, .29), 0 5px 16px rgba(54, 37, 29, .055), inset 0 1px rgba(255, 255, 255, .95);
+}
+@supports (backdrop-filter: blur(8px)) {
+  @media (min-width: 1024px) {
+    .marketing-site .apex-services-panel { -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+  }
+}
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .marketing-site .why-reason-card:hover,
+  .marketing-site .pricing-card:hover { translate: 0 -3px; border-color: rgba(240, 70, 35, .34); box-shadow: 0 18px 38px -27px rgba(79, 43, 30, .3), inset 0 1px rgba(255, 255, 255, .98); }
+  .marketing-site .service-card:hover { border-color: rgba(240, 70, 35, .38); }
+  .marketing-site .about-feature-card:hover { border-color: rgba(240, 70, 35, .35); box-shadow: 0 17px 36px -27px rgba(89, 48, 34, .3); }
+  .marketing-site .service-card:hover > div:first-child > span:last-child { translate: 0 -2px; box-shadow: 0 8px 16px -11px rgba(240, 70, 35, .42); }
+  .marketing-site .pricing-card--featured:hover { box-shadow: 0 24px 47px -29px rgba(210, 67, 25, .55), inset 0 1px rgba(255, 255, 255, .4); }
+}
 /* Existing hero atmosphere uses a gradient, avoiding a large filter-blur surface. */
 .marketing-site .hero-ambient { position: absolute; pointer-events: none; left: 50%; top: 48%; z-index: -1; width: min(90vw,70rem); height: 30rem; translate: -50% 0; background: radial-gradient(ellipse, #fed7aa24, transparent 70%); }
 /* Native scroll-linked decoration; unsupported browsers retain the static map. */
@@ -39,11 +122,19 @@
 }
 @keyframes polish-map-drift { from { translate: 0 8px; } to { translate: 0 -8px; } }
 .marketing-site #testimonials .card-glass:hover { border-color: #e2e8f0; box-shadow: 0 1px 3px #0000000a, 0 1px 2px #00000008; }
-@media (max-width: 767px) { .marketing-site { --reveal-distance: 12px; } .marketing-site .polish-revealing { animation-duration: 460ms; } .marketing-site .site-scroll-revealing { animation-duration: 440ms; } }
+@media (max-width: 767px) {
+  .marketing-site { --reveal-distance: 12px; }
+  .marketing-site .polish-revealing { animation-duration: 460ms; }
+  .marketing-site .site-scroll-revealing { animation-duration: 440ms; }
+  .marketing-site .soft-glass,
+  .marketing-site .premium-glass { background-color: rgba(255, 255, 255, .97); }
+  .marketing-site .accent-glass { background: linear-gradient(135deg, #fff8f5, #fff); }
+  .marketing-site .apex-services-panel { background: #fff; }
+}
 @media (prefers-reduced-motion: reduce) {
   html:has(.marketing-site) { scroll-behavior: auto; }
   .marketing-site .polish-revealing { animation: none !important; }
   .marketing-site .site-scroll-revealing { animation: none !important; }
-  .marketing-site :is(.polish-button, .polish-card, .polish-button > svg, .apex-service-item, .apex-service-arrow) { transition: none; translate: none; }
+  .marketing-site :is(.polish-button, .polish-card, .polish-button > svg, .apex-service-item, .apex-service-arrow, .why-reason-card, .pricing-card, .service-card > div:first-child > span:last-child) { transition: none; translate: none; }
   .marketing-site .apex-services-panel { animation: none; }
 }

@@ -66,7 +66,7 @@ export function USAdvantageSection() {
                 className={`group relative flex min-h-[250px] w-full flex-col overflow-hidden rounded-[1.65rem] border p-6 text-left shadow-sm transition-[transform,background-color,border-color,box-shadow,color] duration-300 motion-reduce:transition-none sm:p-7 lg:min-h-[270px] lg:p-8 ${
                   isActive
                     ? 'border-[#F04623] bg-[#191F29] text-white shadow-[0_18px_38px_-25px_rgba(22,31,44,0.75)]'
-                    : 'border-[#E9E4DF] bg-white text-[#17202E] hover:-translate-y-1 hover:border-[#F5A48F] hover:shadow-[0_18px_38px_-28px_rgba(22,31,44,0.45)] motion-reduce:hover:translate-y-0'
+                    : 'soft-glass advantage-card border-[#E9E4DF] bg-white text-[#17202E] hover:-translate-y-1 hover:border-[#F5A48F] hover:shadow-[0_18px_38px_-28px_rgba(22,31,44,0.45)] motion-reduce:hover:translate-y-0'
                 } focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#F04623]`}
               >
                 {isActive && <span aria-hidden="true" className="absolute inset-x-0 top-0 h-1 bg-[#F04623]" />}
@@ -94,7 +94,7 @@ export function USAdvantageSection() {
           role="region"
           aria-label={`${active.title} details`}
           aria-live="polite"
-          className="mt-5 grid gap-8 rounded-[1.65rem] border border-[#E9E4DF] bg-white p-6 shadow-[0_16px_48px_-38px_rgba(22,31,44,0.35)] sm:p-8 lg:grid-cols-[1.2fr_1fr] lg:items-center lg:gap-16 lg:p-10"
+          className="accent-glass mt-5 grid gap-8 rounded-[1.65rem] border border-[#E9E4DF] bg-white p-6 shadow-[0_16px_48px_-38px_rgba(22,31,44,0.35)] sm:p-8 lg:grid-cols-[1.2fr_1fr] lg:items-center lg:gap-16 lg:p-10"
         >
           <div>
             <div className="mb-5 flex items-center gap-3 text-[#D94320]">

@@ -74,7 +74,7 @@ export function USStateMapSection({ onStartState }: USStateMapSectionProps) {
             aria-expanded={suggestionsOpen && matches.length > 0}
             aria-controls={suggestionsOpen && query.trim() ? 'us-state-suggestions' : undefined}
             aria-activedescendant={suggestionsOpen && matches[activeIndex] ? `us-state-option-${matches[activeIndex].code}` : undefined}
-            className="h-14 w-full rounded-2xl border border-[#DAD8D6] bg-white py-3 pl-13 pr-5 text-[15px] text-[#171717] shadow-[0_8px_28px_-18px_#47352c45] outline-none transition-[border-color,box-shadow] placeholder:text-slate-400 focus:border-[#F04623] focus:shadow-[0_0_0_4px_#F0462318,0_8px_28px_-18px_#47352c45]"
+            className="soft-glass h-14 w-full rounded-2xl border border-[#DAD8D6] bg-white py-3 pl-13 pr-5 text-[15px] text-[#171717] shadow-[0_8px_28px_-18px_#47352c45] outline-none transition-[border-color,box-shadow] placeholder:text-slate-400 focus:border-[#F04623] focus:shadow-[0_0_0_4px_#F0462318,0_8px_28px_-18px_#47352c45]"
             onChange={(event) => { setQuery(event.target.value); setActiveIndex(0); setSuggestionsOpen(true); }}
             onFocus={() => { if (query.trim()) setSuggestionsOpen(true); }}
             onBlur={(event) => { if (!searchRef.current?.contains(event.relatedTarget as Node)) setSuggestionsOpen(false); }}
@@ -123,7 +123,7 @@ export function USStateMapSection({ onStartState }: USStateMapSectionProps) {
             <p className="us-map-visual__footnote">Alaska and Hawaii are shown as insets. You can also use search to select smaller states.</p>
           </div>
 
-          <aside ref={previewRef} className={`us-map-preview ${selectedState ? 'us-map-preview--selected' : ''}`} aria-live="polite" aria-label="Selected state and LLC package preview">
+          <aside ref={previewRef} className={`premium-glass premium-glass--frosted us-map-preview ${selectedState ? 'us-map-preview--selected' : ''}`} aria-live="polite" aria-label="Selected state and LLC package preview">
             {selectedState ? (
               <div className="us-map-preview__selected" key={selectedState.code}>
                 <div className="flex items-start justify-between gap-4">

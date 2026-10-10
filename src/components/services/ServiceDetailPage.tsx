@@ -46,7 +46,7 @@ function ServiceHero({ service }: { service: ServiceItem }) {
 
           <div className="relative mx-auto w-full max-w-lg">
             <div className="pointer-events-none absolute inset-[15%] rounded-full bg-orange-100/70 blur-3xl" aria-hidden="true" />
-            <div className="relative overflow-hidden rounded-[2rem] border border-[#ece5e1] bg-white p-7 shadow-[0_25px_70px_-45px_rgba(23,23,23,0.36)] sm:p-9">
+            <div className="premium-glass premium-glass--frosted relative overflow-hidden rounded-[2rem] border border-[#ece5e1] bg-white p-7 shadow-[0_25px_70px_-45px_rgba(23,23,23,0.36)] sm:p-9">
               <div className="flex items-center justify-between gap-4"><span className="text-xs font-bold uppercase tracking-[0.16em] text-[#F04623]">Service overview</span><Sparkles className="h-4 w-4 text-orange-300" aria-hidden="true" /></div>
               <span className="mt-8 flex h-16 w-16 items-center justify-center rounded-2xl border border-orange-100 bg-[#fff6f2] text-[#F04623]"><Icon className="h-8 w-8" strokeWidth={1.6} aria-hidden="true" /></span>
               <h2 className="mt-6 text-2xl font-bold tracking-tight text-[#171717]">{service.title}</h2>
@@ -70,10 +70,10 @@ function ServiceBenefits({ service }: { service: ServiceItem }) {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="grid gap-8 lg:grid-cols-2 lg:gap-20">
           <div><SectionHeading eyebrow="The essentials" title={service.overviewHeading} /><p className="-mt-4 max-w-xl text-base leading-8 text-slate-600">{service.overview}</p></div>
-          <div data-scroll-reveal className="rounded-3xl border border-[#eae4e1] bg-[#fffaf8] p-7 sm:p-9"><CircleHelp className="h-6 w-6 text-[#F04623]" strokeWidth={1.8} aria-hidden="true" /><h3 className="mt-5 text-xl font-bold text-[#171717]">Why You May Need It</h3><p className="mt-3 text-base leading-8 text-slate-600">{service.whyItMatters}</p></div>
+          <div data-scroll-reveal className="accent-glass rounded-3xl border border-[#eae4e1] bg-[#fffaf8] p-7 sm:p-9"><CircleHelp className="h-6 w-6 text-[#F04623]" strokeWidth={1.8} aria-hidden="true" /><h3 className="mt-5 text-xl font-bold text-[#171717]">Why You May Need It</h3><p className="mt-3 text-base leading-8 text-slate-600">{service.whyItMatters}</p></div>
         </div>
         <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {service.benefits.map((benefit, index) => <article key={benefit.title} className="rounded-2xl border border-slate-200 bg-white p-6"><span className="text-xs font-bold tracking-[0.16em] text-[#F04623]">{String(index + 1).padStart(2, '0')}</span><h3 className="mt-5 text-lg font-bold text-[#171717]">{benefit.title}</h3><p className="mt-2 text-sm leading-7 text-slate-600">{benefit.description}</p></article>)}
+          {service.benefits.map((benefit, index) => <article key={benefit.title} className="soft-glass rounded-2xl border border-slate-200 bg-white p-6"><span className="text-xs font-bold tracking-[0.16em] text-[#F04623]">{String(index + 1).padStart(2, '0')}</span><h3 className="mt-5 text-lg font-bold text-[#171717]">{benefit.title}</h3><p className="mt-2 text-sm leading-7 text-slate-600">{benefit.description}</p></article>)}
         </div>
       </div>
     </section>
