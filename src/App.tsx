@@ -1,5 +1,6 @@
-import { lazy, Suspense, useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import './marketing-polish.css';
+import { usePageScrollReveals } from './hooks/usePageScrollReveals';
 import { Navbar, type Language } from './components/layout/Navbar';
 import { Footer } from './components/layout/Footer';
 import { HeroSection } from './components/sections/HeroSection';
@@ -29,6 +30,8 @@ const ServiceDetailPage = lazy(() => import('./components/services/ServiceDetail
 export default function App() {
   const [path, setPath] = useState(window.location.pathname);
   const routePath = path.replace(/\/+$/, '') || '/';
+  const mainRef = useRef<HTMLElement>(null);
+  usePageScrollReveals(mainRef, routePath);
 
   const [loginModalOpen, setLoginModalOpen] = useState(false);
   const [language, setLanguage] = useState<Language>(() => {
@@ -99,7 +102,7 @@ export default function App() {
       <Navbar onOpenClientPortal={() => setLoginModalOpen(true)} language={language} onLanguageChange={handleLanguageChange} />
 
       {/* Main Content */}
-      <main className="flex-1">
+      <main ref={mainRef} className="flex-1">
         {serviceSlug ? (
           selectedService ? <Suspense fallback={<div className="min-h-screen bg-white" />}><ServiceDetailPage service={selectedService} /></Suspense> : <section className="mx-auto min-h-[60vh] max-w-7xl px-4 py-24 text-center"><h1 className="text-3xl font-bold text-[#171717]">Service not found</h1><p className="mt-4 text-slate-600">Explore the services currently available through Apex Filings.</p><a href="/#services" className="mt-6 inline-flex text-sm font-semibold text-[#F04623] underline underline-offset-4">View all services</a></section>
         ) : routePath === '/how-it-works' ? <Suspense fallback={<div className="min-h-screen" role="status">Loading your business journey…</div>}><FormationProcessPage /></Suspense>

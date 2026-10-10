@@ -58,6 +58,7 @@ export function USAdvantageSection() {
             return (
               <button
                 key={advantage.number}
+                data-scroll-reveal
                 type="button"
                 aria-pressed={isActive}
                 aria-controls={index === 0 ? 'us-advantage-detail' : undefined}

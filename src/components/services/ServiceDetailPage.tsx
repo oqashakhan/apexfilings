@@ -70,7 +70,7 @@ function ServiceBenefits({ service }: { service: ServiceItem }) {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="grid gap-8 lg:grid-cols-2 lg:gap-20">
           <div><SectionHeading eyebrow="The essentials" title={service.overviewHeading} /><p className="-mt-4 max-w-xl text-base leading-8 text-slate-600">{service.overview}</p></div>
-          <div className="rounded-3xl border border-[#eae4e1] bg-[#fffaf8] p-7 sm:p-9"><CircleHelp className="h-6 w-6 text-[#F04623]" strokeWidth={1.8} aria-hidden="true" /><h3 className="mt-5 text-xl font-bold text-[#171717]">Why You May Need It</h3><p className="mt-3 text-base leading-8 text-slate-600">{service.whyItMatters}</p></div>
+          <div data-scroll-reveal className="rounded-3xl border border-[#eae4e1] bg-[#fffaf8] p-7 sm:p-9"><CircleHelp className="h-6 w-6 text-[#F04623]" strokeWidth={1.8} aria-hidden="true" /><h3 className="mt-5 text-xl font-bold text-[#171717]">Why You May Need It</h3><p className="mt-3 text-base leading-8 text-slate-600">{service.whyItMatters}</p></div>
         </div>
         <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {service.benefits.map((benefit, index) => <article key={benefit.title} className="rounded-2xl border border-slate-200 bg-white p-6"><span className="text-xs font-bold tracking-[0.16em] text-[#F04623]">{String(index + 1).padStart(2, '0')}</span><h3 className="mt-5 text-lg font-bold text-[#171717]">{benefit.title}</h3><p className="mt-2 text-sm leading-7 text-slate-600">{benefit.description}</p></article>)}
@@ -86,7 +86,7 @@ function ServiceIncluded({ service }: { service: ServiceItem }) {
       <div className="mx-auto grid max-w-7xl gap-10 px-4 sm:px-6 lg:grid-cols-[0.75fr_1.25fr] lg:items-center lg:px-8">
         <SectionHeading eyebrow="Your service" title="What's Included" description="A practical view of the support and information covered as you get started." />
         <ul className="grid gap-3 sm:grid-cols-2">
-          {service.included.map((item) => <li key={item} className="flex items-start gap-3 rounded-2xl border border-[#eae4e1] bg-white p-5 text-sm font-semibold leading-6 text-[#171717]"><Check className="mt-0.5 h-4 w-4 shrink-0 text-[#F04623]" strokeWidth={2.5} aria-hidden="true" />{item}</li>)}
+          {service.included.map((item) => <li key={item} data-scroll-reveal className="flex items-start gap-3 rounded-2xl border border-[#eae4e1] bg-white p-5 text-sm font-semibold leading-6 text-[#171717]"><Check className="mt-0.5 h-4 w-4 shrink-0 text-[#F04623]" strokeWidth={2.5} aria-hidden="true" />{item}</li>)}
         </ul>
       </div>
     </section>
@@ -99,7 +99,7 @@ function ServiceProcess({ service }: { service: ServiceItem }) {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <SectionHeading eyebrow="A clearer path" title="How It Works" description="The steps below show the general flow. Details can vary based on your service and circumstances." />
         <ol className="relative grid gap-7 before:absolute before:bottom-4 before:left-[23px] before:top-5 before:w-px before:bg-orange-200 md:grid-cols-4 md:gap-5 md:before:bottom-auto md:before:left-[7%] md:before:right-[7%] md:before:top-6 md:before:h-px md:before:w-auto">
-          {service.process.map((step, index) => <li key={step.title} className="relative flex gap-4 md:block"><span className="relative z-10 flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-orange-200 bg-[#fff7f4] text-sm font-extrabold text-[#F04623]">{String(index + 1).padStart(2, '0')}</span><div className="pt-1 md:pt-6"><h3 className="text-base font-bold text-[#171717]">{step.title}</h3><p className="mt-2 text-sm leading-7 text-slate-600">{step.description}</p></div></li>)}
+          {service.process.map((step, index) => <li key={step.title} data-scroll-reveal className="relative flex gap-4 md:block"><span className="relative z-10 flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-orange-200 bg-[#fff7f4] text-sm font-extrabold text-[#F04623]">{String(index + 1).padStart(2, '0')}</span><div className="pt-1 md:pt-6"><h3 className="text-base font-bold text-[#171717]">{step.title}</h3><p className="mt-2 text-sm leading-7 text-slate-600">{step.description}</p></div></li>)}
         </ol>
       </div>
     </section>

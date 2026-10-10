@@ -5,8 +5,12 @@
   .marketing-site .polish-revealing { animation: polish-reveal 560ms var(--polish-ease) both; }
   .marketing-site [data-polish-reveal="1"].polish-revealing { animation-delay: 65ms; }
   .marketing-site [data-polish-reveal="2"].polish-revealing { animation-delay: 130ms; }
+  .marketing-site .site-scroll-revealing { animation: site-scroll-reveal 520ms var(--polish-ease) both; }
+  .marketing-site [data-site-reveal-delay="1"].site-scroll-revealing { animation-delay: 55ms; }
+  .marketing-site [data-site-reveal-delay="2"].site-scroll-revealing { animation-delay: 110ms; }
 }
 @keyframes polish-reveal { from { opacity: .05; transform: translateY(var(--reveal-distance, 18px)); } to { opacity: 1; transform: translateY(0); } }
+@keyframes site-scroll-reveal { from { opacity: .15; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
 .marketing-site .polish-button { transition: translate 220ms var(--polish-ease), background-color 200ms ease, border-color 200ms ease, box-shadow 220ms ease, color 200ms ease; }
 .marketing-site .polish-button > .lucide-arrow-right { transition: translate 220ms var(--polish-ease); }
 .marketing-site .polish-button:focus-visible { outline: 2px solid #f04623; outline-offset: 4px; }
@@ -35,10 +39,11 @@
 }
 @keyframes polish-map-drift { from { translate: 0 8px; } to { translate: 0 -8px; } }
 .marketing-site #testimonials .card-glass:hover { border-color: #e2e8f0; box-shadow: 0 1px 3px #0000000a, 0 1px 2px #00000008; }
-@media (max-width: 767px) { .marketing-site { --reveal-distance: 12px; } .marketing-site .polish-revealing { animation-duration: 460ms; } }
+@media (max-width: 767px) { .marketing-site { --reveal-distance: 12px; } .marketing-site .polish-revealing { animation-duration: 460ms; } .marketing-site .site-scroll-revealing { animation-duration: 440ms; } }
 @media (prefers-reduced-motion: reduce) {
   html:has(.marketing-site) { scroll-behavior: auto; }
   .marketing-site .polish-revealing { animation: none !important; }
+  .marketing-site .site-scroll-revealing { animation: none !important; }
   .marketing-site :is(.polish-button, .polish-card, .polish-button > svg, .apex-service-item, .apex-service-arrow) { transition: none; translate: none; }
   .marketing-site .apex-services-panel { animation: none; }
 }
