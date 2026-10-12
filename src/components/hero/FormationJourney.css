@@ -14,17 +14,6 @@
   background: radial-gradient(ellipse at 52% 66%, rgba(240, 70, 35, .085), transparent 66%);
 }
 
-.journey-map {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  opacity: 0;
-  transition: opacity .45s ease;
-}
-
-.formation-journey--visible .journey-map { opacity: .18; }
-
 .formation-journey__label {
   position: absolute;
   top: 12px;
@@ -145,12 +134,15 @@
   color: #F04623;
 }
 .journey-step__title { margin: 0 0 16px; color: #171717; font-size: 16px; font-weight: 800; text-align: center; line-height: 1.3; }
+.journey-step--state .journey-step__title, .journey-step--llc .journey-step__title { margin-bottom: 12px; font-size: 14px; }
+.journey-step--llc .journey-step__icon { margin-bottom: 10px; }
+.journey-step--llc .journey-step__title { margin-bottom: 7px; }
 .journey-step__detail { min-height: 33px; border: 1px solid #e6e9ee; border-radius: 9px; background: #f9fafb; color: #45546b; font-size: 11px; font-weight: 600; }
 .journey-step__state { display: flex; align-items: center; gap: 6px; padding: 4px 6px; }
 .journey-step__state > svg:first-child { color: #F04623; }
 .journey-step__chevron { margin-left: auto; }
 .journey-step__check { display: inline-grid; width: 20px; height: 20px; flex: none; place-items: center; border-radius: 50%; background: #16a34a; color: white; }
-.journey-step__progress { display: grid; gap: 7px; padding: 7px 9px; }
+.journey-step__progress { display: grid; gap: 5px; padding: 5px 7px; font-size: 10px; }
 .journey-step__progress-track { height: 6px; overflow: hidden; border-radius: 8px; background: #e1e5ea; }
 .journey-step__progress-track > span { display: block; width: 48%; height: 100%; border-radius: inherit; background: #F04623; }
 .journey-step__ein-status { display: flex; align-items: center; gap: 7px; padding: 5px 6px; white-space: nowrap; }
@@ -158,7 +150,7 @@
 .journey-step__brand { display: inline-flex; min-width: 0; align-items: center; gap: 6px; color: #171717; font-size: 13px; font-weight: 800; white-space: nowrap; }
 .journey-step__brand > :first-child { flex: none; }
 .journey-step__flag { width: 28px; height: 18px; flex: none; border: 1px solid #e6e9ee; border-radius: 3px; }
-.journey-step__identity-name { margin-top: 19px; color: #171717; font-size: clamp(14px, 1.5vw, 20px); font-weight: 850; line-height: 1.2; white-space: nowrap; }
+.journey-step__identity-name { margin-top: 19px; color: #171717; font-size: clamp(13px, 1.1vw, 16px); font-weight: 850; line-height: 1.2; }
 .journey-step__identity-type { margin-top: 5px; color: #64748b; font-size: 10px; }
 .journey-step__ready-status { display: flex; align-items: center; justify-content: space-between; gap: 5px; margin-top: 20px; padding: 7px; border: 1px solid #e6e9ee; border-radius: 9px; color: #171717; font-size: 10px; font-weight: 700; }
 .journey-step__active-status { display: inline-flex; align-items: center; gap: 2px; border-radius: 20px; background: #16a34a; padding: 4px 6px; color: #fff; font-size: 9px; font-weight: 800; text-transform: uppercase; opacity: 0; transition: opacity .25s ease .45s; }
@@ -185,7 +177,6 @@
   .formation-journey { margin-top: 3rem; }
   .formation-journey__scene { min-height: 0; overflow: visible; background: radial-gradient(ellipse at 50% 45%, rgba(240, 70, 35, .055), transparent 68%); }
   .formation-journey__label { position: relative; top: auto; left: auto; justify-content: center; width: 100%; margin-bottom: 32px; font-size: 10px; text-align: center; }
-  .journey-map { opacity: 0 !important; }
   .journey-path { display: none; }
   .formation-journey__steps { display: flex; flex-direction: column; gap: 25px; padding: 0 5px; }
   .journey-step { width: 100%; min-height: 0; margin: 0; padding: 18px 19px 17px; }
@@ -202,8 +193,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .journey-map, .journey-path__segment, .journey-step, .journey-step__number, .journey-step__active-status { transition: none !important; }
-  .journey-map { opacity: .18; }
+  .journey-path__segment, .journey-step, .journey-step__number, .journey-step__active-status { transition: none !important; }
   .journey-path__segment { stroke-dashoffset: 0; }
   .formation-journey--visible .journey-step, .journey-step { opacity: 1; transform: none; animation: none; }
   .formation-journey--visible .journey-step:hover { transform: none; }

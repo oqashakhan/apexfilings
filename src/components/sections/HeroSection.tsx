@@ -2,7 +2,6 @@ import { ArrowRight } from 'lucide-react';
 import { useRef } from 'react';
 import { useScrollReveal } from '../../hooks/useScrollReveal';
 import { AntigravityBackground } from '../hero/AntigravityBackground';
-import { EarthHorizon } from '../hero/EarthHorizon';
 import '../hero/HeroEffects.css';
 import { FormationJourney } from '../hero/FormationJourney';
 
@@ -15,8 +14,17 @@ export function HeroSection({ onStart }: HeroSectionProps) {
   useScrollReveal(heroRef);
   return (
     <section ref={heroRef} id="home" className="apex-hero-effects relative isolate scroll-mt-20 overflow-hidden bg-white px-4 pb-16 pt-14 sm:px-6 sm:pb-20 md:pt-20 lg:px-8 lg:pb-28">
-      <EarthHorizon containerRef={heroRef} />
-      <AntigravityBackground containerRef={heroRef} desktopCount={20} maxDisplacement={12} />
+      <div className="hero-minimal-decor" aria-hidden="true">
+        <svg viewBox="0 0 1440 680" preserveAspectRatio="none" focusable="false">
+          <path className="hero-minimal-decor__curve" d="M-90 455C285 164 841 197 1530 515" />
+          <path className="hero-minimal-decor__curve hero-minimal-decor__curve--lower" d="M-100 654C310 360 1006 355 1540 622" />
+          <circle className="hero-minimal-decor__ring" cx="1190" cy="132" r="42" />
+          <circle className="hero-minimal-decor__ring" cx="185" cy="310" r="11" />
+          <rect className="hero-minimal-decor__shape" x="333" y="94" width="9" height="9" rx="1" transform="rotate(45 337.5 98.5)" />
+          <rect className="hero-minimal-decor__shape" x="1052" y="400" width="8" height="8" rx="1" />
+        </svg>
+      </div>
+      <AntigravityBackground containerRef={heroRef} desktopCount={14} maxDisplacement={12} />
 
       <div className="hero-content mx-auto max-w-7xl text-center">
         <p data-polish-reveal="0" className="mx-auto inline-flex max-w-full items-center rounded-full border border-orange-200 bg-white/80 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#c52e0f] sm:text-xs">

@@ -22,10 +22,10 @@ type JourneyStepData = {
 };
 
 const journeySteps: JourneyStepData[] = [
-  { number: '01', title: 'Choose Your State', kind: 'state', icon: MapPin },
-  { number: '02', title: 'Form Your LLC', kind: 'llc', icon: FileText },
-  { number: '03', title: 'Get Your EIN', kind: 'ein', icon: IdCard },
-  { number: '04', title: 'Your Business Is Ready', kind: 'ready', icon: Check },
+  { number: '01', title: 'Select Your Formation State', kind: 'state', icon: MapPin },
+  { number: '02', title: 'Register Your US Company', kind: 'llc', icon: FileText },
+  { number: '03', title: 'Apply for Your EIN', kind: 'ein', icon: IdCard },
+  { number: '04', title: 'Your Company Dashboard', kind: 'ready', icon: Check },
 ];
 
 const trustPills = [
@@ -33,25 +33,6 @@ const trustPills = [
   { label: 'Track Your Progress', icon: ChartNoAxesColumnIncreasing },
   { label: 'Documents in One Place', icon: Folder },
 ];
-
-function WorldMapBackdrop() {
-  return (
-    <svg className="journey-map" viewBox="0 0 1200 380" preserveAspectRatio="xMidYMid meet" aria-hidden="true" focusable="false">
-      <defs>
-        <pattern id="journey-map-dots" width="8" height="8" patternUnits="userSpaceOnUse">
-          <circle cx="2" cy="2" r="1.3" fill="#F04623" />
-        </pattern>
-      </defs>
-      <g fill="url(#journey-map-dots)">
-        <path d="M61 72 115 46 169 47 198 67 231 65 254 90 232 112 188 112 171 138 137 144 121 178 93 160 74 120 49 105Z" />
-        <path d="m198 172 48 5 29 27 31 42-11 39-20 18-6 39-25 21-16-31-12-51-20-29-14-47Z" />
-        <path d="m450 81 38-26 51 8 18 17 36-9 40 12 47-10 44 8 22-18 58 12 36 23 49-8 65 22 32 29-22 24-49-4-23 19-35-12-23 21-37-11-18 27-37-7-24-26-35 6-18-22-32 11-17-26-43 7-17-20-38 9-33-19-31 8-31-21Z" />
-        <path d="m540 172 48-7 53 23 26 37-11 38-22 42-27 29-35-17-15-48-28-34-16-40Z" />
-        <path d="m966 245 53-13 55 17 32 31-17 28-61 5-58-22-22-26Z" />
-      </g>
-    </svg>
-  );
-}
 
 function JourneyStep({ step, index, activeStep, setActiveStep }: {
   step: JourneyStepData;
@@ -84,11 +65,11 @@ function JourneyStep({ step, index, activeStep, setActiveStep }: {
               <path d="M2 2h1m2 0h1m2 0h1M3 4h1m2 0h1m2 0h1M2 6h1m2 0h1m2 0h1" stroke="#fff" strokeWidth="1" />
             </svg>
           </div>
-          <div className="journey-step__identity-name">Rapid Ventures LLC <span className="ml-1 rounded-full bg-[#fff0ea] px-1.5 py-0.5 align-middle text-[9px] font-bold uppercase tracking-wide text-[#c52e0f]">Sample</span></div>
+          <div className="journey-step__identity-name">Your Company Dashboard <span className="ml-1 rounded-full bg-[#fff0ea] px-1.5 py-0.5 align-middle text-[9px] font-bold uppercase tracking-wide text-[#c52e0f]">Sample</span></div>
           <p className="journey-step__identity-type">US Limited Liability Company</p>
           <div className="journey-step__ready-status">
-            <span>Your Business Is Ready</span>
-            <span className="journey-step__active-status"><Check size={13} strokeWidth={3} aria-hidden="true" /> Active</span>
+            <span>Your Company Is Set Up</span>
+            <span className="journey-step__active-status"><Check size={13} strokeWidth={3} aria-hidden="true" /> Demo Active</span>
           </div>
         </>
       ) : (
@@ -103,14 +84,14 @@ function JourneyStep({ step, index, activeStep, setActiveStep }: {
           )}
           {step.kind === 'llc' && (
             <div className="journey-step__detail journey-step__progress">
-              <span>Application Started</span>
+              <span>Formation Request Started</span>
               <span className="journey-step__progress-track"><span /></span>
             </div>
           )}
           {step.kind === 'ein' && (
             <div className="journey-step__detail journey-step__ein-status">
               <span className="journey-step__check"><Check size={13} strokeWidth={3} aria-hidden="true" /></span>
-              Ready for Processing
+              EIN Application Prepared
             </div>
           )}
         </>
@@ -143,7 +124,6 @@ export function FormationJourney() {
   return (
     <div ref={rootRef} className={`formation-journey${hasEntered ? ' formation-journey--visible' : ''}`} aria-label="Your journey to a US business">
       <div className="formation-journey__scene">
-        <WorldMapBackdrop />
         <div className="formation-journey__label">Your journey to a US business <ArrowRight size={14} aria-hidden="true" /></div>
         <svg className="journey-path" viewBox="0 0 1200 380" preserveAspectRatio="none" aria-hidden="true" focusable="false">
           <defs>

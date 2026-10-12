@@ -112,15 +112,6 @@
   .marketing-site .service-card:hover > div:first-child > span:last-child { translate: 0 -2px; box-shadow: 0 8px 16px -11px rgba(240, 70, 35, .42); }
   .marketing-site .pricing-card--featured:hover { box-shadow: 0 24px 47px -29px rgba(210, 67, 25, .55), inset 0 1px rgba(255, 255, 255, .4); }
 }
-/* Existing hero atmosphere uses a gradient, avoiding a large filter-blur surface. */
-.marketing-site .hero-ambient { position: absolute; pointer-events: none; left: 50%; top: 48%; z-index: -1; width: min(90vw,70rem); height: 30rem; translate: -50% 0; background: radial-gradient(ellipse, #fed7aa24, transparent 70%); }
-/* Native scroll-linked decoration; unsupported browsers retain the static map. */
-@supports (animation-timeline: view()) {
-  @media (min-width: 1024px) and (prefers-reduced-motion: no-preference) {
-    .marketing-site .journey-map { animation: polish-map-drift linear both; animation-timeline: view(); animation-range: entry 0% exit 100%; }
-  }
-}
-@keyframes polish-map-drift { from { translate: 0 8px; } to { translate: 0 -8px; } }
 .marketing-site #testimonials .card-glass:hover { border-color: #e2e8f0; box-shadow: 0 1px 3px #0000000a, 0 1px 2px #00000008; }
 @media (max-width: 767px) {
   .marketing-site { --reveal-distance: 12px; }

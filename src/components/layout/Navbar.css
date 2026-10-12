@@ -3,16 +3,18 @@
 .apex-nav-logo img { display: block; flex: none; width: 40px; height: 40px; object-fit: contain; }
 .apex-nav-company { color: #171717; font-size: 17px; font-weight: 750; letter-spacing: -.04em; white-space: nowrap; }
 @media (min-width: 640px) { .apex-nav-logo { gap: 10px; } .apex-nav-logo img { width: 54px; height: 54px; } .apex-nav-company { font-size: 23px; } }
-.apex-services-position { position: absolute; top: 100%; left: 50%; width: min(800px, calc(100vw - 48px)); transform: translateX(-50%); padding-top: 10px; }
+.apex-services-position { position: absolute; top: 100%; left: 50%; width: min(1120px, calc(100vw - 32px)); transform: translateX(-50%); padding-top: 10px; }
 .apex-services-panel { overflow: auto; max-height: calc(100dvh - 100px); border: 1px solid #e8e4e1; border-radius: 20px; background: #fff; box-shadow: 0 22px 55px -20px #35261933, 0 4px 12px #17171708; animation: apex-menu-enter .18s ease-out both; }
-.apex-services-columns { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); padding: 25px 24px 18px; gap: 24px; }
-.apex-services-column + .apex-services-column { border-left: 1px solid #f0ece9; padding-left: 24px; }
-.apex-services-heading { margin: 0 0 14px; padding: 0 10px; color: #171717; font-size: 13px; font-weight: 800; letter-spacing: .01em; }
+.apex-services-columns { display: grid; grid-template-columns: 1.1fr .95fr 1.1fr; padding: 22px 18px 16px; gap: 16px; }
+.apex-services-column { min-width: 0; }
+.apex-services-column + .apex-services-column { border-left: 1px solid #f0ece9; padding-left: 16px; }
+.apex-services-heading { display: flex; align-items: baseline; flex-wrap: wrap; gap: 5px 8px; margin: 0 0 12px; padding: 0 8px; color: #171717; font-size: 13px; font-weight: 800; letter-spacing: .01em; }
 .apex-services-heading::before { content: ''; display: inline-block; width: 5px; height: 14px; margin-right: 9px; border-radius: 4px; background: #f04623; vertical-align: -2px; }
+.apex-services-subheading { border-radius: 5px; background: #fff2eb; padding: 3px 6px; color: #b93a1b; font-size: 10px; font-weight: 800; white-space: nowrap; }
 .apex-services-list { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
-.apex-service-item { display: flex; min-height: 53px; align-items: center; gap: 11px; border-radius: 11px; padding: 7px 10px; font-size: 12px; font-weight: 600; line-height: 1.4; color: #343434; transition: background-color .16s ease,color .16s ease; }
+.apex-service-item { display: flex; min-height: 47px; align-items: center; gap: 9px; border-radius: 10px; padding: 6px 8px; font-size: 11.5px; font-weight: 600; line-height: 1.35; color: #343434; transition: background-color .16s ease,color .16s ease; }
 a.apex-service-item:hover, a.apex-service-item:focus-visible { color: #c53516; background: #fff5ef; }
-.apex-service-icon { display: grid; place-items: center; width: 34px; height: 34px; flex: none; border-radius: 9px; background: #fff3ec; color: #f04623; }
+.apex-service-icon { display: grid; place-items: center; width: 31px; height: 31px; flex: none; border-radius: 9px; background: #fff3ec; color: #f04623; }
 .apex-service-arrow { margin-left: auto; flex: none; color: #f04623; opacity: 0; transform: translateX(-3px); transition: opacity .16s ease,transform .16s ease; }
 a.apex-service-item:hover .apex-service-arrow,a.apex-service-item:focus-visible .apex-service-arrow { opacity: 1; transform: none; }
 .apex-service-item--disabled { color: #747474; cursor: default; }
@@ -26,10 +28,19 @@ a.apex-service-item:hover .apex-service-arrow,a.apex-service-item:focus-visible 
 .apex-services-start:hover { background: #d83a1b; }
 .apex-services-panel a:focus-visible,.apex-services-mobile a:focus-visible { outline: 2px solid #f04623; outline-offset: 2px; }
 .apex-services-mobile { margin: 8px 0 12px; border: 1px solid #eee8e3; border-radius: 15px; background: #fff; overflow: hidden; }
-.apex-services-mobile .apex-services-columns { grid-template-columns: 1fr; padding: 20px 10px 12px; gap: 20px; }
-.apex-services-mobile .apex-services-column + .apex-services-column { border-left: 0; padding: 18px 0 0; border-top: 1px solid #f0ece9; }
-.apex-services-mobile .apex-service-item { min-height: 54px; font-size: 13px; }
+.apex-services-mobile-categories { padding: 8px; }
+.apex-services-mobile-category + .apex-services-mobile-category { border-top: 1px solid #f0ece9; }
+.apex-services-accordion-button { display: flex; width: 100%; min-height: 48px; align-items: center; justify-content: space-between; gap: 12px; border-radius: 10px; padding: 10px 12px; color: #171717; font-size: 14px; font-weight: 800; text-align: left; }
+.apex-services-accordion-button:hover,.apex-services-accordion-button:focus-visible { background: #fff5ef; outline-color: #f04623; }
+.apex-services-accordion-button svg { flex: none; color: #f04623; transition: transform .2s ease; }
+.apex-services-accordion-button[aria-expanded="true"] svg { transform: rotate(180deg); }
+.apex-services-accordion-button--nested { min-height: 44px; padding-left: 20px; color: #a84027; font-size: 12px; }
+.apex-services-accordion-content { display: grid; grid-template-rows: 0fr; opacity: 0; visibility: hidden; transition: grid-template-rows .25s ease, opacity .2s ease, visibility .25s; }
+.apex-services-accordion-content[data-open="true"] { grid-template-rows: 1fr; opacity: 1; visibility: visible; }
+.apex-services-accordion-inner { min-height: 0; overflow: hidden; }
+.apex-services-accordion-content--nested > .apex-services-accordion-inner { padding: 0 8px 10px 14px; }
+.apex-services-mobile .apex-service-item { min-height: 50px; font-size: 12px; }
 .apex-services-mobile .apex-services-footer { padding: 16px 20px; }
 @media (min-width: 1024px) { .apex-nav-bar { grid-template-columns: minmax(0,1fr) auto minmax(0,1fr); } .apex-nav-logo img { width: 60px; height: 60px; } }
 @keyframes apex-menu-enter { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
-@media (prefers-reduced-motion: reduce) { .apex-services-panel { animation: none; } .apex-service-item,.apex-service-arrow { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .apex-services-panel { animation: none; } .apex-service-item,.apex-service-arrow,.apex-services-accordion-button svg,.apex-services-accordion-content { transition: none; } }
