@@ -17,10 +17,10 @@ const languages: { code: Language; name: string; nativeName: string }[] = [
 ];
 
 const navigationCopy = {
-  en: { home: 'Home', services: 'Services', allServices: 'All services', pricing: 'Pricing', about: 'About', contact: 'Contact', portal: 'Client portal', serviceNames: ['LLC Formation', 'Registered Agent', 'EIN', 'Business Licenses', 'Annual Compliance', 'Business Documents'] },
-  es: { home: 'Inicio', services: 'Servicios', allServices: 'Todos los servicios', pricing: 'Precios', about: 'Nosotros', contact: 'Contacto', portal: 'Portal del cliente', serviceNames: ['Formación de LLC', 'Agente registrado', 'EIN', 'Licencias comerciales', 'Cumplimiento anual', 'Documentos empresariales'] },
-  fr: { home: 'Accueil', services: 'Services', allServices: 'Tous les services', pricing: 'Tarifs', about: 'À propos', contact: 'Contact', portal: 'Portail client', serviceNames: ["Création d’une LLC", 'Agent enregistré', 'EIN', 'Licences commerciales', 'Conformité annuelle', 'Documents commerciaux'] },
-  pt: { home: 'Início', services: 'Serviços', allServices: 'Todos os serviços', pricing: 'Preços', about: 'Sobre', contact: 'Contato', portal: 'Portal do cliente', serviceNames: ['Abertura de LLC', 'Agente registrado', 'EIN', 'Licenças comerciais', 'Conformidade anual', 'Documentos empresariais'] },
+  en: { home: 'Home', services: 'Services', allServices: 'All services', pricing: 'Pricing', about: 'About', contact: 'Contact', portal: 'Client portal' },
+  es: { home: 'Inicio', services: 'Servicios', allServices: 'Todos los servicios', pricing: 'Precios', about: 'Nosotros', contact: 'Contacto', portal: 'Portal del cliente' },
+  fr: { home: 'Accueil', services: 'Services', allServices: 'Tous les services', pricing: 'Tarifs', about: 'À propos', contact: 'Contact', portal: 'Portail client' },
+  pt: { home: 'Início', services: 'Serviços', allServices: 'Todos os serviços', pricing: 'Preços', about: 'Sobre', contact: 'Contato', portal: 'Portal do cliente' },
 };
 
 interface NavbarProps {

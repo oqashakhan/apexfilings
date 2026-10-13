@@ -24,10 +24,10 @@ const homeServiceCopy: Record<string, { description: string; benefits: string[];
     benefits: ['Review based on your activity', 'Location-specific considerations', 'Organized next steps'],
     cta: 'Explore Business Licenses',
   },
-  'annual-compliance': {
-    description: 'Stay on top of annual reports, state fees and other recurring deadlines.',
-    benefits: ['Recurring requirements explained', 'Organized business information', 'Next-step guidance'],
-    cta: 'Explore Annual Compliance',
+  'annual-report': {
+    description: 'Many states require an LLC to file an annual or periodic report to remain in good standing. Apex Filings prepares and submits the report before the deadline.',
+    benefits: ['Check state deadline and requirements', 'Prepare and file the report', 'Provide filing confirmation'],
+    cta: 'Explore Annual Report Filing',
   },
   'business-documents': {
     description: 'Keep key records, such as formation documents and your operating agreement, organized and easy to find.',
@@ -54,7 +54,7 @@ export function ServicesSection() {
 
         <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3 lg:gap-6">
           {SERVICES.map((service, index) => (
-            <ServiceCard key={service.id} service={service} number={index + 1} cardCopy={homeServiceCopy[service.id]} />
+            <ServiceCard key={service.id} service={service} number={index + 1} featured={service.id === 'llc-formation'} cardCopy={homeServiceCopy[service.id]} />
           ))}
         </div>
       </div>

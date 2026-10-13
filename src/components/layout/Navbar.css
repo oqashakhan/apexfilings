@@ -5,14 +5,18 @@
 @media (min-width: 640px) { .apex-nav-logo { gap: 10px; } .apex-nav-logo img { width: 54px; height: 54px; } .apex-nav-company { font-size: 23px; } }
 .apex-services-position { position: absolute; top: 100%; left: 50%; width: min(1120px, calc(100vw - 32px)); transform: translateX(-50%); padding-top: 10px; }
 .apex-services-panel { overflow: auto; max-height: calc(100dvh - 100px); border: 1px solid #e8e4e1; border-radius: 20px; background: #fff; box-shadow: 0 22px 55px -20px #35261933, 0 4px 12px #17171708; animation: apex-menu-enter .18s ease-out both; }
-.apex-services-columns { display: grid; grid-template-columns: 1.1fr .95fr 1.1fr; padding: 22px 18px 16px; gap: 16px; }
+.apex-services-columns { display: grid; grid-template-columns: minmax(0,2fr) minmax(0,1fr); padding: 22px 18px 16px; gap: 16px; }
+.apex-formation-groups { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; }
+.apex-services-desktop-group { min-width: 0; }
+.apex-services-desktop-group + .apex-services-desktop-group { border-left: 1px solid #f0ece9; padding-left: 12px; }
 .apex-services-column { min-width: 0; }
 .apex-services-column + .apex-services-column { border-left: 1px solid #f0ece9; padding-left: 16px; }
 .apex-services-heading { display: flex; align-items: baseline; flex-wrap: wrap; gap: 5px 8px; margin: 0 0 12px; padding: 0 8px; color: #171717; font-size: 13px; font-weight: 800; letter-spacing: .01em; }
 .apex-services-heading::before { content: ''; display: inline-block; width: 5px; height: 14px; margin-right: 9px; border-radius: 4px; background: #f04623; vertical-align: -2px; }
-.apex-services-subheading { border-radius: 5px; background: #fff2eb; padding: 3px 6px; color: #b93a1b; font-size: 10px; font-weight: 800; white-space: nowrap; }
+.apex-services-subheading { display: inline-flex; margin: 0 0 8px 8px; border-radius: 5px; background: #fff2eb; padding: 3px 6px; color: #b93a1b; font-size: 10px; font-weight: 800; white-space: nowrap; }
 .apex-services-list { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
 .apex-service-item { display: flex; min-height: 47px; align-items: center; gap: 9px; border-radius: 10px; padding: 6px 8px; font-size: 11.5px; font-weight: 600; line-height: 1.35; color: #343434; transition: background-color .16s ease,color .16s ease; }
+.apex-services-panel .apex-service-item { min-height: 40px; }
 a.apex-service-item:hover, a.apex-service-item:focus-visible { color: #c53516; background: #fff5ef; }
 .apex-service-icon { display: grid; place-items: center; width: 31px; height: 31px; flex: none; border-radius: 9px; background: #fff3ec; color: #f04623; }
 .apex-service-arrow { margin-left: auto; flex: none; color: #f04623; opacity: 0; transform: translateX(-3px); transition: opacity .16s ease,transform .16s ease; }
@@ -20,7 +24,6 @@ a.apex-service-item:hover .apex-service-arrow,a.apex-service-item:focus-visible 
 .apex-service-item--disabled { color: #747474; cursor: default; }
 .apex-service-item--disabled .apex-service-icon { background: #f6f6f5; color: #929292; }
 .apex-service-label { display: flex; min-width: 0; flex-direction: column; gap: 3px; }
-.apex-service-soon { color: #737373; font-size: 9px; font-weight: 500; letter-spacing: .03em; }
 .apex-services-footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 15px 34px; border-top: 1px solid #f0ece9; background: #fffbf8; }
 .apex-services-all { color: #636363; font-size: 12px; font-weight: 600; }
 .apex-services-all:hover { color: #c53516; }

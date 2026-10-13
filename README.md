@@ -38,6 +38,8 @@ Supported page routes include `/pricing`, `/contact`, `/why-us` (also available 
 
 After changing deployment configuration, redeploy the site. For a manual Netlify upload, upload the entire freshly built `dist` folder, including `_redirects`, rather than the source folder.
 
+The consultation form uses Netlify Forms. Keep form detection enabled in the Netlify site settings and deploy the built `dist/index.html`, which contains the static form definition. Verified submissions appear in the Netlify Forms area. Set `VITE_PRIVACY_POLICY_URL` to the published, owner-approved policy URL in Netlify's build environment before deploying; the public submit button stays disabled until then. Set the team's email recipient under **Forms → Submission notifications** once the inbox is confirmed. There is no separate project admin lead store or automatic customer email integration yet.
+
 ```
 ├── src/
 │   ├── components/

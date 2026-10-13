@@ -46,10 +46,10 @@ export function LoginPortalModal({ isOpen, onClose }: LoginPortalModalProps) {
           </div>
           <h2 id="client-portal-title" className="mt-4 text-xl font-bold text-[#0F172A]">Client portal coming soon</h2>
           <p className="mt-3 text-sm leading-relaxed text-slate-600">
-            Online account access is being prepared. For help with Apex Filings services, please use the contact form on this page.
+            Online account access is being prepared. For help with Apex Filings services, please use the contact page.
           </p>
           <a
-            href="#contact"
+            href="/contact"
             onClick={onClose}
             className="mt-6 inline-flex min-h-11 items-center justify-center rounded-xl bg-[#F04623] px-6 text-sm font-semibold text-white transition-colors hover:bg-[#e03e1b] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F04623] focus-visible:ring-offset-2"
           >

@@ -27,7 +27,12 @@
 .marketing-site .apex-services-panel { animation-duration: 220ms; animation-timing-function: var(--polish-ease); }
 .marketing-site .apex-service-item { transition-duration: 200ms; }
 .marketing-site .apex-service-arrow { transition-duration: 220ms; }
-/* Reusable light surfaces for selected public-site cards and panels. */
+/* Reusable surfaces for selected public-site cards and panels. */
+.marketing-site .dark-glass {
+  background: rgba(25, 31, 41, .96);
+  border-color: rgba(255, 255, 255, .08);
+  box-shadow: 0 16px 40px rgba(15, 20, 28, .16);
+}
 .marketing-site .soft-glass {
   background-color: rgba(255, 255, 255, .9);
   border-color: rgba(224, 215, 210, .84);
@@ -50,6 +55,10 @@
   border-color: rgba(240, 70, 35, .42);
   box-shadow: 0 15px 32px -24px rgba(180, 65, 32, .35), inset 0 1px rgba(255, 255, 255, .96);
 }
+.marketing-site .premium-glass--support-featured:is(:hover, :focus-within) {
+  border-color: rgba(240, 70, 35, .48);
+  box-shadow: 0 18px 42px -25px rgba(25, 31, 41, .5);
+}
 @media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
   .marketing-site .premium-glass--support:hover { transform: translateY(-2px); }
 }
@@ -64,20 +73,21 @@
 }
 .marketing-site .why-reason-card { transition: translate 250ms var(--polish-ease), border-color 250ms ease, box-shadow 250ms ease; }
 .marketing-site .why-reason-card > span:first-child { background: rgba(255, 241, 234, .95); }
+.marketing-site .why-reason-card--featured > span:first-child { background: rgba(240, 70, 35, .14); border-color: rgba(240, 70, 35, .35); }
 .marketing-site .about-feature-card { transition: border-color 230ms ease, box-shadow 230ms ease; }
 .marketing-site .about-feature-card:is(:first-child, :last-child) {
   background: linear-gradient(135deg, rgba(255, 248, 245, .95), rgba(255, 255, 255, .9));
   border-color: rgba(240, 70, 35, .19);
 }
 .marketing-site .service-card { isolation: isolate; }
-.marketing-site #services .service-card:nth-child(-n+2) {
+.marketing-site #services .service-card:nth-child(-n+2):not(.service-card--featured) {
   background-image: radial-gradient(circle at 90% 8%, rgba(255, 225, 211, .44), transparent 42%);
 }
 .marketing-site .service-card > div:first-child > span:last-child { transition: translate 240ms var(--polish-ease), background-color 240ms ease, box-shadow 240ms ease; }
 .marketing-site .pricing-card { transition: translate 260ms var(--polish-ease), border-color 240ms ease, box-shadow 260ms ease; }
 .marketing-site .pricing-card--featured {
-  border-color: rgba(255, 221, 206, .75);
-  box-shadow: 0 20px 44px -27px rgba(210, 67, 25, .48), inset 0 1px rgba(255, 255, 255, .34);
+  border-color: rgba(240, 70, 35, .35);
+  box-shadow: 0 20px 44px -27px rgba(25, 31, 41, .48), inset 0 1px rgba(255, 255, 255, .08);
 }
 .marketing-site #additional-support-cards .premium-glass--support:first-child {
   background: linear-gradient(130deg, rgba(255, 245, 239, .95), rgba(255, 255, 255, .89) 74%);
@@ -110,7 +120,8 @@
   .marketing-site .service-card:hover { border-color: rgba(240, 70, 35, .38); }
   .marketing-site .about-feature-card:hover { border-color: rgba(240, 70, 35, .35); box-shadow: 0 17px 36px -27px rgba(89, 48, 34, .3); }
   .marketing-site .service-card:hover > div:first-child > span:last-child { translate: 0 -2px; box-shadow: 0 8px 16px -11px rgba(240, 70, 35, .42); }
-  .marketing-site .pricing-card--featured:hover { box-shadow: 0 24px 47px -29px rgba(210, 67, 25, .55), inset 0 1px rgba(255, 255, 255, .4); }
+  .marketing-site .pricing-card--featured:hover { box-shadow: 0 24px 47px -29px rgba(25, 31, 41, .55), inset 0 1px rgba(255, 255, 255, .08); }
+  .marketing-site .why-reason-card--featured:hover { box-shadow: 0 20px 44px -29px rgba(25, 31, 41, .45), inset 0 1px rgba(255, 255, 255, .08); }
 }
 .marketing-site #testimonials .card-glass:hover { border-color: #e2e8f0; box-shadow: 0 1px 3px #0000000a, 0 1px 2px #00000008; }
 @media (max-width: 767px) {

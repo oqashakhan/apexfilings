@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { ConsultationFormSection } from '../forms/ConsultationForm';
 import { ArrowRight, Check, ChevronRight, CircleHelp, Sparkles } from 'lucide-react';
 import { SERVICES } from '../../data/services';
 import type { ServiceItem } from '../../types';
@@ -130,6 +131,7 @@ export function ServiceDetailPage({ service }: { service: ServiceItem }) {
       <FAQSection items={service.faqs} eyebrow={`${service.title} questions`} heading="Frequently Asked Questions" description={`Answers to common questions about ${service.title.toLowerCase()}.`} />
       <section className="bg-[#fcf9f8] py-20 sm:py-24" aria-label="Related services"><div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8"><SectionHeading eyebrow="Keep moving forward" title="You May Also Need" description="Explore related services that can support your next step." /><div className="grid gap-5 md:grid-cols-3">{related.map((item) => <ServiceCard key={item.id} service={item} compact />)}</div></div></section>
       <section className="bg-[#171717] py-20 text-white sm:py-24" aria-label="Get started"><div className="mx-auto max-w-4xl px-4 text-center sm:px-6"><div className="mx-auto mb-6 h-1 w-12 rounded-full bg-[#F04623]" aria-hidden="true" /><h2 className="text-3xl font-extrabold tracking-tight sm:text-4xl">Ready to Get Started?</h2><p className="mx-auto mt-5 max-w-2xl text-base leading-7 text-neutral-300">Take the first step toward starting and managing your business with Apex Filings.</p><a href={service.id === 'llc-formation' ? '/formation/start?source=service&service=llc-formation' : '/how-it-works'} className="polish-button polish-primary mt-8 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#F04623] px-7 py-3 text-sm font-semibold text-white transition-[transform,background-color] motion-safe:hover:-translate-y-0.5 hover:bg-[#e03e1b] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F04623] focus-visible:ring-offset-2 sm:w-auto">Start My Business <ArrowRight className="h-4 w-4" aria-hidden="true" /></a></div></section>
+      <ConsultationFormSection serviceSlug={service.id} />
     </div>
   );
 }

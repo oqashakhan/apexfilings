@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import {
-  ArrowRight, ArrowRightLeft, Award, BadgeCheck, Building2, CalendarDays,
-  ChevronDown, CircleX, ClipboardCheck, FilePenLine, FileSignature, FileText,
+  ArrowRight, Award, BadgeCheck, Building2, CalendarDays,
+  ChevronDown, CircleX, FilePenLine, FileSignature, FileText,
   IdCard, Landmark, Mail, MapPin, MessagesSquare, ReceiptText, RotateCcw,
-  ScanLine, Search, ShieldCheck, ShoppingBag, Tags, UserRound, UserRoundCog,
+  ScanLine, Search, ShieldCheck, ShoppingBag, UserRound, UserRoundCog,
   type LucideIcon,
 } from 'lucide-react';
 import type { Language } from './Navbar';
@@ -19,14 +19,13 @@ const categories: ServiceCategory[] = [
         { label: 'LLC Formation', icon: Building2, href: '/services/llc-formation' },
         { label: 'EIN Application', icon: IdCard, href: '/services/ein' },
         { label: 'Registered Agent Service', icon: ShieldCheck, href: '/services/registered-agent' },
-        { label: 'US Address & Mail Forwarding', icon: Mail },
-        { label: 'US Business Bank Account Support', icon: Landmark },
-        { label: 'Operating Agreement', icon: FileSignature },
+        { label: 'US Address & Mail Forwarding', icon: Mail, href: '/services/mail-forwarding' },
+        { label: 'US Business Bank Account Support', icon: Landmark, href: '/services/business-banking' },
+        { label: 'Operating Agreement', icon: FileSignature, href: '/services/operating-agreement' },
         { label: 'Business Licenses & Permits', icon: BadgeCheck, href: '/services/business-licenses' },
-        { label: 'DBA Registration', icon: Tags },
-        { label: 'ITIN Application', icon: ScanLine },
-        { label: 'Trademark Registration', icon: Award },
-        { label: 'Business Formation Consultation', icon: MessagesSquare, href: '/consultation' },
+        { label: 'ITIN Application', icon: ScanLine, href: '/services/itin' },
+        { label: 'Trademark Registration', icon: Award, href: '/services/trademark' },
+        { label: 'Business Formation Consultation', icon: MessagesSquare, href: '/services/consultation' },
       ] },
       { id: 'formation-uk', title: 'UK Ltd', items: [
         { label: 'UK Ltd Company Formation', icon: Building2 },
@@ -42,29 +41,27 @@ const categories: ServiceCategory[] = [
   {
     id: 'management', title: 'Business Management', groups: [
       { id: 'management-us', title: 'US LLC', items: [
-        { label: 'Annual Report Filing', icon: CalendarDays },
-        { label: 'Compliance Management', icon: ClipboardCheck, href: '/services/annual-compliance' },
-        { label: 'Tax Filing for Foreign-Owned LLCs (Form 5472 and pro forma 1120)', icon: ReceiptText },
+        { label: 'Annual Report Filing', icon: CalendarDays, href: '/services/annual-report' },
+        { label: 'Tax Filing for Foreign-Owned LLCs (Form 5472 + pro forma Form 1120)', icon: ReceiptText },
         { label: 'LLC Amendments', icon: FilePenLine },
-        { label: 'Change Registered Agent', icon: UserRoundCog, href: '/services/registered-agent' },
+        { label: 'Change Registered Agent', icon: UserRoundCog },
         { label: 'Certificate of Good Standing', icon: Award },
-        { label: 'Foreign Qualification', icon: ArrowRightLeft },
         { label: 'Reinstatement', icon: RotateCcw },
-        { label: 'Resale Certificate', icon: ShoppingBag },
-        { label: 'LLC Dissolution', icon: CircleX },
+        { label: 'Resale Certificate', icon: ShoppingBag, href: '/services/resale-certificate' },
+        { label: 'LLC Dissolution', icon: CircleX, href: '/services/dissolve-llc' },
       ] },
     ],
   },
 ];
 
 const copy = {
-  en: { soon: 'Coming Soon', all: 'Explore all services', start: 'Start Your Business' },
-  es: { soon: 'Próximamente', all: 'Ver todos los servicios', start: 'Inicie su empresa' },
-  fr: { soon: 'Bientôt', all: 'Tous les services', start: 'Créer votre entreprise' },
-  pt: { soon: 'Em breve', all: 'Ver todos os serviços', start: 'Abra sua empresa' },
+  en: { all: 'Explore all services', start: 'Start Your Business' },
+  es: { all: 'Ver todos los servicios', start: 'Inicie su empresa' },
+  fr: { all: 'Tous les services', start: 'Créer votre entreprise' },
+  pt: { all: 'Ver todos os serviços', start: 'Abra sua empresa' },
 };
 
-function ServiceItems({ items, soon, onNavigate }: { items: ServiceLink[]; soon: string; onNavigate: () => void }) {
+function ServiceItems({ items, onNavigate }: { items: ServiceLink[]; onNavigate: () => void }) {
   return (
     <ul className="apex-services-list">
       {items.map(({ label, icon: Icon, href }) => (
@@ -78,7 +75,7 @@ function ServiceItems({ items, soon, onNavigate }: { items: ServiceLink[]; soon:
           ) : (
             <span className="apex-service-item apex-service-item--disabled" aria-disabled="true">
               <span className="apex-service-icon"><Icon size={17} strokeWidth={1.8} aria-hidden="true" /></span>
-              <span className="apex-service-label">{label}<span className="apex-service-soon">{soon}</span></span>
+              <span className="apex-service-label">{label}</span>
             </span>
           )}
         </li>
@@ -91,7 +88,6 @@ export function ServicesMegaMenu({ language, onNavigate, mobile = false }: { lan
   const text = copy[language];
   const [openCategory, setOpenCategory] = useState<string | null>(null);
   const [openGroup, setOpenGroup] = useState<string | null>(null);
-  const desktopGroups = categories.flatMap((category) => category.groups.map((group) => ({ ...group, categoryTitle: category.title })));
 
   return (
     <div className={mobile ? 'apex-services-mobile' : 'apex-services-panel'}>
@@ -110,7 +106,7 @@ export function ServicesMegaMenu({ language, onNavigate, mobile = false }: { lan
                         {group.title}<ChevronDown size={16} aria-hidden="true" />
                       </button>
                       <div id={`mobile-${group.id}`} className="apex-services-accordion-content apex-services-accordion-content--nested" data-open={openGroup === group.id} aria-hidden={openGroup !== group.id} inert={openGroup !== group.id}>
-                        <div className="apex-services-accordion-inner"><ServiceItems items={group.items} soon={text.soon} onNavigate={onNavigate} /></div>
+                        <div className="apex-services-accordion-inner"><ServiceItems items={group.items} onNavigate={onNavigate} /></div>
                       </div>
                     </div>
                   ))}
@@ -121,10 +117,15 @@ export function ServicesMegaMenu({ language, onNavigate, mobile = false }: { lan
         </div>
       ) : (
         <div className="apex-services-columns">
-          {desktopGroups.map((group) => (
-            <section className="apex-services-column" key={group.id} aria-labelledby={`desktop-${group.id}`}>
-              <h2 id={`desktop-${group.id}`} className="apex-services-heading"><span>{group.categoryTitle}</span><span className="apex-services-subheading">{group.title}</span></h2>
-              <ServiceItems items={group.items} soon={text.soon} onNavigate={onNavigate} />
+          {categories.map((category) => (
+            <section className="apex-services-column" key={category.id} aria-labelledby={`desktop-${category.id}`}>
+              <h2 id={`desktop-${category.id}`} className="apex-services-heading"><span>{category.title}</span></h2>
+              <div className={category.id === 'formation' ? 'apex-formation-groups' : ''}>
+                {category.groups.map((group) => <div className="apex-services-desktop-group" key={group.id}>
+                  <h3 className="apex-services-subheading">{group.title}</h3>
+                  <ServiceItems items={group.items} onNavigate={onNavigate} />
+                </div>)}
+              </div>
             </section>
           ))}
         </div>

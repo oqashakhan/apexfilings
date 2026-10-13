@@ -1,5 +1,12 @@
 import { PricingPlan } from '../types';
 
+export const PRICING_CATEGORIES = [
+  { id: 'us-llc', label: 'US LLC' },
+  { id: 'uk-ltd', label: 'UK Ltd' },
+] as const;
+
+export type PricingCategory = (typeof PRICING_CATEGORIES)[number]['id'];
+
 export const PRICING_DISCLAIMER = 'Package prices exclude applicable state filing fees. Additional third-party charges may apply. EIN processing and bank account or payment provider approvals depend on the relevant authorities and providers.';
 
 export const PRICING_PLANS: PricingPlan[] = [
@@ -26,7 +33,7 @@ export const PRICING_PLANS: PricingPlan[] = [
   },
   {
     id: 'advanced',
-    name: 'Advanced LLC Formation',
+    name: 'Premium All-In',
     badge: 'POPULAR CHOICE',
     subtitle: 'Complete Business Setup',
     priceUsResident: 299,

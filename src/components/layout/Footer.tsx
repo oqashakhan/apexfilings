@@ -6,9 +6,10 @@ import type { Language } from './Navbar';
 interface FooterProps {
   language: Language;
   onLanguageChange: (language: Language) => void;
+  management?: boolean;
 }
 
-export function Footer({ language, onLanguageChange }: FooterProps) {
+export function Footer({ language, onLanguageChange, management = false }: FooterProps) {
   const [logoError, setLogoError] = useState(false);
 
   return (
@@ -104,12 +105,11 @@ export function Footer({ language, onLanguageChange }: FooterProps) {
 
         {/* Legal Disclaimer Paragraph */}
         <div className="border-t border-neutral-800 pt-8 text-[11px] text-neutral-500 leading-relaxed space-y-2">
-          <p>Apex Filings is a business formation service and is not a law firm. We do not provide legal or tax advice.</p>
+          <p>{management ? 'Apex Filings is a business formation service and is not a law firm. We do not provide legal, tax or accounting advice.' : 'Apex Filings is a business formation service and is not a law firm. We do not provide legal or tax advice.'}</p>
           <p>
             <strong className="text-neutral-400">Disclaimer:</strong> Apex Filings is not a law firm
             and does not provide legal, tax, or investment advice. The materials and information
-            provided on apexfiling.com, as well as shared by our client success representatives via
-            email (support@apexfiling.com), live chat, or phone, are for informational purposes only
+            provided on apexfiling.com, as well as shared through direct communication, are for informational purposes only
             and should not be taken as certified legal counsel. By accessing our services, you agree
             to our Terms of Service and Privacy Policy.
           </p>

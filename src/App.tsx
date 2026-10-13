@@ -19,6 +19,8 @@ import { LoginPortalModal } from './components/modals/LoginPortalModal';
 import { PricingPage } from './components/pages/PricingPage';
 import { ContactPage } from './components/pages/ContactPage';
 import { getServiceBySlug } from './data/services';
+import { getUsServicePage } from './data/usServicePages';
+import { getManagementServicePage } from './data/managementServicePages';
 import { PricingPlan, TopState } from './types';
 
 const WhyApexPage = lazy(() => import('./components/why/WhyApexPage').then((module) => ({ default: module.WhyApexPage })));
@@ -26,6 +28,8 @@ const StartPage = lazy(() => import('./components/start/StartPage').then((module
 const FormationWizard = lazy(() => import('./components/formation/FormationWizard').then((module) => ({ default: module.FormationWizard })));
 const FormationProcessPage = lazy(() => import('./components/pages/FormationProcessPage').then((module) => ({ default: module.FormationProcessPage })));
 const ServiceDetailPage = lazy(() => import('./components/services/ServiceDetailPage').then((module) => ({ default: module.ServiceDetailPage })));
+const UsServicePage = lazy(() => import('./components/services/UsServicePage').then((module) => ({ default: module.UsServicePage })));
+const ManagementServicePage = lazy(() => import('./components/services/ManagementServicePage').then((module) => ({ default: module.ManagementServicePage })));
 
 export default function App() {
   const [path, setPath] = useState(window.location.pathname);
@@ -82,7 +86,13 @@ export default function App() {
     window.scrollTo(0, 0);
   };
 
-  const handleSelectPlan = (plan: PricingPlan, isNonUs: boolean) => navigateToFormation({ source: 'pricing', plan: plan.id, residency: isNonUs ? 'non-us' : 'us', service: 'llc-formation' });
+  const handleSelectPlan = (plan: PricingPlan, isNonUs: boolean) => navigateToFormation({
+    source: 'pricing',
+    state: new URLSearchParams(window.location.search).get('state') || undefined,
+    plan: plan.id,
+    residency: isNonUs ? 'non-us' : 'us',
+    service: 'llc-formation',
+  });
   const handleSelectState = (state: TopState) => navigateToFormation({ source: 'state-card', state: state.id, service: 'llc-formation' });
 
   if (routePath === '/start') {
@@ -94,6 +104,8 @@ export default function App() {
   }
 
   const serviceSlug = routePath.startsWith('/services/') ? routePath.slice('/services/'.length) : null;
+  const usServicePage = serviceSlug ? getUsServicePage(serviceSlug) : undefined;
+  const managementServicePage = serviceSlug ? getManagementServicePage(serviceSlug) : undefined;
   const selectedService = serviceSlug ? getServiceBySlug(serviceSlug) : undefined;
 
   return (
@@ -104,7 +116,7 @@ export default function App() {
       {/* Main Content */}
       <main ref={mainRef} className="flex-1">
         {serviceSlug ? (
-          selectedService ? <Suspense fallback={<div className="min-h-screen bg-white" />}><ServiceDetailPage service={selectedService} /></Suspense> : <section className="mx-auto min-h-[60vh] max-w-7xl px-4 py-24 text-center"><h1 className="text-3xl font-bold text-[#171717]">Service not found</h1><p className="mt-4 text-slate-600">Explore the services currently available through Apex Filings.</p><a href="/#services" className="mt-6 inline-flex text-sm font-semibold text-[#F04623] underline underline-offset-4">View all services</a></section>
+          usServicePage ? <Suspense fallback={<div className="min-h-screen bg-white" />}><UsServicePage page={usServicePage} /></Suspense> : managementServicePage ? <Suspense fallback={<div className="min-h-screen bg-white" />}><ManagementServicePage page={managementServicePage} onOpenClientPortal={() => setLoginModalOpen(true)} /></Suspense> : selectedService ? <Suspense fallback={<div className="min-h-screen bg-white" />}><ServiceDetailPage service={selectedService} /></Suspense> : <section className="mx-auto min-h-[60vh] max-w-7xl px-4 py-24 text-center"><h1 className="text-3xl font-bold text-[#171717]">Service not found</h1><p className="mt-4 text-slate-600">Explore the services currently available through Apex Filings.</p><a href="/#services" className="mt-6 inline-flex text-sm font-semibold text-[#F04623] underline underline-offset-4">View all services</a></section>
         ) : routePath === '/how-it-works' ? <Suspense fallback={<div className="min-h-screen" role="status">Loading your business journey…</div>}><FormationProcessPage /></Suspense>
           : routePath === '/pricing' ? <PricingPage onSelectPlan={handleSelectPlan} />
           : routePath === '/contact' || routePath === '/consultation' ? <ContactPage consultation={routePath === '/consultation'} />
@@ -150,7 +162,7 @@ export default function App() {
       </main>
 
       {/* Mega Footer */}
-      <Footer language={language} onLanguageChange={handleLanguageChange} />
+      <Footer language={language} onLanguageChange={handleLanguageChange} management={Boolean(managementServicePage)} />
 
       {/* Modals & Interactive Overlays */}
       <LoginPortalModal

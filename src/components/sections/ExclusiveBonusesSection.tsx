@@ -74,12 +74,13 @@ export function ExclusiveBonusesSection() {
               {bonuses.map((bonus) => {
                 const Icon = bonus.icon;
                 const expanded = expandedBenefits.includes(bonus.id);
+                const featured = bonus.id === 'banking';
 
                 return (
                   <div
                     key={bonus.id}
                     data-scroll-reveal
-                    className={`premium-glass premium-glass--support self-start overflow-hidden rounded-2xl border transition-[border-color,box-shadow,transform] duration-250 motion-reduce:transition-none ${expanded ? 'premium-glass--selected' : ''}`}
+                    className={`self-start overflow-hidden rounded-2xl border transition-[border-color,box-shadow,transform] duration-250 motion-reduce:transition-none ${featured ? 'dark-glass premium-glass--support-featured' : `premium-glass premium-glass--support ${expanded ? 'premium-glass--selected' : ''}`}`}
                   >
                     <button
                       type="button"
@@ -92,16 +93,16 @@ export function ExclusiveBonusesSection() {
                         <Icon className="h-6 w-6" strokeWidth={1.8} aria-hidden="true" />
                       </span>
                       <span className="min-w-0 flex-1">
-                        <span className="block text-sm font-bold leading-5 tracking-tight text-[#101828]">{bonus.title}</span>
-                        <span className="mt-1 block text-xs leading-5 text-[#536078]">{bonus.description}</span>
+                        <span className={`block text-sm font-bold leading-5 tracking-tight ${featured ? 'text-white' : 'text-[#101828]'}`}>{bonus.title}</span>
+                        <span className={`mt-1 block text-xs leading-5 ${featured ? 'text-[#D1D7DF]' : 'text-[#536078]'}`}>{bonus.description}</span>
                       </span>
                       <ArrowRight
-                        className={`h-4 w-4 shrink-0 text-[#263142] transition-transform duration-200 group-hover:text-[#F04623] motion-reduce:transition-none ${expanded ? 'rotate-90' : 'group-hover:translate-x-0.5 motion-reduce:group-hover:translate-x-0'}`}
+                        className={`h-4 w-4 shrink-0 transition-transform duration-200 motion-reduce:transition-none ${featured ? 'text-[#FF805E] group-hover:text-white' : 'text-[#263142] group-hover:text-[#F04623]'} ${expanded ? 'rotate-90' : 'group-hover:translate-x-0.5 motion-reduce:group-hover:translate-x-0'}`}
                         aria-hidden="true"
                       />
                     </button>
                     <div id={`additional-support-${bonus.id}`} hidden={!expanded} className="px-4 pb-4">
-                      <p className="border-t border-[#F1EBE7] pt-3 text-xs leading-5 text-[#536078]">{bonus.detail}</p>
+                      <p className={`border-t pt-3 text-xs leading-5 ${featured ? 'border-white/15 text-[#D1D7DF]' : 'border-[#F1EBE7] text-[#536078]'}`}>{bonus.detail}</p>
                     </div>
                   </div>
                 );

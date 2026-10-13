@@ -12,8 +12,8 @@ export const FOOTER_LINKS = {
     { label: 'US LLC Formation', href: '/services/llc-formation' },
     { label: 'IRS EIN Registration', href: '/services/ein' },
     { label: 'Registered Agent', href: '/services/registered-agent' },
-    { label: 'ITIN Filing Assistance', href: '/#services' },
-    { label: 'US Bank Account Setup', href: '/#services' },
+    { label: 'ITIN Filing Assistance', href: '/services/itin' },
+    { label: 'US Bank Account Setup', href: '/services/business-banking' },
   ],
   company: [
     { label: 'About Apex Filings', href: '/why-us' },

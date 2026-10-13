@@ -21,6 +21,21 @@
   </head>
   <body class="bg-[#fcf9f8] text-slate-700 font-sans antialiased overflow-x-hidden selection:bg-[#F04623] selection:text-white">
     <div id="root"></div>
+    <!-- Netlify discovers this form in the built HTML; the visible form is rendered by React. -->
+    <form name="apex-consultation" method="POST" data-netlify="true" data-netlify-honeypot="bot-field" hidden>
+      <input name="bot-field" />
+      <input name="name" />
+      <input name="email" type="email" />
+      <input name="country" />
+      <input name="contact-method" />
+      <input name="service" />
+      <input name="phone-country" />
+      <input name="phone" />
+      <textarea name="business"></textarea>
+      <input name="state" />
+      <input name="privacy-consent" />
+      <input name="source" />
+    </form>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
