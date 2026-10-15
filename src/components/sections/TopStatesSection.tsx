@@ -27,11 +27,11 @@ export function TopStatesSection({ onSelectState }: TopStatesSectionProps) {
                 key={state.id}
                 type="button"
                 onClick={() => onSelectState(state)}
-                className={`top-state-card top-state-card--${state.tagVariant}${index === 0 ? ' top-state-card--featured' : ''}`}
+                className={`top-state-card clay-card-soft top-state-card--${state.tagVariant}${index === 0 ? ' top-state-card--featured' : ''}`}
               >
                 <span className="top-state-card__top">
                   <span className="top-state-card__icon"><MapPin size={19} strokeWidth={1.9} aria-hidden="true" /></span>
-                  <span className="top-state-card__badge">{state.tag}</span>
+                  <span className="top-state-card__badge clay-badge">{state.tag}</span>
                 </span>
                 <span className="top-state-card__name">{state.name}</span>
                 <span className="top-state-card__description">{state.description}</span>

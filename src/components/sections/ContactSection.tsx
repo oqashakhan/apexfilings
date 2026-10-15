@@ -11,7 +11,7 @@ export function ContactSection({ asPage = false, consultation = false, ukLtd = f
         <p className="mt-4 text-base leading-8 text-slate-600">{ukLtd ? 'Ask about UK Ltd formation packages, pricing and the steps for your company.' : 'Tell us about your business and what you need help with. A specialist will reply with clear next steps for your US company.'}</p>
       </div>
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(280px,0.65fr)] lg:gap-8">
-        <div className="rounded-3xl border border-orange-100 bg-white/90 p-5 shadow-[0_24px_70px_-44px_rgba(23,23,23,0.28)] backdrop-blur-sm sm:p-8 lg:p-10">
+        <div className="clay-card-soft rounded-3xl border border-orange-100 bg-white/90 p-5 shadow-[0_24px_70px_-44px_rgba(23,23,23,0.28)] backdrop-blur-sm sm:p-8 lg:p-10">
           <ConsultationForm />
         </div>
         <aside className="space-y-5" aria-labelledby="talk-to-apex">

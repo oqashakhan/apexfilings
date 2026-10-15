@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { FAQS } from '../../data/faqs';
 import type { FAQItem } from '../../types';
+import './FAQSection.css';
 
 interface FAQSectionProps {
   items?: FAQItem[];
@@ -37,12 +38,13 @@ export function FAQSection({ items = FAQS, eyebrow = 'Got Questions?', heading =
             return (
               <div
                 key={faq.id}
-                className="card-glass rounded-xl p-5 border-slate-200 transition-[transform,background-color,border-color,box-shadow,color] hover:border-slate-300"
+                className="card-glass clay-card-soft rounded-xl p-5 border-slate-200 transition-[transform,background-color,border-color,box-shadow,color] hover:border-slate-300"
               >
                 <button
                   type="button"
                   onClick={() => toggleFaq(faq.id)}
                   aria-expanded={isOpen}
+                  aria-controls={`faq-answer-${faq.id}`}
                   className="w-full text-left text-base font-bold text-[#0F172A] flex items-center justify-between cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#F04623]"
                 >
                   <span className="pr-4">{faq.question}</span>
@@ -55,11 +57,13 @@ export function FAQSection({ items = FAQS, eyebrow = 'Got Questions?', heading =
                   </span>
                 </button>
 
-                {isOpen && (
-                  <p className="text-xs sm:text-sm text-slate-600 mt-3 leading-relaxed border-t border-slate-100 pt-3 animate-in fade-in duration-150">
-                    {faq.answer}
-                  </p>
-                )}
+                <div id={`faq-answer-${faq.id}`} className="apex-faq-answer" data-open={isOpen} aria-hidden={!isOpen}>
+                  <div className="apex-faq-answer__inner">
+                    <p className="text-xs sm:text-sm text-slate-600 mt-3 leading-relaxed border-t border-slate-100 pt-3">
+                      {faq.answer}
+                    </p>
+                  </div>
+                </div>
               </div>
             );
           })}

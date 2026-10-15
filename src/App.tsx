@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import './marketing-polish.css';
+import './clay-system.css';
 import { usePageScrollReveals } from './hooks/usePageScrollReveals';
 import { Navbar, type Language } from './components/layout/Navbar';
 import { Footer } from './components/layout/Footer';
@@ -110,7 +111,7 @@ export default function App() {
   const selectedService = serviceSlug ? getServiceBySlug(serviceSlug) : undefined;
 
   return (
-    <div className="marketing-site min-h-screen flex flex-col bg-[#fcf9f8] text-slate-700 font-sans selection:bg-[#F04623] selection:text-white">
+    <div className="marketing-site clay-theme min-h-screen flex flex-col bg-[#fcf9f8] text-slate-700 font-sans selection:bg-[#F04623] selection:text-white">
       {/* Navigation */}
       <Navbar onOpenClientPortal={() => setLoginModalOpen(true)} language={language} onLanguageChange={handleLanguageChange} />
 

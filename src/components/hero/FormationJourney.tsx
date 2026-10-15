@@ -43,7 +43,7 @@ function JourneyStep({ step, index, activeStep, setActiveStep }: {
   const Icon = step.icon;
   return (
     <article
-      className={`journey-step journey-step--${step.kind} premium-glass premium-glass--frosted${step.kind === 'ready' ? ' premium-glass--accent' : ''}${activeStep === index ? ' journey-step--active' : ''}`}
+      className={`journey-step journey-step--${step.kind} premium-glass premium-glass--frosted clay-card-soft${step.kind === 'ready' ? ' premium-glass--accent' : ''}${activeStep === index ? ' journey-step--active' : ''}`}
       tabIndex={0}
       aria-label={`Step ${step.number}: ${step.title}`}
       onMouseEnter={() => setActiveStep(index)}

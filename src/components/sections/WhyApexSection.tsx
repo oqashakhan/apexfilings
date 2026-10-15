@@ -39,7 +39,7 @@ export function WhyApexSection() {
 
           <div className="mt-8 space-y-5">
             {reasons.map(({ title, description, icon: Icon }, index) => (
-              <div key={title} className={`why-reason-card flex items-start gap-4 rounded-[1.25rem] border p-4 sm:p-5 ${index === 1 ? 'dark-glass why-reason-card--featured' : 'soft-glass'}`}>
+              <div key={title} className={`why-reason-card flex items-start gap-4 rounded-[1.25rem] border p-4 sm:p-5 ${index === 1 ? 'dark-glass clay-card-dark why-reason-card--featured' : 'soft-glass clay-card-soft'}`}>
                 <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-orange-100 bg-white text-[#F04623] shadow-sm">
                   <Icon className="h-5 w-5" strokeWidth={1.8} aria-hidden="true" />
                 </span>

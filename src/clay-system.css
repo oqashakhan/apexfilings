@@ -1,0 +1,235 @@
+/* Public-site clay layer. Remove `clay-theme` from App to disable it in one step. */
+.marketing-site.clay-theme {
+  --clay-light: linear-gradient(145deg, #ffffff 0%, #f8fafc 72%, #f2f5f8 100%);
+  --clay-border: rgba(255, 255, 255, .94);
+  --clay-shadow: 10px 10px 28px rgba(25, 31, 41, .12), -8px -8px 22px rgba(255, 255, 255, .96), inset 1px 1px 0 rgba(255, 255, 255, .9);
+  --clay-soft-shadow: 7px 9px 22px rgba(25, 31, 41, .085), -6px -6px 18px rgba(255, 255, 255, .92), inset 1px 1px 0 rgba(255, 255, 255, .9);
+  --clay-dark-shadow: 12px 18px 38px rgba(15, 20, 29, .29), -5px -5px 18px rgba(255, 255, 255, .38), inset 1px 1px 0 rgba(255, 255, 255, .13);
+}
+
+/* Reusable opt-in variants for later public-site components. */
+.marketing-site.clay-theme .clay-card { background: var(--clay-light); border-color: var(--clay-border); border-radius: 1.65rem; box-shadow: var(--clay-shadow); }
+.marketing-site.clay-theme .clay-card-soft { box-shadow: var(--clay-soft-shadow); }
+.marketing-site.clay-theme .clay-card-dark { background: linear-gradient(145deg, #273141 0%, #191f29 65%); border-color: rgba(255, 255, 255, .13); border-radius: 1.65rem; box-shadow: var(--clay-dark-shadow); }
+.marketing-site.clay-theme .clay-button { box-shadow: 5px 6px 15px rgba(25, 31, 41, .09), -4px -4px 12px #fff, inset 0 1px 0 #fff; }
+.marketing-site.clay-theme .clay-button:disabled { box-shadow: none; }
+.marketing-site.clay-theme .clay-badge { box-shadow: inset 0 1px 0 rgba(255, 255, 255, .8), 0 3px 8px rgba(25, 31, 41, .045); }
+.marketing-site.clay-theme .clay-input:not(:focus, :focus-visible) { box-shadow: inset 2px 2px 5px rgba(25, 31, 41, .045), 0 1px 0 rgba(255, 255, 255, .95); }
+
+/* Raised surfaces shared by the public pages. */
+.marketing-site.clay-theme :is(
+  #why-us .why-reason-card:not(.why-reason-card--featured),
+  #services .service-card:not(.service-card--featured),
+  #pricing .pricing-card:not(.pricing-card--featured),
+  #states .top-state-card:not(.top-state-card--featured),
+  #faq .card-glass,
+  #bonuses #additional-support-cards > div:not(.dark-glass),
+  .about-feature-card,
+  #contact > div > .grid > div:first-child
+) {
+  background: var(--clay-light);
+  border-color: var(--clay-border);
+  border-radius: 1.65rem;
+  box-shadow: var(--clay-shadow);
+}
+
+.marketing-site.clay-theme :is(
+  #why-us .why-reason-card--featured,
+  #services .service-card--featured,
+  #pricing .pricing-card--featured,
+  #bonuses #additional-support-cards > .dark-glass
+) { box-shadow: var(--clay-dark-shadow); }
+.marketing-site.clay-theme #states .top-state-card--featured {
+  border-color: rgba(240, 70, 35, .45);
+  box-shadow: 7px 11px 27px rgba(240, 70, 35, .105), inset 1px 1px 0 #fff;
+}
+
+/* Hero accents retain their size, position, and existing animation. */
+.marketing-site.clay-theme:has(#home) #home .journey-step {
+  box-shadow: 7px 11px 25px rgba(25, 31, 41, .09), inset 1px 1px 0 rgba(255, 255, 255, .96);
+}
+.marketing-site.clay-theme:has(#home) #home .journey-step--ready {
+  box-shadow: 7px 11px 25px rgba(240, 70, 35, .14), inset 1px 1px 0 rgba(255, 255, 255, .96);
+}
+.marketing-site.clay-theme :is(#home .polish-primary, #why-us .polish-primary, #pricing .polish-primary, #bonuses .polish-primary) {
+  box-shadow: 0 8px 17px rgba(240, 70, 35, .23), inset 0 1px 0 rgba(255, 255, 255, .22);
+}
+.marketing-site.clay-theme :is(#home .formation-journey__trust-pill, #states .top-state-card__badge, #why-us > div > div:first-child > p:first-child) {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .85), 0 3px 8px rgba(25, 31, 41, .045);
+}
+
+/* One soft metric shell; the figures and map geometry remain untouched. */
+.marketing-site.clay-theme dl.soft-glass { box-shadow: var(--clay-soft-shadow); }
+.marketing-site.clay-theme #us-advantage-detail { box-shadow: var(--clay-soft-shadow); }
+.marketing-site.clay-theme .advantage-card { box-shadow: var(--clay-shadow); }
+.marketing-site.clay-theme [aria-labelledby="us-advantage-title"] button[aria-pressed="true"] { box-shadow: var(--clay-dark-shadow); }
+
+.marketing-site.clay-theme #state-map :is(.us-map-preview, .us-map-search__results, .us-state-map__tooltip) {
+  box-shadow: var(--clay-soft-shadow);
+}
+.marketing-site.clay-theme #state-map .us-map-search input:not(:focus, :focus-visible) {
+  box-shadow: inset 2px 2px 5px rgba(25, 31, 41, .05), 0 1px 0 rgba(255, 255, 255, .95);
+}
+.marketing-site.clay-theme #state-map .us-map-preview__cta,
+.marketing-site.clay-theme #contact form button[type="submit"] {
+  box-shadow: 0 7px 16px rgba(240, 70, 35, .21), inset 0 1px 0 rgba(255, 255, 255, .2);
+}
+
+/* Service templates share the same restrained surface without touching service content. */
+.marketing-site.clay-theme :is(
+  #service-included li,
+  #uk-included li,
+  [aria-labelledby="management-included"] li,
+  [aria-labelledby="service-process"] li,
+  [aria-labelledby="uk-process-title"] li,
+  [aria-labelledby="management-process"] li,
+  [aria-labelledby="service-explained"] article,
+  [aria-labelledby="service-faq"] details,
+  [aria-labelledby="uk-faq-title"] details,
+  [aria-labelledby="management-faq"] details,
+  [aria-labelledby="related-services"] a,
+  [aria-label="Related services"] .service-card
+) { box-shadow: var(--clay-soft-shadow); }
+.marketing-site.clay-theme :is(
+  [aria-labelledby="service-title"] .premium-glass,
+  [aria-labelledby="management-title"] .premium-glass,
+  [aria-labelledby="uk-service-title"] .premium-glass
+) { box-shadow: var(--clay-shadow); }
+
+/* Contact and footer stay predominantly clean. */
+.marketing-site.clay-theme #contact aside > div:first-child { box-shadow: var(--clay-soft-shadow); }
+.marketing-site.clay-theme #contact :is(input:not([type="checkbox"], [type="radio"], [type="hidden"]), select, textarea):not(:focus, :focus-visible) {
+  box-shadow: inset 2px 2px 5px rgba(25, 31, 41, .04);
+}
+.marketing-site.clay-theme .apex-footer #footer-disclaimer > div > span:first-child {
+  box-shadow: 3px 5px 12px rgba(240, 70, 35, .08), inset 1px 1px 0 rgba(255, 255, 255, .9);
+}
+
+@media (max-width: 767px) {
+  .marketing-site.clay-theme {
+    --clay-shadow: 6px 8px 20px rgba(25, 31, 41, .105), -4px -4px 14px rgba(255, 255, 255, .93), inset 1px 1px 0 rgba(255, 255, 255, .94);
+    --clay-dark-shadow: 8px 12px 26px rgba(25, 31, 41, .24), inset 1px 1px 0 rgba(255, 255, 255, .1);
+  }
+}
+
+/* Distinct section bands make the new treatment apparent without moving content. */
+.marketing-site.clay-theme:has(#home) :is(#why-us, [aria-labelledby="us-advantage-title"], #testimonials, #states, #contact) {
+  background: #eef2f6;
+}
+.marketing-site.clay-theme:has(#home) :is(#services, #pricing, #faq) {
+  background: #fff;
+}
+.marketing-site.clay-theme:has(#home) #state-map {
+  background: #fff8f5;
+}
+.marketing-site.clay-theme:has(#home) :is(#why-us, #services, #pricing, #testimonials, #states, #faq, #contact) {
+  border-block-start: 1px solid rgba(255, 255, 255, .8);
+}
+
+/* Recessed section shell and stronger cards create visible depth. */
+.marketing-site.clay-theme:has(#home) #pricing > div {
+  background: linear-gradient(145deg, #f1f4f7, #fff 65%, #fff8f5);
+  border: 1px solid #fff;
+  border-radius: 2.25rem;
+  box-shadow: inset 5px 5px 17px rgba(25, 31, 41, .055), inset -5px -5px 17px #fff, 0 18px 45px rgba(25, 31, 41, .08);
+}
+.marketing-site.clay-theme:has(#home) #services .service-card:not(.service-card--featured),
+.marketing-site.clay-theme:has(#home) #pricing .pricing-card:not(.pricing-card--featured),
+.marketing-site.clay-theme:has(#home) #why-us .why-reason-card:not(.why-reason-card--featured),
+.marketing-site.clay-theme:has(#home) #states .top-state-card,
+.marketing-site.clay-theme:has(#home) #testimonials .card-glass,
+.marketing-site.clay-theme:has(#home) #faq .card-glass {
+  background: var(--clay-light);
+  border: 1px solid var(--clay-border);
+  border-radius: 1.7rem;
+  box-shadow: var(--clay-shadow);
+}
+.marketing-site.clay-theme:has(#home) #states .top-state-card--featured {
+  border-color: rgba(240, 70, 35, .45);
+  box-shadow: 10px 12px 30px rgba(240, 70, 35, .16), -8px -8px 22px rgba(255, 255, 255, .9), inset 1px 1px 0 #fff;
+}
+.marketing-site.clay-theme:has(#home) :is(#services .service-card--featured, #pricing .pricing-card--featured, #why-us .why-reason-card--featured) {
+  background: linear-gradient(145deg, #283343, #191f29 66%);
+  border: 1px solid rgba(255, 255, 255, .15);
+  border-radius: 1.7rem;
+  box-shadow: var(--clay-dark-shadow);
+}
+.marketing-site.clay-theme:has(#home) #home .journey-step {
+  background: var(--clay-light);
+  border: 1px solid #fff;
+  border-radius: 1.5rem;
+  box-shadow: var(--clay-shadow);
+}
+.marketing-site.clay-theme:has(#home) #home .journey-step--ready {
+  border-color: rgba(240, 70, 35, .36);
+  box-shadow: 10px 13px 29px rgba(240, 70, 35, .16), -7px -7px 20px #fff, inset 1px 1px 0 #fff;
+}
+.marketing-site.clay-theme :is(.advantage-card:not([aria-pressed="true"]), #us-advantage-detail, #state-map .us-map-preview) {
+  background: var(--clay-light);
+  border-color: var(--clay-border);
+  border-radius: 1.7rem;
+  box-shadow: var(--clay-shadow);
+}
+.marketing-site.clay-theme:has(#home) #contact > div > .grid > div:first-child {
+  background: var(--clay-light);
+  border: 1px solid #fff;
+  border-radius: 1.75rem;
+  box-shadow: var(--clay-shadow);
+}
+
+/* The same surfaces carry through to the dedicated public pages. */
+.marketing-site.clay-theme :is(
+  .about-feature-card,
+  #service-included li,
+  #uk-included li,
+  [aria-labelledby="management-included"] li,
+  [aria-labelledby="service-process"] li,
+  [aria-labelledby="uk-process-title"] li,
+  [aria-labelledby="management-process"] li,
+  [aria-labelledby="service-explained"] article,
+  [aria-labelledby="service-faq"] details,
+  [aria-labelledby="uk-faq-title"] details,
+  [aria-labelledby="management-faq"] details,
+  [aria-labelledby="related-services"] a
+) {
+  background: var(--clay-light);
+  border-color: var(--clay-border);
+  border-radius: 1.5rem;
+  box-shadow: var(--clay-soft-shadow);
+}
+.marketing-site.clay-theme :is(
+  [aria-labelledby="service-title"] .premium-glass,
+  [aria-labelledby="management-title"] .premium-glass,
+  [aria-labelledby="uk-service-title"] .premium-glass,
+  #pricing .pricing-card:not(.pricing-card--featured),
+  #contact > div > .grid > div:first-child
+) {
+  background: var(--clay-light);
+  border-color: var(--clay-border);
+  border-radius: 1.7rem;
+  box-shadow: var(--clay-shadow);
+}
+
+/* Orange controls gain a tactile edge; neutral controls stay legible. */
+.marketing-site.clay-theme :is(.polish-primary, .clay-button[type="submit"], #state-map .us-map-preview__cta, #contact form button[type="submit"]):not(:disabled) {
+  box-shadow: 0 4px 0 #bf351b, 0 13px 24px rgba(240, 70, 35, .26), inset 0 1px 0 rgba(255, 255, 255, .35);
+}
+.marketing-site.clay-theme :is(.polish-button:not(.polish-primary), #pricing .pricing-card button:not(.polish-primary)) {
+  box-shadow: 5px 6px 15px rgba(25, 31, 41, .09), -4px -4px 12px #fff, inset 0 1px 0 #fff;
+}
+.marketing-site.clay-theme :is(#why-us, #services, #pricing, #states, #faq, #contact) h2 {
+  color: #191f29;
+  letter-spacing: -.035em;
+}
+.marketing-site.clay-theme :is(#services .service-card, #why-us .why-reason-card, #testimonials .card-glass) :is(span, div):has(> svg):not(.dark-glass) {
+  border-radius: 1rem;
+}
+
+@media (prefers-reduced-motion: no-preference) and (hover: hover) {
+  .marketing-site.clay-theme:has(#home) :is(#why-us .why-reason-card, #services .service-card, #pricing .pricing-card, #testimonials .card-glass, #states .top-state-card):hover {
+    box-shadow: 13px 16px 34px rgba(25, 31, 41, .16), -8px -8px 22px rgba(255, 255, 255, .94), inset 1px 1px 0 #fff;
+  }
+  .marketing-site.clay-theme:has(#home) :is(#why-us .why-reason-card--featured, #services .service-card--featured, #pricing .pricing-card--featured):hover {
+    box-shadow: 14px 20px 40px rgba(15, 20, 29, .34), inset 1px 1px 0 rgba(255, 255, 255, .14);
+  }
+}

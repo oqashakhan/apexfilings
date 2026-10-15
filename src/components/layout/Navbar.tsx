@@ -61,6 +61,25 @@ export function Navbar({ onOpenClientPortal, language, onLanguageChange }: Navba
 
   useEffect(() => () => clearCloseTimer(), []);
 
+  useEffect(() => {
+    const header = headerRef.current;
+    if (!header) return;
+    let frame = 0;
+    const update = () => {
+      frame = 0;
+      header.classList.toggle('apex-site-header--scrolled', window.scrollY > 12);
+    };
+    const onScroll = () => {
+      if (!frame) frame = window.requestAnimationFrame(update);
+    };
+    update();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      window.cancelAnimationFrame(frame);
+    };
+  }, []);
+
   const changeLanguage = (code: Language) => {
     onLanguageChange(code);
     setLanguageOpen(false);

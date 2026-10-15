@@ -1,73 +1,113 @@
 import { useEffect, type RefObject } from 'react';
 
-const REVEAL_SELECTOR = 'section h2, section h2 + p, section article, section .polish-card, section .card-glass, [data-scroll-reveal]';
+const REVEAL_SELECTOR = 'section h2, section article, section .polish-card, section .card-glass, section .top-state-card, [data-scroll-reveal]';
+const CARD_SELECTOR = 'article, .polish-card, .card-glass, .top-state-card, [data-scroll-reveal]';
 
-/** A light, one-time reveal for marketing content that has no animation of its own. */
+/** One observer for public content; GSAP runs only after a group enters the viewport. */
 export function usePageScrollReveals(root: RefObject<HTMLElement | null>, routePath: string) {
   useEffect(() => {
     const container = root.current;
-    if (!container || !('IntersectionObserver' in window)) return;
+    if (!container || !('IntersectionObserver' in window) || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
-    const motionPreference = window.matchMedia('(prefers-reduced-motion: reduce)');
+    let stopped = false;
+    let cleanup: (() => void) | undefined;
+    void import('gsap').then(({ gsap }) => {
+      if (!stopped) cleanup = installReveals(container, gsap);
+    });
+    return () => {
+      stopped = true;
+      cleanup?.();
+    };
+  }, [root, routePath]);
+}
+
+function installReveals(container: HTMLElement, gsap: typeof import('gsap').gsap) {
+    const preference = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const context = gsap.context(() => {}, container);
     const registered = new WeakSet<HTMLElement>();
-    const pending = new Set<HTMLElement>();
+    const pending = new Map<HTMLElement, HTMLElement[]>();
+    const active = new Set<ReturnType<typeof gsap.fromTo>>();
     let scanFrame = 0;
 
     const observer = new IntersectionObserver((entries) => {
       for (const entry of entries) {
         if (!entry.isIntersecting) continue;
-        const element = entry.target as HTMLElement;
-        observer.unobserve(element);
-        pending.delete(element);
-        element.dataset.siteRevealed = 'true';
-        element.classList.add('site-scroll-revealing');
+        const target = entry.target as HTMLElement;
+        const members = pending.get(target);
+        if (!members) continue;
+        pending.delete(target);
+        observer.unobserve(target);
+        if (preference.matches) continue;
+
+        context.add(() => {
+          const tween = gsap.fromTo(members,
+            { opacity: 0, y: members.length > 1 ? 18 : 14 },
+            {
+              opacity: 1,
+              y: 0,
+              duration: members.length > 1 ? 0.62 : 0.56,
+              ease: 'power2.out',
+              stagger: members.length > 1 ? 0.08 : 0,
+              overwrite: 'auto',
+              clearProps: 'opacity,transform',
+              onComplete: () => active.delete(tween),
+            },
+          );
+          active.add(tween);
+        });
       }
     }, { threshold: 0.08, rootMargin: '0px 0px -8% 0px' });
 
+    const eligible = (element: HTMLElement) => {
+      if (element.closest('.apex-hero-effects, .formation-process, [data-polish-reveal], .about-feature-card')) return false;
+      if (element.matches('[style*="opacity"], [style*="transform"]')) return false;
+      if (element.matches('h2') && element.closest('article, .polish-card, .card-glass')) return false;
+      if (element.matches('.card-glass') && element.querySelector('form')) return false;
+      return true;
+    };
+
+    const observeGroup = (target: HTMLElement, members: HTMLElement[]) => {
+      if (registered.has(target)) return;
+      registered.add(target);
+      // Content is never hidden while waiting for the observer or GSAP.
+      const bounds = target.getBoundingClientRect();
+      if (bounds.top < window.innerHeight * 0.88 && bounds.bottom > 0) return;
+      pending.set(target, members);
+      observer.observe(target);
+    };
+
     const scan = () => {
       scanFrame = 0;
-      if (motionPreference.matches) return;
+      if (preference.matches) return;
 
+      const cardGroups = new Map<HTMLElement, HTMLElement[]>();
       for (const element of container.querySelectorAll<HTMLElement>(REVEAL_SELECTOR)) {
-        if (registered.has(element) || element.dataset.siteRevealed) continue;
-        registered.add(element);
-
-        // The hero, formation journey and Framer Motion sections already animate.
-        if (element.closest('.apex-hero-effects, .formation-process, [data-polish-reveal], [style*="opacity"], [style*="transform"]')) continue;
-        if (element.matches('h2, h2 + p') && element.closest('article, .polish-card, .card-glass')) continue;
-        if (element.matches('.card-glass') && element.querySelector('form')) continue;
-
-        // Keep initially visible content steady, including direct links to anchors.
-        const bounds = element.getBoundingClientRect();
-        if (bounds.top < window.innerHeight * 0.88 && bounds.bottom > 0) continue;
-
-        const siblings = element.parentElement ? Array.from(element.parentElement.children) : [];
-        element.dataset.siteRevealDelay = String(Math.min(siblings.indexOf(element) % 3, 2));
-        pending.add(element);
-        observer.observe(element);
+        if (!eligible(element)) continue;
+        if (element.matches(CARD_SELECTOR)) {
+          const parent = element.parentElement;
+          if (parent) cardGroups.set(parent, [...(cardGroups.get(parent) ?? []), element]);
+        } else {
+          observeGroup(element, [element]);
+        }
       }
+      for (const [parent, members] of cardGroups) observeGroup(parent, members);
     };
 
     const queueScan = () => {
       if (!scanFrame) scanFrame = window.requestAnimationFrame(scan);
     };
-    const finish = (event: AnimationEvent) => {
-      if (event.animationName === 'site-scroll-reveal') {
-        (event.target as HTMLElement).classList.remove('site-scroll-revealing');
-      }
-    };
-    const updateMotionPreference = () => {
-      if (motionPreference.matches) {
+    const updatePreference = () => {
+      if (preference.matches) {
         observer.disconnect();
-        container.querySelectorAll<HTMLElement>('.site-scroll-revealing').forEach((element) => element.classList.remove('site-scroll-revealing'));
+        for (const tween of active) tween.progress(1).kill();
+        active.clear();
       } else {
-        pending.forEach((element) => observer.observe(element));
+        for (const target of pending.keys()) observer.observe(target);
         queueScan();
       }
     };
 
-    container.addEventListener('animationend', finish);
-    motionPreference.addEventListener('change', updateMotionPreference);
+    preference.addEventListener('change', updatePreference);
     const mutations = new MutationObserver(queueScan);
     mutations.observe(container, { childList: true, subtree: true });
     queueScan();
@@ -76,9 +116,7 @@ export function usePageScrollReveals(root: RefObject<HTMLElement | null>, routeP
       window.cancelAnimationFrame(scanFrame);
       mutations.disconnect();
       observer.disconnect();
-      pending.clear();
-      container.removeEventListener('animationend', finish);
-      motionPreference.removeEventListener('change', updateMotionPreference);
+      preference.removeEventListener('change', updatePreference);
+      context.revert();
     };
-  }, [root, routePath]);
 }

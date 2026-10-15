@@ -1,0 +1,4 @@
+.apex-faq-answer { display: grid; grid-template-rows: 0fr; opacity: 0; visibility: hidden; transition: grid-template-rows .24s ease, opacity .2s ease, visibility .24s; }
+.apex-faq-answer[data-open="true"] { grid-template-rows: 1fr; opacity: 1; visibility: visible; }
+.apex-faq-answer__inner { min-height: 0; overflow: hidden; }
+@media (prefers-reduced-motion: reduce) { .apex-faq-answer { transition: none; } }

@@ -1,4 +1,6 @@
 .apex-nav-bar { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 16px; height: 80px; }
+.marketing-site .apex-site-header { transition: background-color .24s ease, border-color .24s ease, box-shadow .24s ease; }
+.marketing-site .apex-site-header--scrolled { background-color: rgba(255,255,255,.98); border-color: #e9e0db; box-shadow: 0 8px 24px -19px rgba(25,31,41,.42); }
 .apex-nav-logo { display: block; justify-self: start; width: 140px; height: 64px; overflow: hidden; border-radius: 12px; }
 .apex-nav-logo img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: center; }
 @media (max-width: 380px) { .apex-nav-bar { gap: 8px; } .apex-nav-logo { width: 125px; height: 58px; } }
@@ -42,4 +44,4 @@ a.apex-service-item:hover .apex-service-arrow,a.apex-service-item:focus-visible 
 .apex-services-mobile .apex-services-footer { padding: 16px 20px; }
 @media (min-width: 1024px) { .apex-nav-bar { grid-template-columns: minmax(0,1fr) auto minmax(0,1fr); } }
 @keyframes apex-menu-enter { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
-@media (prefers-reduced-motion: reduce) { .apex-services-panel { animation: none; } .apex-service-item,.apex-service-arrow,.apex-services-accordion-button svg,.apex-services-accordion-content { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .marketing-site .apex-site-header { transition: none; } .apex-services-panel { animation: none; } .apex-service-item,.apex-service-arrow,.apex-services-accordion-button svg,.apex-services-accordion-content { transition: none; } }

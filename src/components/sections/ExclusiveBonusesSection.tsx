@@ -80,7 +80,7 @@ export function ExclusiveBonusesSection() {
                   <div
                     key={bonus.id}
                     data-scroll-reveal
-                    className={`self-start overflow-hidden rounded-2xl border transition-[border-color,box-shadow,transform] duration-250 motion-reduce:transition-none ${featured ? 'dark-glass premium-glass--support-featured' : `premium-glass premium-glass--support ${expanded ? 'premium-glass--selected' : ''}`}`}
+                    className={`self-start overflow-hidden rounded-2xl border transition-[border-color,box-shadow,transform] duration-250 motion-reduce:transition-none ${featured ? 'dark-glass clay-card-dark premium-glass--support-featured' : `premium-glass clay-card-soft premium-glass--support ${expanded ? 'premium-glass--selected' : ''}`}`}
                   >
                     <button
                       type="button"

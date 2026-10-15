@@ -17,7 +17,7 @@ export function ServiceCard({ service, number, compact = false, featured = false
     <a
       id={number ? `service-${service.id}` : undefined}
       href={`/services/${service.id}`}
-      className={`polish-card service-card group flex h-full scroll-mt-28 flex-col rounded-3xl border p-6 motion-safe:transition-[transform,border-color,box-shadow] motion-safe:duration-250 motion-safe:hover:-translate-y-1 hover:border-orange-300 motion-safe:focus-visible:-translate-y-1 focus-visible:border-[#F04623] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F04623] focus-visible:ring-offset-2 sm:p-7 ${featured ? 'service-card--featured dark-glass' : 'soft-glass border-[#e8e4e1] bg-white shadow-[0_10px_30px_-26px_rgba(23,23,23,0.3)] hover:shadow-[0_22px_50px_-29px_rgba(240,70,35,0.24)]'} ${compact ? 'min-h-52' : 'min-h-80'}`}
+      className={`polish-card service-card group flex h-full scroll-mt-28 flex-col rounded-3xl border p-6 motion-safe:transition-[transform,border-color,box-shadow] motion-safe:duration-250 motion-safe:hover:-translate-y-1 hover:border-orange-300 motion-safe:focus-visible:-translate-y-1 focus-visible:border-[#F04623] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F04623] focus-visible:ring-offset-2 sm:p-7 ${featured ? 'service-card--featured dark-glass clay-card-dark' : 'soft-glass clay-card border-[#e8e4e1] bg-white shadow-[0_10px_30px_-26px_rgba(23,23,23,0.3)] hover:shadow-[0_22px_50px_-29px_rgba(240,70,35,0.24)]'} ${compact ? 'min-h-52' : 'min-h-80'}`}
       aria-label={cardCopy?.cta ?? `Learn more about ${service.title}`}
     >
       <div className="flex items-start justify-between gap-4">
