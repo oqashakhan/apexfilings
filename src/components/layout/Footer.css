@@ -1,13 +1,79 @@
+.apex-footer-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  gap: 32px;
+}
+
 .apex-footer-logo {
-  width: min(250px, 100%);
-  height: 116px;
+  position: relative;
+  width: min(180px, 100%);
+  height: 112px;
   overflow: hidden;
 }
 
 .apex-footer-logo img {
+  position: absolute;
   display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: center;
+  top: -73px;
+  left: -42px;
+  width: 260px;
+  max-width: none;
+  height: 260px;
+}
+
+.apex-footer-heading {
+  margin: 3px 0 17px;
+  color: #191f29;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: .15em;
+  line-height: 1.4;
+  text-transform: uppercase;
+}
+
+.apex-footer-links { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.apex-footer-link,
+.apex-footer-unavailable { display: inline-flex; min-height: 42px; align-items: center; gap: 11px; color: #475569; font-size: 14px; line-height: 1.45; }
+.apex-footer-link { transition: color 180ms ease; }
+.apex-footer-link:hover { color: #f04623; }
+.apex-footer-icon { width: 18px; height: 18px; flex: none; color: #667085; stroke-width: 1.8; }
+.apex-footer-link:hover .apex-footer-icon { color: #f04623; }
+.apex-footer-link:focus-visible,
+.apex-footer-language:focus-visible { border-radius: 3px; outline: 2px solid #f04623; outline-offset: 3px; }
+.apex-footer-unavailable { color: #94a3b8; }
+.apex-footer-unavailable .apex-footer-icon { color: #94a3b8; }
+.apex-footer-disclaimer-content { width: 100%; }
+.apex-footer-languages { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 18px; border-left: 1px solid #cbd5e1; padding-left: 26px; }
+.apex-footer-language { display: inline-flex; min-height: 44px; align-items: center; padding: 0 2px; color: #64748b; font-size: 13px; white-space: nowrap; transition: color 180ms ease; }
+.apex-footer-language:hover { color: #f04623; }
+.apex-footer-language[aria-pressed="true"] { color: #191f29; font-weight: 700; text-decoration: underline; text-decoration-color: #191f29; text-underline-offset: 6px; }
+
+@media (min-width: 600px) {
+  .apex-footer-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 36px; }
+}
+
+@media (min-width: 840px) {
+  .apex-footer-grid { grid-template-columns: minmax(0, 1.2fr) repeat(3, minmax(0, 1fr)); column-gap: clamp(20px, 2.5vw, 42px); }
+}
+
+@media (min-width: 840px) and (max-width: 1199px) {
+  .apex-footer-disclaimer-content { width: 80%; }
+}
+
+@media (min-width: 1200px) {
+  .apex-footer-disclaimer-content { width: 60%; }
+}
+
+@media (max-width: 767px) {
+  .apex-footer-languages { border-left: 0; padding-left: 0; }
+}
+
+@media (max-width: 599px) {
+  .apex-footer-heading { margin-top: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .apex-footer-link,
+  .apex-footer-language { transition: none; }
 }
