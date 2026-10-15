@@ -1,7 +1,6 @@
-import { useState } from 'react';
-import { ASSETS } from '../../data/assets';
 import { FOOTER_LINKS } from '../../data/navigation';
 import type { Language } from './Navbar';
+import './Footer.css';
 
 interface FooterProps {
   language: Language;
@@ -10,31 +9,15 @@ interface FooterProps {
 }
 
 export function Footer({ language, onLanguageChange, management = false }: FooterProps) {
-  const [logoError, setLogoError] = useState(false);
-
   return (
     <footer className="bg-[#171717] border-t border-neutral-800 pt-16 pb-12 text-xs text-neutral-400">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-2 md:grid-cols-5 gap-8 mb-12">
           {/* Brand Summary */}
           <div className="col-span-2 space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-white border border-neutral-800 p-0.5 flex items-center justify-center overflow-hidden flex-shrink-0">
-                {!logoError ? (
-                  <img
-                    src={ASSETS.logoFooter}
-                    alt="Apex Filings Logo"
-                    className="w-full h-full object-contain"
-                    onError={() => setLogoError(true)}
-                  />
-                ) : (
-                  <div className="w-full h-full bg-[#F04623] rounded flex items-center justify-center text-white font-bold text-xs">
-                    AF
-                  </div>
-                )}
-              </div>
-              <span className="text-base font-bold text-white tracking-tight">Apex Filings</span>
-            </div>
+            <a href="/#home" className="apex-footer-logo block w-fit rounded-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#F04623]" aria-label="Apex Filings Home">
+              <img src="/images/apex-logo-dark-bg.png" alt="" width="500" height="500" />
+            </a>
 
             <p className="text-xs text-neutral-400 max-w-sm leading-relaxed">
               Apex Filings provides comprehensive US LLC formation and business compliance services.

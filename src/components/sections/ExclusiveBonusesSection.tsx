@@ -46,7 +46,7 @@ export function ExclusiveBonusesSection() {
     <section
       id="bonuses"
       aria-labelledby="additional-support-title"
-      className="relative overflow-hidden bg-[#FFFAF7] py-20 lg:py-28"
+      className="premium-benefits relative overflow-hidden bg-[#191F29] py-20 lg:py-28"
     >
       <div className="relative mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8">
         <div className="grid items-center gap-8 lg:grid-cols-2 lg:gap-6 xl:gap-10">

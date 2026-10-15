@@ -101,8 +101,7 @@ export function Navbar({ onOpenClientPortal, language, onLanguageChange }: Navba
     <header ref={headerRef} className="apex-site-header sticky top-0 z-50 w-full border-b border-slate-200 bg-white/95 backdrop-blur-md">
       <div className="apex-nav-bar mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <a href="/#home" onClick={closeMenus} className="apex-nav-logo focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F04623]" aria-label="Apex Filings Home">
-          <img src="/images/apex-navbar-logo.png" alt="Apex Filings" width="60" height="60" />
-          <span className="apex-nav-company">Apex Filings</span>
+          <img src="/images/apex-logo-white-bg.png" alt="" width="500" height="500" />
         </a>
 
         <nav className="hidden self-stretch items-center gap-1 lg:flex" aria-label="Main navigation">

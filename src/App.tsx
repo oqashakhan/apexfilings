@@ -30,6 +30,7 @@ const FormationProcessPage = lazy(() => import('./components/pages/FormationProc
 const ServiceDetailPage = lazy(() => import('./components/services/ServiceDetailPage').then((module) => ({ default: module.ServiceDetailPage })));
 const UsServicePage = lazy(() => import('./components/services/UsServicePage').then((module) => ({ default: module.UsServicePage })));
 const ManagementServicePage = lazy(() => import('./components/services/ManagementServicePage').then((module) => ({ default: module.ManagementServicePage })));
+const UkLtdServicePage = lazy(() => import('./components/services/UkLtdServicePage').then((module) => ({ default: module.UkLtdServicePage })));
 
 export default function App() {
   const [path, setPath] = useState(window.location.pathname);
@@ -116,7 +117,7 @@ export default function App() {
       {/* Main Content */}
       <main ref={mainRef} className="flex-1">
         {serviceSlug ? (
-          usServicePage ? <Suspense fallback={<div className="min-h-screen bg-white" />}><UsServicePage page={usServicePage} /></Suspense> : managementServicePage ? <Suspense fallback={<div className="min-h-screen bg-white" />}><ManagementServicePage page={managementServicePage} onOpenClientPortal={() => setLoginModalOpen(true)} /></Suspense> : selectedService ? <Suspense fallback={<div className="min-h-screen bg-white" />}><ServiceDetailPage service={selectedService} /></Suspense> : <section className="mx-auto min-h-[60vh] max-w-7xl px-4 py-24 text-center"><h1 className="text-3xl font-bold text-[#171717]">Service not found</h1><p className="mt-4 text-slate-600">Explore the services currently available through Apex Filings.</p><a href="/#services" className="mt-6 inline-flex text-sm font-semibold text-[#F04623] underline underline-offset-4">View all services</a></section>
+          serviceSlug === 'uk-ltd-formation' ? <Suspense fallback={<div className="min-h-screen bg-white" />}><UkLtdServicePage onOpenClientPortal={() => setLoginModalOpen(true)} /></Suspense> : usServicePage ? <Suspense fallback={<div className="min-h-screen bg-white" />}><UsServicePage page={usServicePage} /></Suspense> : managementServicePage ? <Suspense fallback={<div className="min-h-screen bg-white" />}><ManagementServicePage page={managementServicePage} onOpenClientPortal={() => setLoginModalOpen(true)} /></Suspense> : selectedService ? <Suspense fallback={<div className="min-h-screen bg-white" />}><ServiceDetailPage service={selectedService} /></Suspense> : <section className="mx-auto min-h-[60vh] max-w-7xl px-4 py-24 text-center"><h1 className="text-3xl font-bold text-[#171717]">Service not found</h1><p className="mt-4 text-slate-600">Explore the services currently available through Apex Filings.</p><a href="/#services" className="mt-6 inline-flex text-sm font-semibold text-[#F04623] underline underline-offset-4">View all services</a></section>
         ) : routePath === '/how-it-works' ? <Suspense fallback={<div className="min-h-screen" role="status">Loading your business journey…</div>}><FormationProcessPage /></Suspense>
           : routePath === '/pricing' ? <PricingPage onSelectPlan={handleSelectPlan} />
           : routePath === '/contact' || routePath === '/consultation' ? <ContactPage consultation={routePath === '/consultation'} />

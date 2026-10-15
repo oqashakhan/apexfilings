@@ -112,7 +112,9 @@ export function PricingSection({ onSelectPlan, asPage = false }: PricingSectionP
                 <button
                   type="button"
                   onClick={() => onSelectPlan(plan, true)}
-                  className={`relative mt-auto inline-flex w-fit items-center gap-2 pt-8 text-sm font-bold transition-transform hover:translate-x-1 motion-reduce:transition-none motion-reduce:hover:translate-x-0 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-current ${featured ? 'text-[#FF805E]' : 'text-[#E54723]'}`}
+                  className={asPage
+                    ? `relative mt-auto inline-flex w-fit items-center gap-2 pt-8 text-sm font-bold transition-transform hover:translate-x-1 motion-reduce:transition-none motion-reduce:hover:translate-x-0 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-current ${featured ? 'text-[#FF805E]' : 'text-[#E54723]'}`
+                    : `polish-button relative mt-auto inline-flex min-h-12 w-fit items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-bold focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#F04623] ${featured ? 'polish-primary bg-[#F04623] text-white hover:bg-[#E03E1B]' : 'border border-[#E3D7D0] bg-white text-[#C83A1A] hover:border-[#F04623] hover:bg-[#FFF8F5]'}`}
                 >
                   {plan.ctaText}
                   <ArrowRight className="h-4 w-4" aria-hidden="true" />
@@ -127,7 +129,9 @@ export function PricingSection({ onSelectPlan, asPage = false }: PricingSectionP
           <button
             type="button"
             onClick={() => document.getElementById('pricing-comparison')?.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth', block: 'start' })}
-            className="inline-flex min-h-14 items-center gap-3 rounded-full border-2 border-white bg-[#F04623] px-8 py-3 text-sm font-bold uppercase tracking-[0.08em] text-white shadow-[0_3px_0_#C43515,0_12px_22px_-12px_rgba(240,70,35,0.75)] transition-[background-color,transform] hover:-translate-y-0.5 hover:bg-[#E03E1B] motion-reduce:transition-none motion-reduce:hover:translate-y-0 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#F04623]"
+            className={asPage
+              ? "inline-flex min-h-14 items-center gap-3 rounded-full border-2 border-white bg-[#F04623] px-8 py-3 text-sm font-bold uppercase tracking-[0.08em] text-white shadow-[0_3px_0_#C43515,0_12px_22px_-12px_rgba(240,70,35,0.75)] transition-[background-color,transform] hover:-translate-y-0.5 hover:bg-[#E03E1B] motion-reduce:transition-none motion-reduce:hover:translate-y-0 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#F04623]"
+              : "polish-button polish-primary inline-flex min-h-12 items-center gap-3 rounded-xl bg-[#F04623] px-7 py-3 text-sm font-bold text-white shadow-[0_10px_24px_-13px_rgba(240,70,35,0.65)] hover:bg-[#E03E1B] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#F04623]"}
           >
             Compare what's included
             <ArrowRight className="h-4 w-4" aria-hidden="true" />

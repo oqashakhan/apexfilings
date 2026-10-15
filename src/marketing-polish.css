@@ -140,3 +140,60 @@
   .marketing-site :is(.polish-button, .polish-card, .polish-button > svg, .apex-service-item, .apex-service-arrow, .why-reason-card, .pricing-card, .service-card > div:first-child > span:last-child) { transition: none; translate: none; }
   .marketing-site .apex-services-panel { animation: none; }
 }
+
+/* Homepage rhythm and a consistent restrained surface language. */
+.marketing-site:has(#home) #home h1 { text-wrap: balance; }
+.marketing-site:has(#home) #home > .hero-content > p:nth-of-type(2) { max-width: 43rem; }
+.marketing-site:has(#home) #home .polish-primary { box-shadow: 0 14px 30px -15px rgba(240, 70, 35, .55); }
+.marketing-site:has(#home) #home .journey-step {
+  background: rgba(255, 255, 255, .96);
+  border-color: #eadfd9;
+  box-shadow: 0 16px 36px -24px rgba(48, 36, 31, .36), 0 3px 9px rgba(48, 36, 31, .045);
+}
+.marketing-site:has(#home) #home .journey-step--ready { border-color: rgba(240, 70, 35, .65); }
+.marketing-site:has(#home) #home .journey-step__icon { border: 1px solid rgba(240, 70, 35, .11); }
+.marketing-site:has(#home) :is(#services, #states, #faq) h2 { color: #191f29; text-wrap: balance; }
+.marketing-site:has(#home) :is(#services, #states, #faq) > div > div:first-child > p:last-child { max-width: 43rem; line-height: 1.75; }
+.marketing-site:has(#home) #services .service-card { border-radius: 1.5rem; }
+.marketing-site:has(#home) #services .service-card--featured { box-shadow: 0 22px 42px -27px rgba(25, 31, 41, .68); }
+.marketing-site:has(#home) #state-map .us-map-search input { border-color: #dfd2ca; box-shadow: 0 15px 30px -23px rgba(43, 31, 25, .37); }
+.marketing-site:has(#home) #state-map .us-map-visual { border-color: #e6dcd6; box-shadow: 0 22px 50px -37px rgba(43, 31, 25, .24); }
+.marketing-site:has(#home) #state-map .us-map-preview { border-color: #e6d7ce; box-shadow: 0 24px 48px -32px rgba(43, 31, 25, .3); }
+.marketing-site:has(#home) #pricing > div { background: linear-gradient(145deg, #fffaf7 0%, #f6f8fa 72%); }
+.marketing-site:has(#home) #pricing .pricing-card:not(.pricing-card--featured) { background: #fff; }
+.marketing-site:has(#home) #pricing .pricing-card--featured { background: #191f29; }
+.marketing-site:has(#home) #pricing .pricing-card > button { margin-top: auto; }
+.marketing-site:has(#home) #states .card-glass,
+.marketing-site:has(#home) #faq .card-glass {
+  border-color: #e8e0da;
+  border-radius: 1.35rem;
+  box-shadow: 0 14px 30px -27px rgba(25, 31, 41, .3), 0 2px 7px rgba(25, 31, 41, .03);
+}
+.marketing-site:has(#home) #faq .card-glass:has([aria-expanded="true"]) { border-color: rgba(240, 70, 35, .34); box-shadow: 0 17px 34px -27px rgba(240, 70, 35, .28); }
+.marketing-site:has(#home) #contact > div > .grid > div:first-child { border-color: #ebdfd7; box-shadow: 0 20px 42px -35px rgba(25, 31, 41, .34); }
+
+/* The optional-support section provides one deliberate dark pause in the page. */
+.marketing-site:has(#home) #bonuses.premium-benefits { background: #191f29; }
+.marketing-site:has(#home) #bonuses h2 { color: #fff; }
+.marketing-site:has(#home) #bonuses h2 + p { color: #cbd2db; }
+.marketing-site:has(#home) #bonuses h2 + p + span { background: rgba(240, 70, 35, .12); border-color: rgba(255, 149, 112, .34); color: #ffb098; }
+.marketing-site:has(#home) #bonuses #additional-support-cards > div:not(.dark-glass) { background: #fff; border-color: rgba(255, 255, 255, .18); }
+.marketing-site:has(#home) #bonuses #additional-support-cards > .dark-glass { background: #2a3543; border-color: rgba(255, 141, 105, .44); box-shadow: 0 16px 36px -25px rgba(0, 0, 0, .5); }
+.marketing-site:has(#home) #bonuses button[aria-controls="additional-support-cards"] { color: #fff; }
+.marketing-site:has(#home) #bonuses button[aria-controls="additional-support-cards"]:hover { color: #ffac92; }
+.marketing-site:has(#home) #bonuses > div > .grid > div:last-child { box-shadow: inset 0 1px rgba(255, 255, 255, .55), 0 26px 50px -30px rgba(0, 0, 0, .38); }
+
+@media (min-width: 1024px) {
+  .marketing-site:has(#home) :is(#why-us, #services, #states, #faq) { padding-block: 7rem; }
+  .marketing-site:has(#home) #state-map { padding-block: 7rem; }
+}
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .marketing-site:has(#home) #states .card-glass:hover { border-color: rgba(240, 70, 35, .4); box-shadow: 0 20px 38px -27px rgba(46, 31, 25, .27); }
+  .marketing-site:has(#home) #faq .card-glass:hover { border-color: rgba(240, 70, 35, .3); }
+}
+@media (max-width: 767px) {
+  .marketing-site:has(#home) #home .journey-step { background: #fff; }
+  .marketing-site:has(#home) #bonuses #additional-support-cards > div { box-shadow: none; }
+  .marketing-site:has(#home) #pricing > div { border-radius: 1.5rem; }
+  .marketing-site:has(#home) #pricing .pricing-card > button { width: 100%; }
+}

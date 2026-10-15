@@ -3,9 +3,10 @@ import { ArrowRight } from 'lucide-react';
 import { ContactSection } from '../sections/ContactSection';
 
 export function ContactPage({ consultation = false }: { consultation?: boolean }) {
+  const ukLtd = consultation && new URLSearchParams(window.location.search).get('service') === 'uk-ltd-formation';
   useEffect(() => {
-    const title = 'Contact Apex Filings | Free US LLC Consultation';
-    const description = 'Request a free consultation for your US LLC. Tell us about your business and an Apex Filings specialist will reply with clear next steps.';
+    const title = ukLtd ? 'UK Ltd Formation Consultation | Apex Filings' : 'Contact Apex Filings | Free US LLC Consultation';
+    const description = ukLtd ? 'Ask Apex Filings about UK Ltd formation packages, pricing and next steps.' : 'Request a free consultation for your US LLC. Tell us about your business and an Apex Filings specialist will reply with clear next steps.';
     const previousTitle = document.title;
     const metas = ['meta[name="description"]', 'meta[property="og:title"]', 'meta[property="og:description"]', 'meta[name="twitter:title"]', 'meta[name="twitter:description"]'];
     const previous = metas.map((selector) => document.querySelector<HTMLMetaElement>(selector)?.content);
@@ -21,24 +22,24 @@ export function ContactPage({ consultation = false }: { consultation?: boolean }
         if (meta && previous[index]) meta.content = previous[index];
       });
     };
-  }, []);
+  }, [ukLtd]);
 
   const schema = {
     '@context': 'https://schema.org',
     '@graph': [
       { '@type': 'Organization', '@id': 'https://apexfiling.com/#organization', name: 'Apex Filings', url: 'https://apexfiling.com/' },
-      { '@type': 'ContactPage', '@id': `https://apexfiling.com/${consultation ? 'consultation' : 'contact'}#webpage`, name: 'Contact Apex Filings', url: `https://apexfiling.com/${consultation ? 'consultation' : 'contact'}`, description: 'Request a free consultation for your US LLC.', about: { '@id': 'https://apexfiling.com/#organization' } },
+      { '@type': 'ContactPage', '@id': `https://apexfiling.com/${consultation ? 'consultation' : 'contact'}#webpage`, name: 'Contact Apex Filings', url: `https://apexfiling.com/${consultation ? 'consultation' : 'contact'}`, description: ukLtd ? 'Ask about UK Ltd formation packages and pricing.' : 'Request a free consultation for your US LLC.', about: { '@id': 'https://apexfiling.com/#organization' } },
     ],
   };
 
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema).replace(/</g, '\\u003c') }} />
-      <ContactSection asPage consultation={consultation} />
+      <ContactSection asPage consultation={consultation} ukLtd={ukLtd} />
       <div className="bg-white px-4 py-12 text-center">
         <p className="text-lg font-bold text-[#171717]">Still exploring your options?</p>
         <p className="mt-2 text-sm text-slate-600">Compare our formation packages and what each includes.</p>
-        <a href="/pricing" className="mt-5 inline-flex items-center gap-2 rounded-lg text-sm font-semibold text-[#c52e0f] underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#F04623]">View pricing <ArrowRight className="h-4 w-4" aria-hidden="true" /></a>
+        <a href={ukLtd ? '/services/uk-ltd-formation#uk-pricing-title' : '/pricing'} className="mt-5 inline-flex items-center gap-2 rounded-lg text-sm font-semibold text-[#c52e0f] underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#F04623]">View pricing <ArrowRight className="h-4 w-4" aria-hidden="true" /></a>
       </div>
     </>
   );

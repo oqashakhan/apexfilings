@@ -31,6 +31,7 @@ const SERVICE_BY_SLUG: Record<string, string> = {
   'resale-certificate': 'Resale Certificate',
   'dissolve-llc': 'LLC Dissolution',
   'business-documents': 'Business Documents',
+  'uk-ltd-formation': 'UK Ltd Company Formation',
 };
 
 const inputClass = 'min-h-12 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-[#171717] outline-none transition-colors placeholder:text-slate-400 focus:border-[#F04623] focus:ring-2 focus:ring-orange-100 aria-[invalid=true]:border-rose-500';
