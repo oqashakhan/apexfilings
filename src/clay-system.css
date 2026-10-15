@@ -39,6 +39,20 @@
   #pricing .pricing-card--featured,
   #bonuses #additional-support-cards > .dark-glass
 ) { box-shadow: var(--clay-dark-shadow); }
+
+/* The support cards sit on a dark section; a white neumorphic shadow reads as glare here. */
+.marketing-site.clay-theme #bonuses #additional-support-cards > div:not(.dark-glass) {
+  background: #fff;
+  border-color: rgba(255, 255, 255, .28);
+  box-shadow: 0 10px 22px rgba(7, 12, 20, .16), inset 0 1px 0 rgba(255, 255, 255, .7);
+}
+.marketing-site.clay-theme #bonuses #additional-support-cards > div:not(.dark-glass):is(:hover, :focus-within, .premium-glass--selected) {
+  border-color: rgba(240, 70, 35, .48);
+  box-shadow: 0 13px 25px rgba(7, 12, 20, .2), inset 0 1px 0 rgba(255, 255, 255, .7);
+}
+.marketing-site.clay-theme #bonuses #additional-support-cards > .dark-glass {
+  box-shadow: 0 14px 28px rgba(7, 12, 20, .25), inset 0 1px 0 rgba(255, 255, 255, .1);
+}
 .marketing-site.clay-theme #states .top-state-card--featured {
   border-color: rgba(240, 70, 35, .45);
   box-shadow: 7px 11px 27px rgba(240, 70, 35, .105), inset 1px 1px 0 #fff;
