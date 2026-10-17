@@ -43,6 +43,10 @@
 .apex-footer-language:focus-visible { border-radius: 3px; outline: 2px solid #f04623; outline-offset: 3px; }
 .apex-footer-unavailable { color: #94a3b8; }
 .apex-footer-unavailable .apex-footer-icon { color: #94a3b8; }
+.apex-footer-socials { display: flex; flex-wrap: wrap; gap: 5px 14px; margin-top: 18px; }
+.apex-footer-social-link { display: inline-flex; min-height: 36px; align-items: center; gap: 6px; color: #536078; font-size: 12px; font-weight: 600; transition: color 180ms ease; }
+.apex-footer-social-link:hover { color: #f04623; }
+.apex-footer-social-link:focus-visible { border-radius: 3px; outline: 2px solid #f04623; outline-offset: 3px; }
 .apex-footer-disclaimer-content { width: 100%; }
 .apex-footer-languages { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 18px; border-left: 1px solid #cbd5e1; padding-left: 26px; }
 .apex-footer-language { display: inline-flex; min-height: 44px; align-items: center; padding: 0 2px; color: #64748b; font-size: 13px; white-space: nowrap; transition: color 180ms ease; }
@@ -75,5 +79,6 @@
 
 @media (prefers-reduced-motion: reduce) {
   .apex-footer-link,
-  .apex-footer-language { transition: none; }
+  .apex-footer-language,
+  .apex-footer-social-link { transition: none; }
 }

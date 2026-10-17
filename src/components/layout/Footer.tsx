@@ -1,9 +1,9 @@
 import {
   Accessibility, BookOpen, FileText, IdCard, Landmark, LockKeyhole,
-  Mail, ReceiptText, RotateCcw, Scale, ScrollText, Shield,
+  Mail, MapPin, Music2, Facebook, ReceiptText, RotateCcw, Scale, ScrollText, Shield,
   ShieldCheck, Star, Tag, UsersRound,
 } from 'lucide-react';
-import { FOOTER_LINKS } from '../../data/navigation';
+import { APEX_EXTERNAL_LINKS, FOOTER_LINKS } from '../../data/navigation';
 import type { Language } from './Navbar';
 import './Footer.css';
 
@@ -24,7 +24,8 @@ const companyIcons = [UsersRound, Mail, Tag, BookOpen, Star];
 const legalIcons = [LockKeyhole, RotateCcw, ScrollText, Scale, Accessibility];
 const serviceLabels = ['US LLC Formation', 'EIN Application', 'Registered Agent Service', 'ITIN Application', 'US Bank Account Support'];
 const companyLabels = ['About Apex Filings', 'Contact', 'Pricing', 'FAQ / Guides', 'Reviews'];
-const legalLabels = ['Privacy Policy', 'Refund Policy', 'Terms & Conditions', 'Legal Disclaimer', 'Accessibility'];
+const legalLabels = ['Privacy Policy', 'Refund Policy', 'Terms of Service', 'Legal Disclaimer', 'Accessibility'];
+const externalIcons = [MapPin, Facebook, Music2];
 
 export function Footer({ language, onLanguageChange, management = false }: FooterProps) {
   return (
@@ -40,6 +41,12 @@ export function Footer({ language, onLanguageChange, management = false }: Foote
               Powering entrepreneurs worldwide to form their companies in the United States with
               clarity and zero administrative headaches.
             </p>
+            <nav className="apex-footer-socials" aria-label="Apex Filings location and social media">
+              {APEX_EXTERNAL_LINKS.map((link, index) => {
+                const Icon = externalIcons[index];
+                return <a key={link.label} href={link.href} target="_blank" rel="noopener noreferrer" className="apex-footer-social-link"><Icon aria-hidden="true" size={16} /><span>{link.label}</span></a>;
+              })}
+            </nav>
           </div>
 
           <div>
@@ -70,6 +77,8 @@ export function Footer({ language, onLanguageChange, management = false }: Foote
                 return <li key={link.label}>
                   {link.label === 'Legal Disclaimer'
                     ? <a className="apex-footer-link" href="#footer-disclaimer"><Icon className="apex-footer-icon" aria-hidden="true" /><span>{legalLabels[index]}</span></a>
+                    : link.href !== '#'
+                    ? <a className="apex-footer-link" href={link.href}><Icon className="apex-footer-icon" aria-hidden="true" /><span>{legalLabels[index]}</span></a>
                     : <span className="apex-footer-unavailable"><Icon className="apex-footer-icon" aria-hidden="true" /><span>{legalLabels[index]}</span></span>}
                 </li>;
               })}

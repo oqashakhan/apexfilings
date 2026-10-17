@@ -247,3 +247,14 @@
     box-shadow: 14px 20px 40px rgba(15, 20, 29, .34), inset 1px 1px 0 rgba(255, 255, 255, .14);
   }
 }
+
+@media (max-width: 639px) {
+  .marketing-site.clay-theme {
+    --clay-shadow: 0 9px 20px rgba(25, 31, 41, .09), inset 0 1px 0 rgba(255, 255, 255, .9);
+    --clay-soft-shadow: 0 6px 15px rgba(25, 31, 41, .07), inset 0 1px 0 rgba(255, 255, 255, .9);
+    --clay-dark-shadow: 0 12px 24px rgba(15, 20, 29, .2), inset 0 1px 0 rgba(255, 255, 255, .13);
+  }
+  .marketing-site.clay-theme:has(#home) :is(#home .journey-step--ready, #states .top-state-card--featured) {
+    box-shadow: 0 9px 21px rgba(240, 70, 35, .14), inset 0 1px 0 #fff;
+  }
+}

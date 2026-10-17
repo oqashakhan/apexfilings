@@ -23,11 +23,17 @@ export const FOOTER_LINKS = {
     { label: 'Client Reviews', href: '/#testimonials' },
   ],
   legal: [
-    { label: 'Privacy Policy', href: '#' },
-    { label: 'Refund Policy', href: '#' },
-    { label: 'Terms and Conditions', href: '#' },
+    { label: 'Privacy Policy', href: '/privacy-policy' },
+    { label: 'Refund Policy', href: '/refund-policy' },
+    { label: 'Terms of Service', href: '/terms-and-conditions' },
     { label: 'Legal Disclaimer', href: '#' },
     { label: 'Service Accessibility', href: '#' },
   ],
   languages: ['English', 'Español', 'Français', 'Português'],
 };
+
+export const APEX_EXTERNAL_LINKS = [
+  { label: 'Location', href: 'https://share.google/6vTBW7IbDoE3MlaXa' },
+  { label: 'Facebook', href: 'https://www.facebook.com/p/Apex-Filings-100084227452510/' },
+  { label: 'TikTok', href: 'https://www.tiktok.com/@apexfilings' },
+] as const;

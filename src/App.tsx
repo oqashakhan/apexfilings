@@ -19,6 +19,9 @@ import { ContactSection } from './components/sections/ContactSection';
 import { LoginPortalModal } from './components/modals/LoginPortalModal';
 import { PricingPage } from './components/pages/PricingPage';
 import { ContactPage } from './components/pages/ContactPage';
+import { RefundPolicyPage } from './components/pages/RefundPolicyPage';
+import { PrivacyPolicyPage } from './components/pages/PrivacyPolicyPage';
+import { TermsConditionsPage } from './components/pages/TermsConditionsPage';
 import { getServiceBySlug } from './data/services';
 import { getUsServicePage } from './data/usServicePages';
 import { getManagementServicePage } from './data/managementServicePages';
@@ -58,7 +61,8 @@ export default function App() {
 
   useEffect(() => {
     const canonicalPath = routePath === '/about' ? '/why-us' : routePath;
-    const canonicalUrl = `https://apexfiling.com${canonicalPath}`;
+    const canonicalDomain = routePath === '/terms-and-conditions' ? 'https://apexfilings.com' : 'https://apexfiling.com';
+    const canonicalUrl = `${canonicalDomain}${canonicalPath}`;
     document.querySelector<HTMLLinkElement>('link[rel="canonical"]')?.setAttribute('href', canonicalUrl);
     document.querySelector<HTMLMetaElement>('meta[property="og:url"]')?.setAttribute('content', canonicalUrl);
   }, [routePath]);
@@ -121,6 +125,9 @@ export default function App() {
           serviceSlug === 'uk-ltd-formation' ? <Suspense fallback={<div className="min-h-screen bg-white" />}><UkLtdServicePage onOpenClientPortal={() => setLoginModalOpen(true)} /></Suspense> : usServicePage ? <Suspense fallback={<div className="min-h-screen bg-white" />}><UsServicePage page={usServicePage} /></Suspense> : managementServicePage ? <Suspense fallback={<div className="min-h-screen bg-white" />}><ManagementServicePage page={managementServicePage} onOpenClientPortal={() => setLoginModalOpen(true)} /></Suspense> : selectedService ? <Suspense fallback={<div className="min-h-screen bg-white" />}><ServiceDetailPage service={selectedService} /></Suspense> : <section className="mx-auto min-h-[60vh] max-w-7xl px-4 py-24 text-center"><h1 className="text-3xl font-bold text-[#171717]">Service not found</h1><p className="mt-4 text-slate-600">Explore the services currently available through Apex Filings.</p><a href="/#services" className="mt-6 inline-flex text-sm font-semibold text-[#F04623] underline underline-offset-4">View all services</a></section>
         ) : routePath === '/how-it-works' ? <Suspense fallback={<div className="min-h-screen" role="status">Loading your business journey…</div>}><FormationProcessPage /></Suspense>
           : routePath === '/pricing' ? <PricingPage onSelectPlan={handleSelectPlan} />
+          : routePath === '/refund-policy' ? <RefundPolicyPage />
+          : routePath === '/privacy-policy' ? <PrivacyPolicyPage />
+          : routePath === '/terms-and-conditions' ? <TermsConditionsPage />
           : routePath === '/contact' || routePath === '/consultation' ? <ContactPage consultation={routePath === '/consultation'} />
           : routePath === '/why-us' || routePath === '/about' ? <Suspense fallback={<div className="min-h-screen bg-white" />}><WhyApexPage /></Suspense> : <>
         {/* 1. Hero Section */}

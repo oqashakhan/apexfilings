@@ -17,9 +17,50 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23F04623'/><path d='M16 6L24 24H19.5L16 16.5L12.5 24H8L16 6Z' fill='white'/></svg>" />
+    <link rel="icon" type="image/png" sizes="64x64" href="/favicon.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <script>
+      try {
+        if (!sessionStorage.getItem('apex-loader-seen')) document.documentElement.classList.add('apex-loader-active');
+      } catch {
+        document.documentElement.classList.add('apex-loader-active');
+      }
+      if (document.documentElement.classList.contains('apex-loader-active')) window.setTimeout(() => {
+        if (!document.documentElement.classList.contains('apex-loader-active')) return;
+        document.documentElement.classList.add('apex-loader-fallback');
+        document.getElementById('apex-startup-loader')?.style.setProperty('opacity', '0');
+        document.getElementById('root')?.style.setProperty('opacity', '1');
+        window.setTimeout(() => {
+          document.documentElement.classList.remove('apex-loader-active', 'apex-loader-fallback');
+          document.getElementById('apex-startup-loader')?.remove();
+          document.getElementById('root')?.style.removeProperty('opacity');
+          try { sessionStorage.setItem('apex-loader-seen', '1'); } catch { /* Storage may be unavailable. */ }
+        }, 280);
+      }, 2600);
+    </script>
+    <style>
+      #apex-startup-loader { display: none; }
+      .apex-loader-active #root { opacity: 0; }
+      .apex-loader-active #apex-startup-loader {
+        position: fixed; inset: 0; z-index: 9999; display: flex; align-items: center; justify-content: center;
+        background: #fffaf8; opacity: 1;
+      }
+      .apex-loader-mark { display: flex; flex-direction: column; align-items: center; gap: 15px; }
+      .apex-loader-symbol { width: clamp(76px, 13vw, 102px); height: auto; opacity: 0; transform: translateY(6px) scale(.96); }
+      .apex-loader-name { width: clamp(155px, 28vw, 214px); height: auto; opacity: 0; transform: translateY(6px); }
+      .apex-loader-fallback #apex-startup-loader, .apex-loader-fallback #root { transition: opacity 280ms ease; }
+      @media (prefers-reduced-motion: reduce) {
+        .apex-loader-symbol, .apex-loader-name { transform: none; }
+      }
+    </style>
   </head>
   <body class="bg-[#fcf9f8] text-slate-700 font-sans antialiased overflow-x-hidden selection:bg-[#F04623] selection:text-white">
+    <div id="apex-startup-loader" aria-hidden="true">
+      <div class="apex-loader-mark">
+        <img class="apex-loader-symbol" src="/images/apex-loader-icon.png" width="153" height="133" alt="" />
+        <img class="apex-loader-name" src="/images/apex-loader-wordmark.png" width="335" height="53" alt="" />
+      </div>
+    </div>
     <div id="root"></div>
     <!-- Netlify discovers this form in the built HTML; the visible form is rendered by React. -->
     <form name="apex-consultation" method="POST" data-netlify="true" data-netlify-honeypot="bot-field" hidden>

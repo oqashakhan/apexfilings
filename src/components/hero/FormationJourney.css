@@ -161,16 +161,13 @@
 .formation-journey__trust-pill svg { color: #F04623; }
 
 @media (max-width: 1023px) and (min-width: 701px) {
-  .formation-journey__scene { min-height: 390px; }
-  .formation-journey__steps { gap: 12px; padding: 0 8px; grid-template-columns: 1fr 1fr 1fr 1.2fr; }
-  .journey-step { padding: 21px 12px 15px; }
-  .journey-step--ready { padding-top: 28px; }
-  .journey-step__title { font-size: 14px; }
-  .journey-step__brand { gap: 3px; font-size: 10px; }
-  .journey-step__flag { width: 22px; height: 15px; }
-  .journey-step__identity-name { font-size: 13px; }
-  .journey-step__ready-status { font-size: 9px; }
-  .journey-step__ein-status { font-size: 10px; white-space: normal; }
+  .formation-journey__scene { min-height: 0; }
+  .formation-journey__label { position: relative; top: auto; left: auto; margin: 0 0 30px 8px; }
+  .journey-path { display: none; }
+  .formation-journey__steps { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px 20px; padding: 0 8px; }
+  .journey-step, .journey-step--ready { min-height: 205px; margin-top: 0; padding: 24px 20px 18px; }
+  .journey-step__ein-status { white-space: normal; }
+  .journey-step__identity-name { font-size: 16px; }
 }
 
 @media (max-width: 700px) {

@@ -1,5 +1,8 @@
-import { ArrowRight, MessageCircleQuestion } from 'lucide-react';
+import { ArrowRight, Facebook, MapPin, MessageCircleQuestion, Music2 } from 'lucide-react';
 import { ConsultationForm } from '../forms/ConsultationForm';
+import { APEX_EXTERNAL_LINKS } from '../../data/navigation';
+
+const externalIcons = [MapPin, Facebook, Music2];
 
 export function ContactSection({ asPage = false, consultation = false, ukLtd = false }: { asPage?: boolean; consultation?: boolean; ukLtd?: boolean }) {
   const Heading = asPage ? 'h1' : 'h2';
@@ -23,6 +26,12 @@ export function ContactSection({ asPage = false, consultation = false, ukLtd = f
               <h2 id="talk-to-apex" className="text-xl font-bold text-[#171717]">Talk to Apex Filings</h2>
               <p className="mt-3 text-sm leading-7 text-slate-600">{ukLtd ? 'Have questions about forming a UK company? Share your details and our team can explain the available options.' : 'Have questions about forming your US company? Share your details and the service you need. Our team can help you understand your next steps.'}</p>
               <a href="/#faq" className="mt-5 inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-[#bd3517] underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#F04623]"><MessageCircleQuestion className="h-4 w-4" aria-hidden="true" />Read common questions<ArrowRight className="h-4 w-4" aria-hidden="true" /></a>
+              {asPage && <nav className="mt-5 flex flex-wrap gap-x-4 gap-y-1 border-t border-slate-200 pt-4" aria-label="Location and social media">
+                {APEX_EXTERNAL_LINKS.map((link, index) => {
+                  const Icon = externalIcons[index];
+                  return <a key={link.label} href={link.href} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-10 items-center gap-1.5 text-sm font-semibold text-[#536078] hover:text-[#F04623] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#F04623]"><Icon className="h-4 w-4" aria-hidden="true" />{link.label}</a>;
+                })}
+              </nav>}
             </div>
           </div>
           {!consultation && asPage && <p className="px-2 text-xs leading-6 text-slate-500">Apex Filings is a business formation service and is not a law firm. We do not provide legal or tax advice.</p>}

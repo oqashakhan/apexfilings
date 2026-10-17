@@ -27,7 +27,7 @@ export function HeroSection({ onStart }: HeroSectionProps) {
       <AntigravityBackground containerRef={heroRef} desktopCount={14} maxDisplacement={12} />
 
       <div className="hero-content mx-auto max-w-7xl text-center">
-        <p data-polish-reveal="0" className="clay-badge mx-auto inline-flex max-w-full items-center rounded-full border border-orange-200 bg-white/80 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#c52e0f] sm:text-xs">
+        <p data-polish-reveal="0" className="clay-badge mx-auto inline-flex max-w-full flex-wrap items-center justify-center rounded-full border border-orange-200 bg-white/80 px-4 py-2 text-[10px] font-semibold uppercase leading-relaxed tracking-[0.08em] text-[#c52e0f] sm:text-xs sm:tracking-[0.12em]">
           US LLC Formation <span className="mx-2 text-orange-300">•</span> Simple <span className="mx-2 text-orange-300">•</span> Secure <span className="mx-2 text-orange-300">•</span> Online
         </p>
 

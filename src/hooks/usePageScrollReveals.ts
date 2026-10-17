@@ -23,6 +23,7 @@ export function usePageScrollReveals(root: RefObject<HTMLElement | null>, routeP
 
 function installReveals(container: HTMLElement, gsap: typeof import('gsap').gsap) {
     const preference = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const compactMotion = window.matchMedia('(max-width: 639px)');
     const context = gsap.context(() => {}, container);
     const registered = new WeakSet<HTMLElement>();
     const pending = new Map<HTMLElement, HTMLElement[]>();
@@ -41,13 +42,13 @@ function installReveals(container: HTMLElement, gsap: typeof import('gsap').gsap
 
         context.add(() => {
           const tween = gsap.fromTo(members,
-            { opacity: 0, y: members.length > 1 ? 18 : 14 },
+            { opacity: 0, y: compactMotion.matches ? 10 : members.length > 1 ? 18 : 14 },
             {
               opacity: 1,
               y: 0,
-              duration: members.length > 1 ? 0.62 : 0.56,
+              duration: compactMotion.matches ? 0.48 : members.length > 1 ? 0.62 : 0.56,
               ease: 'power2.out',
-              stagger: members.length > 1 ? 0.08 : 0,
+              stagger: !compactMotion.matches && members.length > 1 ? 0.08 : 0,
               overwrite: 'auto',
               clearProps: 'opacity,transform',
               onComplete: () => active.delete(tween),

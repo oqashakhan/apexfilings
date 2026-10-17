@@ -62,6 +62,24 @@ export function Navbar({ onOpenClientPortal, language, onLanguageChange }: Navba
   useEffect(() => () => clearCloseTimer(), []);
 
   useEffect(() => {
+    if (!mobileMenuOpen) return;
+    const mobileViewport = window.matchMedia('(max-width: 1023px)');
+    if (!mobileViewport.matches) return;
+    const previousOverflow = document.body.style.overflowY;
+    const previousPadding = document.body.style.paddingRight;
+    const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+    document.body.style.overflowY = 'hidden';
+    if (scrollbarWidth > 0) document.body.style.paddingRight = `${scrollbarWidth}px`;
+    const closeOnDesktop = () => { if (!mobileViewport.matches) setMobileMenuOpen(false); };
+    mobileViewport.addEventListener('change', closeOnDesktop);
+    return () => {
+      mobileViewport.removeEventListener('change', closeOnDesktop);
+      document.body.style.overflowY = previousOverflow;
+      document.body.style.paddingRight = previousPadding;
+    };
+  }, [mobileMenuOpen]);
+
+  useEffect(() => {
     const header = headerRef.current;
     if (!header) return;
     let frame = 0;
@@ -258,13 +276,13 @@ export function Navbar({ onOpenClientPortal, language, onLanguageChange }: Navba
       {mobileMenuOpen && (
         <nav id="mobile-navigation" aria-label="Mobile navigation" className="max-h-[calc(100dvh-5rem)] overflow-y-auto border-t border-slate-100 bg-white px-4 py-3 lg:hidden">
           <div className="mx-auto flex max-w-7xl flex-col">
-            <a href={NAVIGATION_ITEMS[0].href} onClick={closeMenus} className={linkClasses}>{copy.home}</a>
+            <a href={NAVIGATION_ITEMS[0].href} onClick={closeMenus} className={`${linkClasses} flex min-h-11 items-center`}>{copy.home}</a>
             <button
               type="button"
               aria-expanded={servicesOpen}
               aria-controls="mobile-services-menu"
               onClick={() => setServicesOpen((open) => !open)}
-              className={`${linkClasses} flex w-full items-center justify-between text-left`}
+              className={`${linkClasses} flex min-h-11 w-full items-center justify-between text-left`}
             >
               {copy.services}
               <ChevronDown className={`h-4 w-4 transition-transform ${servicesOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
@@ -275,7 +293,7 @@ export function Navbar({ onOpenClientPortal, language, onLanguageChange }: Navba
               </div>
             )}
             {NAVIGATION_ITEMS.slice(1).map((item) => (
-              <a key={item.label} href={item.href} aria-current={currentPath === item.href ? 'page' : undefined} onClick={closeMenus} className={linkClasses}>{copy[item.label.toLowerCase() as 'pricing' | 'about' | 'contact']}</a>
+              <a key={item.label} href={item.href} aria-current={currentPath === item.href ? 'page' : undefined} onClick={closeMenus} className={`${linkClasses} flex min-h-11 items-center`}>{copy[item.label.toLowerCase() as 'pricing' | 'about' | 'contact']}</a>
             ))}
           </div>
         </nav>
