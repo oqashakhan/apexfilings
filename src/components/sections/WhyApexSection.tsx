@@ -1,77 +1,121 @@
-import { ArrowRight, Building2, ClipboardList, Globe2 } from 'lucide-react';
-import { useRef } from 'react';
-import { useScrollReveal } from '../../hooks/useScrollReveal';
+import { useEffect, useRef } from 'react';
+import { ArrowRight, ClipboardCheck, FileCheck2, Globe2, Layers3 } from 'lucide-react';
+import './WhyApexSection.css';
 
-const reasons = [
-  {
-    title: 'A Guided Start',
-    description: 'Understand every step as you begin forming your US business.',
-    icon: ClipboardList,
-  },
-  {
-    title: 'All Your Services in One Place',
-    description: 'Form your LLC and find the supporting services your business may need, such as EIN, registered agent and compliance.',
-    icon: Building2,
-  },
-  {
-    title: 'Built for Global Founders',
-    description: 'Start online and find a clear path forward, wherever you live.',
-    icon: Globe2,
-  },
+const benefits = [
+  { title: 'Guided Formation', description: 'Clear steps from start to finish.', icon: ClipboardCheck },
+  { title: 'Essential Services', description: 'Formation, EIN, and compliance support.', icon: Layers3 },
+  { title: 'Built for Global Founders', description: 'Start from wherever you are.', icon: Globe2 },
 ];
 
 export function WhyApexSection() {
-  const revealRef = useRef<HTMLElement>(null);
-  useScrollReveal(revealRef);
+  const sectionRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    const section = sectionRef.current;
+    if (!section) return;
+    const preference = window.matchMedia('(prefers-reduced-motion: reduce)');
+    let disposed = false;
+    let version = 0;
+    let context: { add: (callback: () => void) => void; revert: () => void } | undefined;
+
+    async function setup() {
+      if (preference.matches || !section) return;
+      const currentVersion = ++version;
+      try {
+        const [{ gsap }, { ScrollTrigger }] = await Promise.all([import('gsap'), import('gsap/ScrollTrigger')]);
+        if (disposed || preference.matches || currentVersion !== version) return;
+        gsap.registerPlugin(ScrollTrigger);
+        context = gsap.context(() => {}, section);
+        context.add(() => {
+          const left = section.querySelector<HTMLElement>('.why-apex-copy');
+          const eyebrow = section.querySelector<HTMLElement>('.why-apex-eyebrow');
+          const title = section.querySelector<HTMLElement>('.why-apex-title');
+          const summary = section.querySelector<HTMLElement>('.why-apex-summary');
+          const cta = section.querySelector<HTMLElement>('.why-apex-cta');
+          const rows = gsap.utils.toArray<HTMLElement>('.why-apex-benefit', section);
+          const visual = section.querySelector<HTMLElement>('.why-apex-visual');
+          const statuses = gsap.utils.toArray<HTMLElement>('.why-apex-status', section);
+          if (!left || !eyebrow || !title || !summary || !cta || !visual) return;
+
+          ScrollTrigger.create({
+            trigger: left, start: 'top 84%', once: true,
+            onEnter: () => context?.add(() => {
+              gsap.timeline()
+                .fromTo(eyebrow, { autoAlpha: 0, y: 10 }, { autoAlpha: 1, y: 0, duration: 0.38, ease: 'power2.out', clearProps: 'all' })
+                .fromTo(title, { autoAlpha: 0, y: 18 }, { autoAlpha: 1, y: 0, duration: 0.6, ease: 'power3.out', clearProps: 'all' }, '-=0.16')
+                .fromTo(summary, { autoAlpha: 0, y: 12 }, { autoAlpha: 1, y: 0, duration: 0.48, ease: 'power2.out', clearProps: 'all' }, '-=0.3')
+                .fromTo(rows, { autoAlpha: 0, y: 12 }, { autoAlpha: 1, y: 0, duration: 0.44, stagger: 0.08, ease: 'power2.out', clearProps: 'all' }, '-=0.18')
+                .fromTo(cta, { autoAlpha: 0, y: 8 }, { autoAlpha: 1, y: 0, duration: 0.42, ease: 'power2.out', clearProps: 'all' }, '-=0.18');
+            }),
+          });
+
+          ScrollTrigger.create({
+            trigger: visual, start: 'top 87%', once: true,
+            onEnter: () => context?.add(() => {
+              gsap.timeline()
+                .fromTo(visual, { autoAlpha: 0, y: 18 }, { autoAlpha: 1, y: 0, duration: 0.7, ease: 'power2.out', clearProps: 'all' })
+                .fromTo(statuses, { autoAlpha: 0, y: 10 }, { autoAlpha: 1, y: 0, duration: 0.42, stagger: 0.1, ease: 'power2.out', clearProps: 'all' }, '-=0.32');
+            }),
+          });
+        });
+      } catch {
+        // The unanimated section remains fully visible if GSAP cannot load.
+      }
+    }
+
+    const onPreferenceChange = () => {
+      version += 1;
+      context?.revert();
+      context = undefined;
+      if (!preference.matches) void setup();
+    };
+    preference.addEventListener('change', onPreferenceChange);
+    void setup();
+    return () => {
+      disposed = true;
+      version += 1;
+      preference.removeEventListener('change', onPreferenceChange);
+      context?.revert();
+    };
+  }, []);
+
   return (
-    <section ref={revealRef} className="scroll-mt-20 bg-[#fcf9f8] py-20 sm:py-24 lg:py-28" id="why-us" aria-labelledby="home-why-title">
-      <div className="mx-auto grid max-w-7xl items-center gap-10 px-4 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:gap-14 lg:px-8">
-        <div data-polish-reveal="0">
-          <p className="inline-flex rounded-full border border-orange-200 bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-[#c52e0f]">
-            Why Apex Filings
-          </p>
-          <h2 id="home-why-title" className="mt-6 max-w-xl text-3xl font-extrabold leading-tight tracking-tight text-[#171717] sm:text-4xl lg:text-[2.75rem]">
-            A Clearer Way to <span className="text-[#F04623]">Start Your US Business</span>
-          </h2>
-          <p className="mt-5 max-w-xl text-base leading-8 text-slate-600">
-            Starting a business in another country can feel complicated. Apex Filings brings guidance, formation services and your next steps together in one simple experience.
-          </p>
-
-          <div className="mt-8 space-y-5">
-            {reasons.map(({ title, description, icon: Icon }, index) => (
-              <div key={title} className={`why-reason-card flex items-start gap-4 rounded-[1.25rem] border p-4 sm:p-5 ${index === 1 ? 'dark-glass clay-card-dark why-reason-card--featured' : 'soft-glass clay-card-soft'}`}>
-                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-orange-100 bg-white text-[#F04623] shadow-sm">
-                  <Icon className="h-5 w-5" strokeWidth={1.8} aria-hidden="true" />
-                </span>
-                <div>
-                  <h3 className={`text-sm font-bold ${index === 1 ? 'text-white' : 'text-[#171717]'}`}>{title}</h3>
-                  <p className={`mt-1 text-sm leading-6 ${index === 1 ? 'text-[#D1D7DF]' : 'text-slate-600'}`}>{description}</p>
-                </div>
-              </div>
+    <section ref={sectionRef} className="why-apex-section scroll-mt-20" id="why-us" aria-labelledby="home-why-title">
+      <div className="why-apex-inner">
+        <div data-polish-reveal="0" className="why-apex-copy">
+          <p className="why-apex-eyebrow">Why Apex Filings</p>
+          <h2 id="home-why-title" className="why-apex-title">A Simpler Way to Start Your US Business</h2>
+          <p className="why-apex-summary">Start and manage your US business with clear guidance and essential services in one place.</p>
+          <ul className="why-apex-benefits">
+            {benefits.map(({ title, description, icon: Icon }) => (
+              <li key={title} className="why-apex-benefit">
+                <span className="why-apex-benefit-icon"><Icon size={19} strokeWidth={1.8} aria-hidden="true" /></span>
+                <span><strong>{title}</strong><small>{description}</small></span>
+              </li>
             ))}
-          </div>
-
-          <div className="mt-9 flex flex-col gap-3 sm:flex-row">
-            <a href="/why-us" className="polish-button polish-primary inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[#F04623] px-6 py-3 text-sm font-semibold text-white shadow-md shadow-orange-500/20 transition-[transform,background-color] motion-safe:hover:-translate-y-0.5 hover:bg-[#e03e1b] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F04623] focus-visible:ring-offset-2">
-              Why Choose Apex Filings <ArrowRight className="h-4 w-4" aria-hidden="true" />
-            </a>
-            <a href="/start" className="polish-button inline-flex min-h-12 items-center justify-center rounded-xl border border-slate-300 bg-white px-6 py-3 text-sm font-semibold text-[#171717] transition-colors hover:border-orange-300 hover:bg-orange-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F04623] focus-visible:ring-offset-2">
-              Start My Business
-            </a>
-          </div>
+          </ul>
+          <a href="/start" className="why-apex-cta">Start My Business <ArrowRight size={17} aria-hidden="true" /></a>
         </div>
 
-        <div data-polish-reveal="1" className="relative mx-auto w-full max-w-2xl">
-          <div className="pointer-events-none absolute inset-[18%] rounded-full bg-orange-100/70 blur-3xl" aria-hidden="true" />
+        <div className="why-apex-visual">
           <img
-            src="/images/why-apex-filings.webp"
-            alt="Founder using a laptop to form a US LLC online with Apex Filings"
+            src="/images/why-apex-founder.png"
+            alt="Smiling entrepreneur working on a laptop in a bright workspace"
             width="1536"
             height="1024"
             loading="lazy"
             decoding="async"
-            className="relative block h-auto w-full"
+            className="why-apex-photo"
           />
+          <div className="why-apex-status why-apex-status--top" aria-hidden="true">
+            <FileCheck2 size={17} strokeWidth={1.9} />
+            <span>Documents Ready</span>
+          </div>
+          <div className="why-apex-status why-apex-status--bottom" aria-hidden="true">
+            <ClipboardCheck size={17} strokeWidth={1.9} />
+            <span>Application Submitted</span>
+          </div>
         </div>
       </div>
     </section>

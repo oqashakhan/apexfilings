@@ -2,7 +2,10 @@ import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import './marketing-polish.css';
 import './clay-system.css';
 import { usePageScrollReveals } from './hooks/usePageScrollReveals';
-import { Navbar, type Language } from './components/layout/Navbar';
+import { Navbar } from './components/layout/Navbar';
+import { isLanguage, type Language } from './i18n/languages';
+import { useSiteTranslation } from './i18n/useSiteTranslation';
+import './i18n/translation.css';
 import { Footer } from './components/layout/Footer';
 import { HeroSection } from './components/sections/HeroSection';
 import { TrustMetrics } from './components/sections/TrustMetrics';
@@ -11,7 +14,6 @@ import { ServicesSection } from './components/sections/ServicesSection';
 import { USAdvantageSection } from './components/sections/USAdvantageSection';
 import { USStateMapSection } from './components/sections/USStateMapSection';
 import { PricingSection } from './components/sections/PricingSection';
-import { ExclusiveBonusesSection } from './components/sections/ExclusiveBonusesSection';
 import { TestimonialsSection } from './components/sections/TestimonialsSection';
 import { TopStatesSection } from './components/sections/TopStatesSection';
 import { FAQSection } from './components/sections/FAQSection';
@@ -43,15 +45,23 @@ export default function App() {
   usePageScrollReveals(mainRef, routePath);
 
   const [loginModalOpen, setLoginModalOpen] = useState(false);
+  const [translationNotice, setTranslationNotice] = useState(false);
   const [language, setLanguage] = useState<Language>(() => {
     const saved = window.localStorage.getItem('apex-navigation-language');
-    return saved === 'en' || saved === 'es' || saved === 'fr' || saved === 'pt' ? saved : 'en';
+    return isLanguage(saved) ? saved : 'en';
   });
 
   const handleLanguageChange = (nextLanguage: Language) => {
+    setTranslationNotice(false);
     setLanguage(nextLanguage);
     window.localStorage.setItem('apex-navigation-language', nextLanguage);
   };
+  useSiteTranslation(language, () => {
+    setLanguage('en');
+    window.localStorage.setItem('apex-navigation-language', 'en');
+    setTranslationNotice(true);
+  });
+  const legalRoute = ['/privacy-policy', '/refund-policy', '/terms-and-conditions'].includes(routePath);
 
   useEffect(() => {
     const handlePopState = () => setPath(window.location.pathname);
@@ -102,11 +112,11 @@ export default function App() {
   const handleSelectState = (state: TopState) => navigateToFormation({ source: 'state-card', state: state.id, service: 'llc-formation' });
 
   if (routePath === '/start') {
-    return <Suspense fallback={<div className="min-h-screen bg-white" role="status">Loading registration…</div>}><StartPage onBackToSite={returnToSite} initialState={new URLSearchParams(window.location.search).get('state') ?? undefined} /></Suspense>;
+    return <><Suspense fallback={<div className="min-h-screen bg-white" role="status">Loading registration…</div>}><StartPage onBackToSite={returnToSite} initialState={new URLSearchParams(window.location.search).get('state') ?? undefined} /></Suspense>{translationNotice && <TranslationNotice />}</>;
   }
 
   if (routePath === '/formation/start') {
-    return <Suspense fallback={<div className="min-h-screen bg-[#fcf9f8]" role="status">Loading formation onboarding…</div>}><FormationWizard /></Suspense>;
+    return <><Suspense fallback={<div className="min-h-screen bg-[#fcf9f8]" role="status">Loading formation onboarding…</div>}><FormationWizard /></Suspense>{translationNotice && <TranslationNotice />}</>;
   }
 
   const serviceSlug = routePath.startsWith('/services/') ? routePath.slice('/services/'.length) : null;
@@ -118,6 +128,7 @@ export default function App() {
     <div className="marketing-site clay-theme min-h-screen flex flex-col bg-[#fcf9f8] text-slate-700 font-sans selection:bg-[#F04623] selection:text-white">
       {/* Navigation */}
       <Navbar onOpenClientPortal={() => setLoginModalOpen(true)} language={language} onLanguageChange={handleLanguageChange} />
+      {legalRoute && language !== 'en' && <div className="border-b border-amber-200 bg-amber-50 px-4 py-2 text-center text-sm text-amber-950">Machine translation is provided for convenience. The English policy is authoritative. <button type="button" onClick={() => handleLanguageChange('en')} className="font-semibold underline underline-offset-2">Read English original</button></div>}
 
       {/* Main Content */}
       <main ref={mainRef} className="flex-1">
@@ -153,19 +164,16 @@ export default function App() {
         {/* 6. Transparent Pricing */}
         <PricingSection onSelectPlan={handleSelectPlan} />
 
-        {/* 7. Optional business support */}
-        <ExclusiveBonusesSection />
-
-        {/* 8. Proven Track Record / Testimonials */}
+        {/* 7. Proven Track Record / Testimonials */}
         <TestimonialsSection />
 
-        {/* 9. Top US States */}
+        {/* 8. Top US States */}
         <TopStatesSection onSelectState={handleSelectState} />
 
-        {/* 10. Frequently Asked Questions */}
+        {/* 9. Frequently Asked Questions */}
         <FAQSection />
 
-        {/* 11. Contact / Start Section */}
+        {/* 10. Contact / Start Section */}
         <ContactSection />
         </>}
       </main>
@@ -178,6 +186,11 @@ export default function App() {
         isOpen={loginModalOpen}
         onClose={() => setLoginModalOpen(false)}
       />
+      {translationNotice && <TranslationNotice />}
     </div>
   );
+}
+
+function TranslationNotice() {
+  return <div role="status" translate="no" className="fixed bottom-4 left-1/2 z-[100] w-[min(92vw,28rem)] -translate-x-1/2 rounded-xl border border-amber-200 bg-white px-4 py-3 text-center text-sm text-[#191F29] shadow-lg">Translation is unavailable right now. The site is shown in English.</div>;
 }

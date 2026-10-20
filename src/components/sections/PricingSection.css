@@ -8,3 +8,36 @@
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+/* Dedicated pricing page CTAs: keep both plans equally easy to choose. */
+.marketing-site #pricing .pricing-card:has(.pricing-page-cta) { row-gap: 24px; }
+
+.marketing-site.clay-theme #pricing .pricing-card .pricing-page-cta {
+  margin-top: auto;
+  background: #fff;
+  border-color: #f04623;
+  color: #c83a1a;
+  box-shadow: 0 7px 16px -12px rgba(25, 31, 41, .35);
+}
+
+.marketing-site.clay-theme #pricing .pricing-card .pricing-page-cta:hover {
+  background: #fff8f5;
+  box-shadow: 0 10px 19px -13px rgba(25, 31, 41, .3);
+}
+
+.marketing-site.clay-theme #pricing .pricing-card .pricing-page-cta--featured {
+  background: #f04623;
+  border-color: #f04623;
+  color: #fff;
+  box-shadow: 0 8px 18px -11px rgba(240, 70, 35, .55);
+}
+
+.marketing-site.clay-theme #pricing .pricing-card .pricing-page-cta--featured:hover {
+  background: #db3f1e;
+  border-color: #db3f1e;
+  box-shadow: 0 10px 21px -12px rgba(240, 70, 35, .6);
+}
+
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .marketing-site #pricing .pricing-card .pricing-page-cta:hover { transform: translateY(-2px); }
+}

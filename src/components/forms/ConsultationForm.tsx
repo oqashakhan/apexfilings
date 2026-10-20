@@ -56,7 +56,7 @@ function detectedCountry(): string {
   return timezoneCountries[Intl.DateTimeFormat().resolvedOptions().timeZone] ?? '';
 }
 
-export function ConsultationForm({ serviceSlug, initialState }: { serviceSlug?: string; initialState?: string }) {
+export function ConsultationForm({ serviceSlug, initialState, contactLayout = false }: { serviceSlug?: string; initialState?: string; contactLayout?: boolean }) {
   const id = useId().replace(/:/g, '');
   const params = new URLSearchParams(window.location.search);
   const requestedSlug = serviceSlug ?? params.get('service') ?? '';
@@ -152,7 +152,7 @@ export function ConsultationForm({ serviceSlug, initialState }: { serviceSlug?: 
     return <div role="status" aria-live="polite" className="consultation-success rounded-2xl border border-emerald-200 bg-emerald-50 p-7 text-center"><CheckCircle2 className="mx-auto h-10 w-10 text-emerald-600" aria-hidden="true" /><h3 className="mt-4 text-xl font-bold text-[#171717]">Thank you, {submitted.name}.</h3><p className="mt-2 text-sm leading-7 text-slate-700">We received your request and will contact you by {submitted.method} with next steps.</p></div>;
   }
 
-  return <form name="apex-consultation" method="POST" data-netlify="true" data-netlify-honeypot="bot-field" onSubmit={handleSubmit} noValidate className="space-y-5">
+  return <form name="apex-consultation" method="POST" data-netlify="true" data-netlify-honeypot="bot-field" onSubmit={handleSubmit} noValidate className={`space-y-5 ${contactLayout ? 'apex-contact-form' : ''}`}>
     <input type="hidden" name="form-name" value="apex-consultation" />
     <input type="hidden" name="state" value={requestedState} />
     <input type="hidden" name="source" value={window.location.pathname} />

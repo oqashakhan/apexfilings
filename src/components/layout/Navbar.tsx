@@ -1,27 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
-import { Check, ChevronDown, CircleUserRound, Globe2, Menu, X } from 'lucide-react';
+import { ArrowRight, Check, ChevronDown, CircleUserRound, Globe2, Menu, X } from 'lucide-react';
 import { NAVIGATION_ITEMS } from '../../data/navigation';
 import { ServicesMegaMenu } from './ServicesMegaMenu';
 import './Navbar.css';
+import { LANGUAGES, type Language } from '../../i18n/languages';
 
 const linkClasses =
   'rounded-lg px-3 py-2.5 text-sm font-medium text-slate-700 transition-colors hover:bg-orange-50 hover:text-[#F04623] aria-[current=page]:bg-orange-50 aria-[current=page]:text-[#F04623] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F04623]';
 
-export type Language = 'en' | 'es' | 'fr' | 'pt';
-
-const languages: { code: Language; name: string; nativeName: string }[] = [
-  { code: 'en', name: 'English', nativeName: 'English' },
-  { code: 'es', name: 'Spanish', nativeName: 'Español' },
-  { code: 'fr', name: 'French', nativeName: 'Français' },
-  { code: 'pt', name: 'Portuguese', nativeName: 'Português' },
-];
-
-const navigationCopy = {
-  en: { home: 'Home', services: 'Services', allServices: 'All services', pricing: 'Pricing', about: 'About', contact: 'Contact', portal: 'Client portal' },
-  es: { home: 'Inicio', services: 'Servicios', allServices: 'Todos los servicios', pricing: 'Precios', about: 'Nosotros', contact: 'Contacto', portal: 'Portal del cliente' },
-  fr: { home: 'Accueil', services: 'Services', allServices: 'Tous les services', pricing: 'Tarifs', about: 'À propos', contact: 'Contact', portal: 'Portail client' },
-  pt: { home: 'Início', services: 'Serviços', allServices: 'Todos os serviços', pricing: 'Preços', about: 'Sobre', contact: 'Contato', portal: 'Portal do cliente' },
-};
+const navigationCopy = { home: 'Home', services: 'Services', pricing: 'Pricing', about: 'About', contact: 'Contact' };
+const incorporateHref = '/formation/start?source=service&service=llc-formation&residency=us';
 
 interface NavbarProps {
   onOpenClientPortal: () => void;
@@ -39,7 +27,7 @@ export function Navbar({ onOpenClientPortal, language, onLanguageChange }: Navba
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const suppressFocusOpen = useRef(false);
   const focusFirstLink = useRef(false);
-  const copy = navigationCopy[language];
+  const copy = navigationCopy;
   const currentPath = window.location.pathname.replace(/\/$/, '') || '/';
 
   const clearCloseTimer = () => {
@@ -207,10 +195,13 @@ export function Navbar({ onOpenClientPortal, language, onLanguageChange }: Navba
         </nav>
 
         <div className="flex shrink-0 items-center justify-self-end gap-1.5 sm:gap-2">
+          <a href={incorporateHref} className="apex-nav-cta hidden min-h-10 items-center justify-center gap-1.5 rounded-xl bg-[#F04623] px-4 text-sm font-bold text-white transition-colors hover:bg-[#d93d1c] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F04623] focus-visible:ring-offset-2 lg:inline-flex">
+            Incorporate Now <ArrowRight className="h-4 w-4" aria-hidden="true" />
+          </a>
           <div className="relative">
             <button
               type="button"
-              aria-label={`Language: ${languages.find((item) => item.code === language)?.name}`}
+              aria-label={`Language: ${LANGUAGES.find((item) => item.code === language)?.name}`}
               aria-expanded={languageOpen}
               aria-controls="language-menu"
               onClick={() => {
@@ -224,9 +215,10 @@ export function Navbar({ onOpenClientPortal, language, onLanguageChange }: Navba
               <ChevronDown className={`hidden h-3.5 w-3.5 transition-transform sm:block ${languageOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
             </button>
             {languageOpen && (
-              <div id="language-menu" className="absolute right-0 top-full mt-2 w-56 rounded-xl border border-slate-200 bg-white p-2 shadow-lg">
-                <p className="px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Navigation language</p>
-                {languages.map((item) => (
+              <div id="language-menu" className="absolute right-0 top-full mt-2 w-56 max-w-[calc(100vw-1rem)] rounded-xl border border-slate-200 bg-white p-2 shadow-lg" translate="no">
+                <p className="px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Website language</p>
+                <div className="max-h-[min(60vh,26rem)] overflow-y-auto overscroll-contain">
+                {LANGUAGES.map((item) => (
                   <button
                     key={item.code}
                     type="button"
@@ -238,7 +230,7 @@ export function Navbar({ onOpenClientPortal, language, onLanguageChange }: Navba
                     {language === item.code && <Check className="h-4 w-4 text-[#F04623]" aria-hidden="true" />}
                   </button>
                 ))}
-                <p className="border-t border-slate-100 px-3 pt-2 text-[11px] leading-relaxed text-slate-500">Full-page translations are being prepared. The main content is currently in English.</p>
+                </div>
               </div>
             )}
           </div>
@@ -295,6 +287,9 @@ export function Navbar({ onOpenClientPortal, language, onLanguageChange }: Navba
             {NAVIGATION_ITEMS.slice(1).map((item) => (
               <a key={item.label} href={item.href} aria-current={currentPath === item.href ? 'page' : undefined} onClick={closeMenus} className={`${linkClasses} flex min-h-11 items-center`}>{copy[item.label.toLowerCase() as 'pricing' | 'about' | 'contact']}</a>
             ))}
+            <a href={incorporateHref} onClick={closeMenus} className="mt-3 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#F04623] px-5 py-3 text-sm font-bold text-white transition-colors hover:bg-[#d93d1c] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F04623] focus-visible:ring-offset-2">
+              Incorporate Now <ArrowRight className="h-4 w-4" aria-hidden="true" />
+            </a>
           </div>
         </nav>
       )}

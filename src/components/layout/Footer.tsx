@@ -1,10 +1,10 @@
 import {
   Accessibility, BookOpen, FileText, IdCard, Landmark, LockKeyhole,
-  Mail, MapPin, Music2, Facebook, ReceiptText, RotateCcw, Scale, ScrollText, Shield,
+  Mail, MapPin, Phone, ReceiptText, RotateCcw, Scale, ScrollText, Shield,
   ShieldCheck, Star, Tag, UsersRound,
 } from 'lucide-react';
 import { APEX_EXTERNAL_LINKS, FOOTER_LINKS } from '../../data/navigation';
-import type { Language } from './Navbar';
+import { LANGUAGES, type Language } from '../../i18n/languages';
 import './Footer.css';
 
 interface FooterProps {
@@ -13,19 +13,15 @@ interface FooterProps {
   management?: boolean;
 }
 
-const footerLanguages: { code: Language; label: string }[] = [
-  { code: 'en', label: 'English' },
-  { code: 'es', label: 'Español' },
-  { code: 'fr', label: 'Français' },
-  { code: 'pt', label: 'Português' },
-];
 const serviceIcons = [FileText, IdCard, Shield, ReceiptText, Landmark];
 const companyIcons = [UsersRound, Mail, Tag, BookOpen, Star];
 const legalIcons = [LockKeyhole, RotateCcw, ScrollText, Scale, Accessibility];
 const serviceLabels = ['US LLC Formation', 'EIN Application', 'Registered Agent Service', 'ITIN Application', 'US Bank Account Support'];
 const companyLabels = ['About Apex Filings', 'Contact', 'Pricing', 'FAQ / Guides', 'Reviews'];
 const legalLabels = ['Privacy Policy', 'Refund Policy', 'Terms of Service', 'Legal Disclaimer', 'Accessibility'];
-const externalIcons = [MapPin, Facebook, Music2];
+const locationLink = APEX_EXTERNAL_LINKS.find((link) => link.label === 'Location');
+const facebookLink = APEX_EXTERNAL_LINKS.find((link) => link.label === 'Facebook');
+const tiktokLink = APEX_EXTERNAL_LINKS.find((link) => link.label === 'TikTok');
 
 export function Footer({ language, onLanguageChange, management = false }: FooterProps) {
   return (
@@ -37,16 +33,16 @@ export function Footer({ language, onLanguageChange, management = false }: Foote
               <img src="/images/apex-logo-white-bg.png" alt="" width="500" height="500" loading="lazy" />
             </a>
             <p className="mt-4 max-w-[260px] text-[13px] leading-6 text-slate-600">
-              Apex Filings provides comprehensive US LLC formation and business compliance services.
-              Powering entrepreneurs worldwide to form their companies in the United States with
-              clarity and zero administrative headaches.
+              Making US business formation simple, worldwide.
             </p>
-            <nav className="apex-footer-socials" aria-label="Apex Filings location and social media">
-              {APEX_EXTERNAL_LINKS.map((link, index) => {
-                const Icon = externalIcons[index];
-                return <a key={link.label} href={link.href} target="_blank" rel="noopener noreferrer" className="apex-footer-social-link"><Icon aria-hidden="true" size={16} /><span>{link.label}</span></a>;
-              })}
-            </nav>
+            <a className="apex-footer-phone" href="tel:+16822864111"><Phone aria-hidden="true" size={16} /><span>+1 682 286 4111</span></a>
+            <div className="apex-footer-presence">
+              {locationLink && <a href={locationLink.href} target="_blank" rel="noopener noreferrer" className="apex-footer-location"><MapPin aria-hidden="true" size={16} /><span>Location</span></a>}
+              <nav className="apex-footer-socials" aria-label="Apex Filings social media">
+                {facebookLink && <a href={facebookLink.href} target="_blank" rel="noopener noreferrer" className="apex-footer-social-link" aria-label="Apex Filings on Facebook"><img src="/images/facebook-logo.png" alt="" width="22" height="22" loading="lazy" /></a>}
+                {tiktokLink && <a href={tiktokLink.href} target="_blank" rel="noopener noreferrer" className="apex-footer-social-link" aria-label="Apex Filings on TikTok"><img src="/images/tiktok-logo.png" alt="" width="22" height="22" loading="lazy" /></a>}
+              </nav>
+            </div>
           </div>
 
           <div>
@@ -106,20 +102,12 @@ export function Footer({ language, onLanguageChange, management = false }: Foote
 
         <div className="mt-8 flex flex-col gap-3 border-t border-slate-200 pt-5 text-sm text-slate-500 md:flex-row md:items-center md:justify-between">
           <p>© 2026 Apex Filings. All rights reserved.</p>
-          <div className="apex-footer-languages" role="group" aria-label="Navigation language">
-            {footerLanguages.map(({ code, label }) => (
-              <button
-                key={code}
-                type="button"
-                lang={code}
-                onClick={() => onLanguageChange(code)}
-                aria-pressed={language === code}
-                className="apex-footer-language"
-              >
-                {label}
-              </button>
-            ))}
-          </div>
+          <label className="inline-flex items-center gap-2 text-sm" translate="no">
+            <span>Language</span>
+            <select aria-label="Website language" value={language} onChange={(event) => onLanguageChange(event.target.value as Language)} className="rounded-lg border border-slate-200 bg-white px-2 py-2 text-[#191F29] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F04623]">
+              {LANGUAGES.map((item) => <option key={item.code} value={item.code} lang={item.code}>{item.nativeName}</option>)}
+            </select>
+          </label>
         </div>
       </div>
     </footer>

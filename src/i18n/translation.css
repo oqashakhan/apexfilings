@@ -1,0 +1,7 @@
+html[dir='rtl'] input[type='email'],
+html[dir='rtl'] input[type='tel'],
+html[dir='rtl'] input[type='number'],
+html[dir='rtl'] input[type='url'] {
+  direction: ltr;
+  text-align: start;
+}

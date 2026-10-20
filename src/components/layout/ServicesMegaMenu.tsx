@@ -6,7 +6,7 @@ import {
   ScanLine, ShieldCheck, ShoppingBag, UserRoundCog,
   type LucideIcon,
 } from 'lucide-react';
-import type { Language } from './Navbar';
+import type { Language } from '../../i18n/languages';
 
 type ServiceLink = { label: string; icon: LucideIcon; href?: string };
 type ServiceCategory = { id: string; title: string; items: ServiceLink[] };
@@ -72,7 +72,7 @@ function ServiceItems({ items, onNavigate }: { items: ServiceLink[]; onNavigate:
 }
 
 export function ServicesMegaMenu({ language, onNavigate, mobile = false }: { language: Language; onNavigate: () => void; mobile?: boolean }) {
-  const text = copy[language];
+  const text = copy.en;
   const [openCategory, setOpenCategory] = useState<string | null>(null);
 
   return (

@@ -1,126 +1,109 @@
-import { useState } from 'react';
-import { ArrowUpRight, Building2, Globe2, ShieldCheck } from 'lucide-react';
+import { useEffect, useRef } from 'react';
+import { Globe2, ShieldCheck, TrendingUp } from 'lucide-react';
 import './USAdvantageSection.css';
 
 const advantages = [
   {
-    number: '01',
     title: 'A Recognized Foundation',
-    summary: 'Give your business a clear identity for partners and customers.',
-    detail: 'A registered US company gives your business a defined name and structure to present when you work with customers, vendors and service providers.',
-    points: ['A registered business identity', 'A clearer starting point for contracts', 'A structure partners can review'],
+    description: 'Give your business a clear identity for customers and partners.',
     icon: Globe2,
   },
   {
-    number: '02',
     title: 'A Layer of Protection',
-    summary: 'A US LLC can help separate your business obligations from your personal affairs.',
-    detail: '',
-    points: [],
+    description: 'An LLC can help separate business obligations from personal affairs.',
     icon: ShieldCheck,
   },
   {
-    number: '03',
     title: 'Space to Grow',
-    summary: 'Build on a structure designed for your next stage of business.',
-    detail: '',
-    points: [],
-    icon: Building2,
+    description: 'Build a business structure designed for future growth.',
+    icon: TrendingUp,
   },
 ];
 
 export function USAdvantageSection() {
-  const [activeIndex, setActiveIndex] = useState(0);
-  const active = advantages[activeIndex];
-  const ActiveIcon = active.icon;
+  const sectionRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    const section = sectionRef.current;
+    if (!section) return;
+
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+    let disposed = false;
+    let version = 0;
+    let context: { add: (callback: () => void) => void; revert: () => void } | undefined;
+
+    async function setup() {
+      if (!section || reducedMotion.matches) return;
+      const currentVersion = ++version;
+
+      try {
+        const [{ gsap }, { ScrollTrigger }] = await Promise.all([import('gsap'), import('gsap/ScrollTrigger')]);
+        if (disposed || reducedMotion.matches || currentVersion !== version) return;
+
+        gsap.registerPlugin(ScrollTrigger);
+        context = gsap.context(() => {}, section);
+        context.add(() => {
+          const heading = section.querySelector<HTMLElement>('.us-advantage-heading');
+          const description = section.querySelector<HTMLElement>('.us-advantage-description');
+          const cards = gsap.utils.toArray<HTMLElement>('.us-advantage-card', section);
+          if (!heading || !description || cards.length === 0) return;
+
+          ScrollTrigger.create({
+            trigger: section,
+            start: 'top 82%',
+            once: true,
+            onEnter: () => context?.add(() => {
+              gsap.timeline()
+                .fromTo(heading, { autoAlpha: 0, y: 20 }, { autoAlpha: 1, y: 0, duration: 0.6, ease: 'power2.out', clearProps: 'all' })
+                .fromTo(description, { autoAlpha: 0, y: 12 }, { autoAlpha: 1, y: 0, duration: 0.48, ease: 'power2.out', clearProps: 'all' }, '-=0.28')
+                .fromTo(cards, { autoAlpha: 0, y: 30 }, { autoAlpha: 1, y: 0, duration: 0.6, stagger: 0.12, ease: 'power2.out', clearProps: 'all' }, '-=0.2');
+            }),
+          });
+        });
+      } catch {
+        // Content stays visible if the optional animation cannot load.
+      }
+    }
+
+    const onMotionChange = () => {
+      version += 1;
+      context?.revert();
+      context = undefined;
+      if (!reducedMotion.matches) void setup();
+    };
+
+    reducedMotion.addEventListener('change', onMotionChange);
+    void setup();
+    return () => {
+      disposed = true;
+      version += 1;
+      reducedMotion.removeEventListener('change', onMotionChange);
+      context?.revert();
+    };
+  }, []);
 
   return (
-    <section id="us-advantage" className="us-advantage-section relative overflow-hidden py-20 lg:py-28" aria-labelledby="us-advantage-title">
-      <div className="us-advantage-decor" aria-hidden="true" />
-      <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="us-advantage-intro mb-11 max-w-2xl lg:mb-14">
-          <div className="mb-5 flex items-center gap-3">
-            <span className="h-px w-8 bg-[#F04623]" aria-hidden="true" />
-            <span className="text-xs font-bold uppercase tracking-[0.18em] text-[#D63E1D]">The US advantage</span>
-          </div>
-          <h2 id="us-advantage-title" className="text-3xl font-extrabold tracking-tight text-[#191F29] sm:text-4xl lg:text-[2.8rem]">
-            Why Incorporate <span className="text-[#F04623]">in the US?</span>
-          </h2>
-          <p className="mt-4 max-w-xl text-base leading-relaxed text-slate-600">
-            A US company can give your plans a clear foundation. Explore the main reasons founders choose the US, and what each one could mean for you.
-          </p>
+    <section ref={sectionRef} id="us-advantage" className="us-advantage-section" aria-labelledby="us-advantage-title">
+      <div className="us-advantage-container" data-polish-reveal>
+        <div className="us-advantage-intro">
+          <span className="us-advantage-label">The US Advantage</span>
+          <h2 id="us-advantage-title" className="us-advantage-heading">Why Incorporate in the US?</h2>
+          <p className="us-advantage-description">Build a strong foundation for your business with the advantages of a US company.</p>
         </div>
 
-        <div className="us-advantage-grid grid gap-4 md:grid-cols-3 lg:gap-5" aria-label="Reasons to form a US business">
-          {advantages.map((advantage, index) => {
+        <ul className="us-advantage-grid" aria-label="Advantages of forming a US business">
+          {advantages.map((advantage) => {
             const Icon = advantage.icon;
-            const isActive = activeIndex === index;
-
             return (
-              <button
-                key={advantage.number}
-                data-scroll-reveal
-                type="button"
-                aria-pressed={isActive}
-                aria-controls="us-advantage-detail"
-                onClick={() => setActiveIndex(index)}
-                className={`us-advantage-card group relative flex min-h-[250px] w-full flex-col overflow-hidden border p-6 text-left transition-[transform,background-color,border-color,box-shadow,color] duration-300 motion-reduce:transition-none sm:p-7 lg:min-h-[270px] lg:p-8 ${
-                  isActive
-                    ? 'us-advantage-card--active text-white'
-                    : 'us-advantage-card--inactive text-[#17202E]'
-                } focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#F04623]`}
-              >
-                <span className="us-advantage-card__halo" aria-hidden="true" />
-                <span className="flex w-full items-start justify-between">
-                  <span className="us-advantage-card__icon flex h-12 w-12 items-center justify-center rounded-2xl">
-                    <Icon className="h-6 w-6" strokeWidth={1.8} aria-hidden="true" />
-                  </span>
-                  <span className="us-advantage-card__number text-sm font-bold tracking-widest" aria-hidden="true">{advantage.number}</span>
-                </span>
-                <span className="mt-8 block text-xl font-bold tracking-tight sm:text-[1.35rem]">{advantage.title}</span>
-                <span className={`mt-2 block max-w-[27ch] text-sm leading-relaxed ${isActive ? 'text-white/70' : 'text-slate-600'}`}>
-                  {advantage.summary}
-                </span>
-                <span className={`mt-auto flex items-center gap-2 pt-6 text-xs font-bold uppercase tracking-[0.12em] ${isActive ? 'text-[#FFAA8F]' : 'text-[#D94320]'}`}>
-                  {isActive ? 'Currently exploring' : 'Explore this benefit'}
-                  <ArrowUpRight className={`h-4 w-4 transition-transform duration-300 motion-reduce:transition-none ${isActive ? 'rotate-45' : 'group-hover:translate-x-0.5 group-hover:-translate-y-0.5'}`} aria-hidden="true" />
-                </span>
-              </button>
+              <li key={advantage.title} className="us-advantage-card">
+                <span className="us-advantage-card__icon" aria-hidden="true"><Icon size={22} strokeWidth={1.8} /></span>
+                <h3>{advantage.title}</h3>
+                <p>{advantage.description}</p>
+              </li>
             );
           })}
-        </div>
-
-        <div
-          key={active.number}
-          id="us-advantage-detail"
-          role="region"
-          aria-label={`${active.title} details`}
-          aria-live="polite"
-          className={`us-advantage-detail mt-5 grid gap-8 p-6 sm:p-8 lg:items-center lg:gap-12 lg:p-10 ${active.points.length ? 'lg:grid-cols-[1.1fr_0.9fr]' : ''}`}
-        >
-          <div>
-            <div className="mb-5 flex items-center gap-3 text-[#D94320]">
-              <span className="us-advantage-detail__icon flex h-10 w-10 items-center justify-center rounded-xl">
-                <ActiveIcon className="h-5 w-5" strokeWidth={1.8} aria-hidden="true" />
-              </span>
-              <span className="text-xs font-bold uppercase tracking-[0.15em]">Benefit {active.number} / 03</span>
-            </div>
-            <h3 className="text-2xl font-bold tracking-tight text-[#17202E] sm:text-[1.75rem]">{active.title}</h3>
-            <p className="mt-3 max-w-xl text-sm leading-7 text-slate-600 sm:text-base">{active.detail || active.summary}</p>
-          </div>
-          {active.points.length > 0 && <div className="us-advantage-detail__offer rounded-2xl p-5 sm:p-6">
-            <p className="mb-4 text-xs font-bold uppercase tracking-[0.14em] text-slate-500">What this can offer</p>
-            <ul className="space-y-4">
-              {active.points.map((point) => (
-                <li key={point} className="flex items-start gap-3 text-sm font-medium leading-6 text-[#253044]">
-                  <span className="us-advantage-detail__check" aria-hidden="true">✓</span>
-                  {point}
-                </li>
-              ))}
-            </ul>
-          </div>}
-        </div>
-        <p className="us-advantage-disclaimer mt-5 text-xs text-slate-500">This is general information, not legal advice.</p>
+        </ul>
+        <p className="us-advantage-disclaimer">This is general information, not legal advice.</p>
       </div>
     </section>
   );

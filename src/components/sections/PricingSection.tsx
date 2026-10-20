@@ -113,10 +113,10 @@ export function PricingSection({ onSelectPlan, asPage = false }: PricingSectionP
                   type="button"
                   onClick={() => onSelectPlan(plan, true)}
                   className={asPage
-                    ? `relative mt-auto inline-flex w-fit items-center gap-2 pt-8 text-sm font-bold transition-transform hover:translate-x-1 motion-reduce:transition-none motion-reduce:hover:translate-x-0 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-current ${featured ? 'text-[#FF805E]' : 'text-[#E54723]'}`
+                    ? `pricing-page-cta relative mt-auto inline-flex min-h-[52px] w-full items-center justify-center gap-2 rounded-xl border px-5 py-3 text-sm font-bold transition-[background-color,border-color,box-shadow,transform] motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#F04623] ${featured ? 'pricing-page-cta--featured' : ''}`
                     : `polish-button relative mt-auto inline-flex min-h-12 w-fit items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-bold focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#F04623] ${featured ? 'polish-primary bg-[#F04623] text-white hover:bg-[#E03E1B]' : 'border border-[#E3D7D0] bg-white text-[#C83A1A] hover:border-[#F04623] hover:bg-[#FFF8F5]'}`}
                 >
-                  {plan.ctaText}
+                  {asPage && featured ? 'Choose Premium All-In' : plan.ctaText}
                   <ArrowRight className="h-4 w-4" aria-hidden="true" />
                 </button>
               </article>
