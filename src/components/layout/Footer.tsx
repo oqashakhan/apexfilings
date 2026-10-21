@@ -22,6 +22,20 @@ const legalLabels = ['Privacy Policy', 'Refund Policy', 'Terms of Service', 'Leg
 const locationLink = APEX_EXTERNAL_LINKS.find((link) => link.label === 'Location');
 const facebookLink = APEX_EXTERNAL_LINKS.find((link) => link.label === 'Facebook');
 const tiktokLink = APEX_EXTERNAL_LINKS.find((link) => link.label === 'TikTok');
+const officeLocations = [
+  {
+    city: 'Lahore, Pakistan',
+    address: '2nd Floor, NE Plot No. 03, Block C, NFC Society, College Road, Lahore 54000, Pakistan.',
+  },
+  {
+    city: 'Sheridan, Wyoming, USA',
+    address: '30 N Gould St, #69370, Sheridan, WY 82801, USA.',
+  },
+  {
+    city: 'Peshawar, Pakistan',
+    address: 'Office No. 303, Block-B, City Tower, University Road, Peshawar',
+  },
+];
 
 export function Footer({ language, onLanguageChange, management = false }: FooterProps) {
   return (
@@ -30,12 +44,16 @@ export function Footer({ language, onLanguageChange, management = false }: Foote
         <div className="apex-footer-grid">
           <div>
             <a href="/#home" className="apex-footer-logo block rounded-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#F04623]" aria-label="Apex Filings Home">
-              <img src="/images/apex-logo-white-bg.png" alt="" width="500" height="500" loading="lazy" />
+              <img className="theme-logo--light" src="/images/apex-logo-white-bg.png" alt="" width="500" height="500" loading="lazy" />
+              <img className="theme-logo--dark" src="/images/apex-logo-dark-bg.png" alt="" width="500" height="500" loading="lazy" />
             </a>
             <p className="mt-4 max-w-[260px] text-[13px] leading-6 text-slate-600">
               Making US business formation simple, worldwide.
             </p>
-            <a className="apex-footer-phone" href="tel:+16822864111"><Phone aria-hidden="true" size={16} /><span>+1 682 286 4111</span></a>
+            <div className="apex-footer-contact">
+              <a className="apex-footer-contact-link" href="mailto:info@apexfilings.com"><Mail aria-hidden="true" size={16} /><span>info@apexfilings.com</span></a>
+              <a className="apex-footer-contact-link" href="tel:+16822864111"><Phone aria-hidden="true" size={16} /><span>+1 (682) 286-4111</span></a>
+            </div>
             <div className="apex-footer-presence">
               {locationLink && <a href={locationLink.href} target="_blank" rel="noopener noreferrer" className="apex-footer-location"><MapPin aria-hidden="true" size={16} /><span>Location</span></a>}
               <nav className="apex-footer-socials" aria-label="Apex Filings social media">
@@ -81,6 +99,21 @@ export function Footer({ language, onLanguageChange, management = false }: Foote
             </ul>
           </div>
         </div>
+
+        <section className="apex-footer-locations" aria-labelledby="apex-footer-locations-heading">
+          <h2 id="apex-footer-locations-heading" className="apex-footer-heading">Our Locations</h2>
+          <ul className="apex-footer-locations-grid">
+            {officeLocations.map(({ city, address }) => (
+              <li key={city} className="apex-footer-location-item">
+                <MapPin className="apex-footer-location-icon" aria-hidden="true" size={17} strokeWidth={1.8} />
+                <div>
+                  <strong className="apex-footer-location-city">{city}</strong>
+                  {address && <address className="apex-footer-location-address">{address}</address>}
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
 
         <div id="footer-disclaimer" className="mt-10 scroll-mt-24 border-t border-slate-200 pt-7 sm:mt-12">
           <div className="apex-footer-disclaimer-content flex items-start gap-5 sm:gap-7">

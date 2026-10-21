@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
-import { ArrowRight, Check, ChevronDown, CircleUserRound, Globe2, Menu, X } from 'lucide-react';
+import { ArrowRight, Check, ChevronDown, CircleUserRound, Globe2, Menu, Moon, Sun, X } from 'lucide-react';
 import { NAVIGATION_ITEMS } from '../../data/navigation';
 import { ServicesMegaMenu } from './ServicesMegaMenu';
 import './Navbar.css';
 import { LANGUAGES, type Language } from '../../i18n/languages';
+import { useTheme } from '../../theme/useTheme';
 
 const linkClasses =
   'rounded-lg px-3 py-2.5 text-sm font-medium text-slate-700 transition-colors hover:bg-orange-50 hover:text-[#F04623] aria-[current=page]:bg-orange-50 aria-[current=page]:text-[#F04623] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F04623]';
@@ -18,6 +19,7 @@ interface NavbarProps {
 }
 
 export function Navbar({ onOpenClientPortal, language, onLanguageChange }: NavbarProps) {
+  const { theme, toggleTheme } = useTheme();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [servicesOpen, setServicesOpen] = useState(false);
   const [languageOpen, setLanguageOpen] = useState(false);
@@ -126,7 +128,8 @@ export function Navbar({ onOpenClientPortal, language, onLanguageChange }: Navba
     <header ref={headerRef} className="apex-site-header sticky top-0 z-50 w-full border-b border-slate-200 bg-white/95 backdrop-blur-md">
       <div className="apex-nav-bar mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <a href="/#home" onClick={closeMenus} className="apex-nav-logo focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F04623]" aria-label="Apex Filings Home">
-          <img src="/images/apex-logo-white-bg.png" alt="" width="500" height="500" />
+          <img className="theme-logo--light" src="/images/apex-logo-white-bg.png" alt="" width="500" height="500" />
+          <img className="theme-logo--dark" src="/images/apex-logo-dark-bg.png" alt="" width="500" height="500" />
         </a>
 
         <nav className="hidden self-stretch items-center gap-1 lg:flex" aria-label="Main navigation">
@@ -194,10 +197,13 @@ export function Navbar({ onOpenClientPortal, language, onLanguageChange }: Navba
           ))}
         </nav>
 
-        <div className="flex shrink-0 items-center justify-self-end gap-1.5 sm:gap-2">
+        <div className="apex-nav-actions flex shrink-0 items-center justify-self-end gap-1.5 sm:gap-2">
           <a href={incorporateHref} className="apex-nav-cta hidden min-h-10 items-center justify-center gap-1.5 rounded-xl bg-[#F04623] px-4 text-sm font-bold text-white transition-colors hover:bg-[#d93d1c] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F04623] focus-visible:ring-offset-2 lg:inline-flex">
             Incorporate Now <ArrowRight className="h-4 w-4" aria-hidden="true" />
           </a>
+          <button type="button" className="apex-theme-toggle" aria-label={theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'} title={theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'} aria-pressed={theme === 'dark'} onClick={toggleTheme}>
+            {theme === 'light' ? <Moon className="h-5 w-5" aria-hidden="true" /> : <Sun className="h-5 w-5" aria-hidden="true" />}
+          </button>
           <div className="relative">
             <button
               type="button"

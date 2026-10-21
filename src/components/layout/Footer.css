@@ -7,19 +7,19 @@
 
 .apex-footer-logo {
   position: relative;
-  width: min(168px, 100%);
-  height: 105px;
+  width: min(154px, 100%);
+  height: 96px;
   overflow: hidden;
 }
 
 .apex-footer-logo img {
   position: absolute;
   display: block;
-  top: -68px;
-  left: -39px;
-  width: 244px;
+  top: -62px;
+  left: -36px;
+  width: 224px;
   max-width: none;
-  height: 244px;
+  height: 224px;
 }
 
 .apex-footer-heading {
@@ -48,6 +48,12 @@
 .apex-footer-phone { margin-top: 12px; }
 .apex-footer-phone:hover,
 .apex-footer-location:hover { color: #f04623; }
+.apex-footer-contact { display: grid; gap: 1px; margin-top: 12px; }
+.apex-footer-contact-link { display: inline-flex; width: fit-content; min-height: 31px; align-items: center; gap: 8px; color: var(--theme-muted); font-size: 13px; font-weight: 600; line-height: 1.4; overflow-wrap: anywhere; transition: color 180ms ease; }
+.apex-footer-contact-link svg { flex: none; color: #f04623; }
+.apex-footer-contact-link:hover,
+.apex-footer-contact-link:focus-visible { color: var(--theme-orange-text); }
+.apex-footer-contact-link:focus-visible { border-radius: 3px; outline: 2px solid #f04623; outline-offset: 3px; }
 .apex-footer-presence { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin-top: 5px; }
 .apex-footer-socials { display: flex; align-items: center; gap: 5px; }
 .apex-footer-social-link { display: inline-flex; width: 40px; height: 40px; align-items: center; justify-content: center; border-radius: 10px; transition: background-color 180ms ease; }
@@ -57,6 +63,14 @@
 .apex-footer-location:focus-visible,
 .apex-footer-social-link:focus-visible { outline: 2px solid #f04623; outline-offset: 3px; }
 .apex-footer-disclaimer-content { width: 100%; }
+.apex-footer-locations { margin-top: 34px; border-top: 1px solid var(--theme-border); padding-top: 25px; }
+.apex-footer-locations + #footer-disclaimer { margin-top: 26px; }
+.apex-footer-locations .apex-footer-heading { margin-bottom: 14px; color: var(--theme-text); }
+.apex-footer-locations-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px 28px; margin: 0; padding: 0; list-style: none; }
+.apex-footer-location-item { display: flex; min-width: 0; align-items: flex-start; gap: 9px; }
+.apex-footer-location-icon { flex: none; margin-top: 2px; color: #f04623; }
+.apex-footer-location-city { display: block; color: var(--theme-text); font-size: 13px; font-weight: 700; line-height: 1.45; }
+.apex-footer-location-address { max-width: 340px; margin-top: 3px; color: var(--theme-muted); font-size: 12px; font-style: normal; line-height: 1.6; overflow-wrap: anywhere; }
 .apex-footer-languages { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 18px; border-left: 1px solid #cbd5e1; padding-left: 26px; }
 .apex-footer-language { display: inline-flex; min-height: 44px; align-items: center; padding: 0 2px; color: #64748b; font-size: 13px; white-space: nowrap; transition: color 180ms ease; }
 .apex-footer-language:hover { color: #f04623; }
@@ -64,6 +78,14 @@
 
 @media (min-width: 600px) {
   .apex-footer-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 36px; }
+}
+
+@media (max-width: 839px) {
+  .apex-footer-locations-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 599px) {
+  .apex-footer-locations-grid { grid-template-columns: minmax(0, 1fr); gap: 16px; }
 }
 
 @media (min-width: 840px) {

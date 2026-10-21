@@ -1,7 +1,8 @@
-import { useEffect, useId, useState, type FormEvent } from 'react';
+import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
 import { CheckCircle2, Send } from 'lucide-react';
 import { COUNTRIES } from '../../data/countries';
 import { COUNTRY_DIAL_CODES } from '../../data/countryDialCodes';
+import { submitInquiry } from '../../lib/formspree';
 
 const SERVICE_OPTIONS = [
   'Not sure yet',
@@ -75,7 +76,7 @@ export function ConsultationForm({ serviceSlug, initialState, contactLayout = fa
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'sending' | 'success' | 'error'>('idle');
   const [serverError, setServerError] = useState('');
-  const [submitted, setSubmitted] = useState({ name: '', method: 'Email' });
+  const submittingRef = useRef(false);
 
   useEffect(() => {
     const detected = detectedCountry();
@@ -90,6 +91,7 @@ export function ConsultationForm({ serviceSlug, initialState, contactLayout = fa
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (submittingRef.current) return;
     if (honeypot.trim()) return;
 
     const nextErrors: Record<string, string> = {};
@@ -108,16 +110,12 @@ export function ConsultationForm({ serviceSlug, initialState, contactLayout = fa
       return;
     }
 
-    // Vite's local server can return index.html to a POST without saving a lead.
-    if (import.meta.env.DEV) {
-      setSubmitStatus('error');
-      setServerError('Live submissions are available on the deployed Netlify site. This local preview did not send your request.');
-      return;
-    }
-
-    const formData = new URLSearchParams({
-      'form-name': 'apex-consultation',
-      'bot-field': honeypot,
+    const pathname = window.location.pathname;
+    const formSource = pathname === '/contact' ? 'Contact Page'
+      : pathname === '/consultation' ? 'Free Consultation Page'
+        : serviceSlug ? `${requestedService || serviceSlug} Service Inquiry`
+          : pathname === '/' ? 'Homepage Consultation' : `${pathname} Consultation`;
+    const fields = {
       name: name.trim(),
       email: email.trim(),
       country,
@@ -128,32 +126,40 @@ export function ConsultationForm({ serviceSlug, initialState, contactLayout = fa
       business: business.trim(),
       state: requestedState,
       'privacy-consent': 'yes',
-      source: window.location.pathname,
-    });
+      form_source: formSource,
+      source: pathname,
+    };
 
+    submittingRef.current = true;
     setSubmitStatus('sending');
     setServerError('');
     try {
-      const response = await fetch('/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: formData.toString(),
-      });
-      if (!response.ok) throw new Error(`Submission returned ${response.status}`);
-      setSubmitted({ name: name.trim(), method: contactMethod });
+      await submitInquiry(fields);
+      setName('');
+      setEmail('');
+      setCountry('');
+      setDialCountry('');
+      setPhone('');
+      setContactMethod('Email');
+      setService(requestedService || 'Not sure yet');
+      setBusiness('');
+      setConsent(false);
+      setHoneypot('');
+      setErrors({});
       setSubmitStatus('success');
     } catch {
       setSubmitStatus('error');
-      setServerError('We could not send your request. Please try again in a moment.');
+      setServerError("Sorry, we couldn't send your message. Please try again.");
+    } finally {
+      submittingRef.current = false;
     }
   }
 
   if (submitStatus === 'success') {
-    return <div role="status" aria-live="polite" className="consultation-success rounded-2xl border border-emerald-200 bg-emerald-50 p-7 text-center"><CheckCircle2 className="mx-auto h-10 w-10 text-emerald-600" aria-hidden="true" /><h3 className="mt-4 text-xl font-bold text-[#171717]">Thank you, {submitted.name}.</h3><p className="mt-2 text-sm leading-7 text-slate-700">We received your request and will contact you by {submitted.method} with next steps.</p></div>;
+    return <div role="status" aria-live="polite" className="consultation-success rounded-2xl border border-emerald-200 bg-emerald-50 p-7 text-center"><CheckCircle2 className="mx-auto h-10 w-10 text-emerald-600" aria-hidden="true" /><h3 className="mt-4 text-xl font-bold text-[#171717]">Thank you!</h3><p className="mt-2 text-sm leading-7 text-slate-700">Your message has been sent successfully. Our team will get back to you soon.</p></div>;
   }
 
-  return <form name="apex-consultation" method="POST" data-netlify="true" data-netlify-honeypot="bot-field" onSubmit={handleSubmit} noValidate className={`space-y-5 ${contactLayout ? 'apex-contact-form' : ''}`}>
-    <input type="hidden" name="form-name" value="apex-consultation" />
+  return <form onSubmit={handleSubmit} noValidate className={`space-y-5 ${contactLayout ? 'apex-contact-form' : ''}`}>
     <input type="hidden" name="state" value={requestedState} />
     <input type="hidden" name="source" value={window.location.pathname} />
     <div className="absolute -left-[10000px] top-auto h-px w-px overflow-hidden" aria-hidden="true"><label htmlFor={fieldId('bot-field')}>Leave this field empty</label><input id={fieldId('bot-field')} name="bot-field" value={honeypot} onChange={(event) => setHoneypot(event.target.value)} tabIndex={-1} autoComplete="off" /></div>
@@ -171,7 +177,7 @@ export function ConsultationForm({ serviceSlug, initialState, contactLayout = fa
     <div><label htmlFor={fieldId('business')} className="mb-2 block text-sm font-semibold text-[#171717]">Tell Us About Your Business <span className="font-normal text-slate-500">(optional)</span></label><textarea id={fieldId('business')} name="business" value={business} onChange={(event) => setBusiness(event.target.value)} maxLength={500} rows={4} className={inputClass} placeholder="Your business goals or questions" /><p className="mt-1 text-right text-xs text-slate-500">{business.length}/500</p></div>
     <div><label className="flex cursor-pointer items-start gap-3 text-sm leading-6 text-slate-700"><input id={fieldId('consent')} name="privacy-consent" type="checkbox" required checked={consent} onChange={(event) => setConsent(event.target.checked)} aria-invalid={!!errors.consent} aria-describedby={errors.consent ? fieldId('consent-error') : undefined} className="mt-1 h-4 w-4 shrink-0 accent-[#F04623]" /><span>I agree to the {privacyPolicyUrl ? <a href={privacyPolicyUrl} target="_blank" rel="noopener noreferrer" className="font-semibold text-[#bb3417] underline underline-offset-2">Privacy Policy</a> : <strong>Privacy Policy</strong>} and to be contacted about my request.</span></label>{showError('consent')}{!privacyPolicyUrl && <p className="mt-2 text-xs text-amber-800">The Privacy Policy link is pending; submissions will open once it is provided.</p>}</div>
     {submitStatus === 'error' && <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">{serverError}</p>}
-    <button type="submit" disabled={submitStatus === 'sending' || !privacyPolicyUrl} className="clay-button flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#F04623] px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-orange-500/15 transition-colors hover:bg-[#db3b1b] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#F04623] disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto">{submitStatus === 'sending' ? 'Sending request…' : 'Request Free Consultation'}<Send className="h-4 w-4" aria-hidden="true" /></button>
+    <button type="submit" disabled={submitStatus === 'sending' || !privacyPolicyUrl} className="clay-button flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#F04623] px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-orange-500/15 transition-colors hover:bg-[#db3b1b] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#F04623] disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto" aria-busy={submitStatus === 'sending'}>{submitStatus === 'sending' ? 'Sending request…' : 'Request Free Consultation'}<Send className="h-4 w-4" aria-hidden="true" /></button>
     <p className="text-xs text-slate-500">No obligation to buy.</p>
   </form>;
 }

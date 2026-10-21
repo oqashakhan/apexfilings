@@ -1,10 +1,10 @@
 .apex-nav-bar { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 16px; height: 80px; }
 .marketing-site .apex-site-header { transition: background-color .24s ease, border-color .24s ease, box-shadow .24s ease; }
 .marketing-site .apex-site-header--scrolled { background-color: rgba(255,255,255,.98); border-color: #e9e0db; box-shadow: 0 8px 24px -19px rgba(25,31,41,.42); }
-.apex-nav-logo { display: block; justify-self: start; width: 132px; height: 60px; overflow: hidden; border-radius: 12px; }
+.apex-nav-logo { display: block; justify-self: start; width: 122px; height: 55px; overflow: hidden; border-radius: 12px; }
 .apex-nav-logo img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: center; }
-@media (max-width: 380px) { .apex-nav-bar { gap: 8px; } .apex-nav-logo { width: 118px; height: 54px; } }
-@media (min-width: 640px) { .apex-nav-logo { width: 154px; height: 69px; } }
+@media (max-width: 380px) { .apex-nav-bar { gap: 8px; } .apex-nav-logo { width: 110px; height: 50px; } }
+@media (min-width: 640px) { .apex-nav-logo { width: 142px; height: 64px; } }
 @media (min-width: 1024px) and (max-width: 1120px) { .apex-nav-cta { padding-inline: 10px; font-size: 12px; } }
 .apex-services-position { position: absolute; top: 100%; left: 50%; width: min(1120px, calc(100vw - 32px)); transform: translateX(-50%); padding-top: 10px; }
 .apex-services-panel { overflow: auto; max-height: calc(100dvh - 100px); border: 1px solid #e8e4e1; border-radius: 20px; background: #fff; box-shadow: 0 22px 55px -20px #35261933, 0 4px 12px #17171708; animation: apex-menu-enter .18s ease-out both; }

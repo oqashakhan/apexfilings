@@ -1,7 +1,14 @@
 <!doctype html>
-<html lang="en" class="scroll-smooth">
+<html lang="en" class="scroll-smooth" data-theme="light">
   <head>
     <meta charset="UTF-8" />
+    <script>
+      try {
+        document.documentElement.dataset.theme = localStorage.getItem('apex-site-theme') === 'dark' ? 'dark' : 'light';
+      } catch {
+        document.documentElement.dataset.theme = 'light';
+      }
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>US LLC Formation for Non-Residents | Apex Filings</title>
     <meta name="description" content="Form your US LLC from anywhere. Apex Filings helps non-US residents with LLC formation, EIN, registered agent and compliance, all online." />
@@ -40,6 +47,9 @@
     </script>
     <style>
       #apex-startup-loader { display: none; }
+      html[data-theme="dark"] { color-scheme: dark; background: #0b1220; }
+      html[data-theme="dark"] body { background: #0b1220; color: #f8fafc; }
+      html[data-theme="dark"].apex-loader-active #apex-startup-loader { background: #0b1220; }
       .apex-loader-active #root { opacity: 0; }
       .apex-loader-active #apex-startup-loader {
         position: fixed; inset: 0; z-index: 9999; display: flex; align-items: center; justify-content: center;
@@ -48,6 +58,7 @@
       .apex-loader-mark { display: flex; flex-direction: column; align-items: center; gap: 15px; }
       .apex-loader-symbol { width: clamp(76px, 13vw, 102px); height: auto; opacity: 0; transform: translateY(6px) scale(.96); }
       .apex-loader-name { width: clamp(155px, 28vw, 214px); height: auto; opacity: 0; transform: translateY(6px); }
+      html[data-theme="dark"] .apex-loader-name { filter: invert(1); }
       .apex-loader-fallback #apex-startup-loader, .apex-loader-fallback #root { transition: opacity 280ms ease; }
       @media (prefers-reduced-motion: reduce) {
         .apex-loader-symbol, .apex-loader-name { transform: none; }
@@ -62,21 +73,6 @@
       </div>
     </div>
     <div id="root"></div>
-    <!-- Netlify discovers this form in the built HTML; the visible form is rendered by React. -->
-    <form name="apex-consultation" method="POST" data-netlify="true" data-netlify-honeypot="bot-field" hidden>
-      <input name="bot-field" />
-      <input name="name" />
-      <input name="email" type="email" />
-      <input name="country" />
-      <input name="contact-method" />
-      <input name="service" />
-      <input name="phone-country" />
-      <input name="phone" />
-      <textarea name="business"></textarea>
-      <input name="state" />
-      <input name="privacy-consent" />
-      <input name="source" />
-    </form>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

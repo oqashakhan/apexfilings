@@ -157,11 +157,11 @@
   background: var(--clay-light);
   border: 1px solid #fff;
   border-radius: 1.5rem;
-  box-shadow: var(--clay-shadow);
+  box-shadow: 0 12px 28px rgba(25, 31, 41, .13), 0 3px 8px rgba(25, 31, 41, .05);
 }
 .marketing-site.clay-theme:has(#home) #home .journey-step--ready {
   border-color: rgba(240, 70, 35, .36);
-  box-shadow: 10px 13px 29px rgba(240, 70, 35, .16), -7px -7px 20px #fff, inset 1px 1px 0 #fff;
+  box-shadow: 0 14px 30px rgba(25, 31, 41, .13), 0 4px 12px rgba(240, 70, 35, .09);
 }
 .marketing-site.clay-theme :is(.advantage-card:not([aria-pressed="true"]), #us-advantage-detail, #state-map .us-map-preview) {
   background: var(--clay-light);

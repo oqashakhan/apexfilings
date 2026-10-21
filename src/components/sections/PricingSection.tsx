@@ -130,7 +130,7 @@ export function PricingSection({ onSelectPlan, asPage = false }: PricingSectionP
             type="button"
             onClick={() => document.getElementById('pricing-comparison')?.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth', block: 'start' })}
             className={asPage
-              ? "inline-flex min-h-14 items-center gap-3 rounded-full border-2 border-white bg-[#F04623] px-8 py-3 text-sm font-bold uppercase tracking-[0.08em] text-white shadow-[0_3px_0_#C43515,0_12px_22px_-12px_rgba(240,70,35,0.75)] transition-[background-color,transform] hover:-translate-y-0.5 hover:bg-[#E03E1B] motion-reduce:transition-none motion-reduce:hover:translate-y-0 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#F04623]"
+              ? "pricing-compare-cta inline-flex min-h-14 items-center gap-3 rounded-full border-2 border-white bg-[#F04623] px-8 py-3 text-sm font-bold uppercase tracking-[0.08em] text-white shadow-[0_3px_0_#C43515,0_12px_22px_-12px_rgba(240,70,35,0.75)] transition-[background-color,border-color,box-shadow,transform] hover:-translate-y-0.5 hover:bg-[#E03E1B] motion-reduce:transition-none motion-reduce:hover:translate-y-0 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#F04623]"
               : "polish-button polish-primary inline-flex min-h-12 items-center gap-3 rounded-xl bg-[#F04623] px-7 py-3 text-sm font-bold text-white shadow-[0_10px_24px_-13px_rgba(240,70,35,0.65)] hover:bg-[#E03E1B] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#F04623]"}
           >
             Compare what's included

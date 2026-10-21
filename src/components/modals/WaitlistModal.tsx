@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { CheckCircle2, Globe2 } from 'lucide-react';
+import { submitInquiry } from '../../lib/formspree';
 
 interface WaitlistModalProps {
   isOpen: boolean;
@@ -11,20 +12,44 @@ export function WaitlistModal({ isOpen, hubName, onClose }: WaitlistModalProps) 
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
   const [isSuccess, setIsSuccess] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState('');
+  const submittingRef = useRef(false);
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submittingRef.current) return;
     if (!email.trim() || !name.trim()) {
       alert('Please provide your name and email address.');
       return;
     }
-    setIsSuccess(true);
+    submittingRef.current = true;
+    setIsSubmitting(true);
+    setSubmitError('');
+    try {
+      await submitInquiry({
+        name: name.trim(),
+        email: email.trim(),
+        service: hubName,
+        form_source: 'Global Hub Waitlist',
+        source: window.location.pathname,
+      });
+      setName('');
+      setEmail('');
+      setIsSuccess(true);
+    } catch {
+      setSubmitError("Sorry, we couldn't send your message. Please try again.");
+    } finally {
+      submittingRef.current = false;
+      setIsSubmitting(false);
+    }
   };
 
   const handleClose = () => {
     setIsSuccess(false);
+    setSubmitError('');
     setEmail('');
     setName('');
     onClose();
@@ -55,10 +80,9 @@ export function WaitlistModal({ isOpen, hubName, onClose }: WaitlistModalProps) 
             <div className="w-12 h-12 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto">
               <CheckCircle2 className="w-6 h-6" />
             </div>
-            <h4 className="text-base font-bold text-slate-900">You're on the priority list!</h4>
+            <h4 className="text-base font-bold text-slate-900">Thank you!</h4>
             <p className="text-xs text-slate-600">
-              We'll notify <strong>{email}</strong> the moment early slots open for{' '}
-              <strong>{hubName}</strong> formations and banking setups.
+              Your message has been sent successfully. Our team will get back to you soon.
             </p>
             <button
               onClick={handleClose}
@@ -102,11 +126,14 @@ export function WaitlistModal({ isOpen, hubName, onClose }: WaitlistModalProps) 
               year.
             </p>
 
+            {submitError && <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800">{submitError}</p>}
             <button
               type="submit"
+              disabled={isSubmitting}
+              aria-busy={isSubmitting}
               className="w-full py-3 rounded-xl bg-[#F04623] hover:bg-[#e03e1b] text-white text-xs font-semibold transition-colors shadow-md"
             >
-              Secure Priority Access
+              {isSubmitting ? 'Sending request…' : 'Secure Priority Access'}
             </button>
           </form>
         )}

@@ -112,11 +112,11 @@ export default function App() {
   const handleSelectState = (state: TopState) => navigateToFormation({ source: 'state-card', state: state.id, service: 'llc-formation' });
 
   if (routePath === '/start') {
-    return <><Suspense fallback={<div className="min-h-screen bg-white" role="status">Loading registration…</div>}><StartPage onBackToSite={returnToSite} initialState={new URLSearchParams(window.location.search).get('state') ?? undefined} /></Suspense>{translationNotice && <TranslationNotice />}</>;
+    return <><Suspense fallback={<div className="theme-route-loading min-h-screen bg-white" role="status">Loading registration…</div>}><StartPage onBackToSite={returnToSite} initialState={new URLSearchParams(window.location.search).get('state') ?? undefined} /></Suspense>{translationNotice && <TranslationNotice />}</>;
   }
 
   if (routePath === '/formation/start') {
-    return <><Suspense fallback={<div className="min-h-screen bg-[#fcf9f8]" role="status">Loading formation onboarding…</div>}><FormationWizard /></Suspense>{translationNotice && <TranslationNotice />}</>;
+    return <><Suspense fallback={<div className="theme-route-loading min-h-screen bg-[#fcf9f8]" role="status">Loading formation onboarding…</div>}><FormationWizard /></Suspense>{translationNotice && <TranslationNotice />}</>;
   }
 
   const serviceSlug = routePath.startsWith('/services/') ? routePath.slice('/services/'.length) : null;
@@ -192,5 +192,5 @@ export default function App() {
 }
 
 function TranslationNotice() {
-  return <div role="status" translate="no" className="fixed bottom-4 left-1/2 z-[100] w-[min(92vw,28rem)] -translate-x-1/2 rounded-xl border border-amber-200 bg-white px-4 py-3 text-center text-sm text-[#191F29] shadow-lg">Translation is unavailable right now. The site is shown in English.</div>;
+  return <div role="status" translate="no" className="theme-translation-notice fixed bottom-4 left-1/2 z-[100] w-[min(92vw,28rem)] -translate-x-1/2 rounded-xl border border-amber-200 bg-white px-4 py-3 text-center text-sm text-[#191F29] shadow-lg">Translation is unavailable right now. The site is shown in English.</div>;
 }
