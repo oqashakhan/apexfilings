@@ -91,8 +91,10 @@ The consultation form uses Netlify Forms. Keep form detection enabled in the Net
 ## 4. Getting Started
 
 ### Installation
+Use Node.js 24 (see `.nvmrc` and `package.json`). For Coolify/Nixpacks, select Node 24 and run the install step with optional dependencies included. Vite 8 uses a platform-specific Rolldown native binding, so the Linux build needs `@rolldown/binding-linux-x64-gnu` on x64/glibc. The project `.npmrc` keeps optional packages enabled. If Coolify has cached an install made with optional dependencies omitted, clear its build cache and redeploy.
+
 ```bash
-npm install
+npm ci --include=optional
 ```
 
 ### Development Server
