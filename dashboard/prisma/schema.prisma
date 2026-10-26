@@ -1,0 +1,431 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  OWNER
+  STAFF
+  CLIENT
+  B2B_PARTNER
+}
+
+enum AccountStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum ApplicationStatus {
+  DRAFT
+  AWAITING_PAYMENT
+  PAYMENT_RECEIVED
+  UNDER_REVIEW
+  INFORMATION_REQUIRED
+  AWAITING_CUSTOMER_CONFIRMATION
+  APPROVED_FOR_FILING
+  FILING_IN_PROGRESS
+  SUBMITTED_TO_AUTHORITY
+  ADDITIONAL_ACTION_REQUIRED
+  COMPLETED
+  ON_HOLD
+  CANCELLED
+  REFUND_REQUESTED
+  REFUNDED
+}
+
+enum DocumentStatus {
+  REQUIRED
+  UNDER_REVIEW
+  ACCEPTED
+  REPLACEMENT_REQUIRED
+  COMPLETED_COMPANY_DOCUMENT
+}
+
+enum PaymentStatus {
+  UNPAID
+  AWAITING_VERIFICATION
+  VERIFIED
+  REJECTED
+  REFUNDED
+}
+
+enum RefundStatus {
+  REQUESTED
+  UNDER_REVIEW
+  APPROVED
+  DECLINED
+  COMPLETED
+}
+
+model User {
+  id              String        @id @default(cuid())
+  fullName        String
+  email           String
+  emailNormalized String        @unique
+  phone           String?
+  passwordHash    String
+  role            Role          @default(CLIENT)
+  status          AccountStatus @default(ACTIVE)
+  emailVerifiedAt DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  sessions        Session[]
+  resets          PasswordReset[]
+  companies       Company[]     @relation("CustomerCompanies")
+  applications    Application[] @relation("CustomerApplications")
+  documents       Document[]    @relation("UploadedDocuments")
+  notifications   Notification[]
+  auditEntries    AuditLog[]
+  statusChanges   ApplicationStatusHistory[]
+  reviews         ApplicationReview[]
+  notes           InternalNote[]
+  customerResponses CustomerResponse[]
+  verifiedPayments Payment[]   @relation("VerifiedPayments")
+  reviewedDocuments Document[] @relation("ReviewedDocuments")
+  assignedApplications Application[] @relation("AssignedApplications")
+  partnerClients  PartnerClient[] @relation("Partner")
+  linkedPartners  PartnerClient[] @relation("PartnerClient")
+}
+
+model PartnerClient {
+  partnerId String
+  clientId  String
+  partner   User @relation("Partner", fields: [partnerId], references: [id], onDelete: Cascade)
+  client    User @relation("PartnerClient", fields: [clientId], references: [id], onDelete: Cascade)
+  @@id([partnerId, clientId])
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  revokedAt DateTime?
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId, expiresAt])
+}
+
+model PasswordReset {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId, expiresAt])
+}
+
+model AuthThrottle {
+  key       String   @id
+  failures  Int      @default(0)
+  blockedUntil DateTime?
+  updatedAt DateTime @updatedAt
+}
+
+model Company {
+  id                    String   @id @default(cuid())
+  customerId            String
+  preferredName         String
+  alternativeName1      String?
+  alternativeName2      String?
+  formationState        String
+  businessActivity      String
+  businessDescription   String
+  addressRequirements   String?
+  ownershipType         String?
+  managementStructure   String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  customer              User     @relation("CustomerCompanies", fields: [customerId], references: [id], onDelete: Restrict)
+  owners                CompanyOwner[]
+  applications          Application[]
+  documents             Document[]
+  @@index([customerId, createdAt])
+}
+
+model CompanyOwner {
+  id                   String   @id @default(cuid())
+  companyId            String
+  fullLegalName        String
+  email                String
+  phone                String
+  nationality          String
+  countryOfResidence   String
+  residentialAddress   String
+  ownershipBasisPoints Int
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  company              Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  documents            Document[]
+  @@index([companyId])
+}
+
+model Service {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  name        String
+  category    String
+  description String
+  available   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  applications Application[]
+  packageServices PackageService[]
+  requirements ServiceDocumentRequirement[]
+}
+
+model Package {
+  id              String   @id @default(cuid())
+  slug            String   @unique
+  name            String
+  serviceFeeCents Int
+  includedServices String[] @default([])
+  currency        String   @default("USD")
+  available       Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  applications    Application[]
+  packageServices PackageService[]
+}
+
+model PackageService {
+  packageId String
+  serviceId String
+  package   Package @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  service   Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  @@id([packageId, serviceId])
+}
+
+model StateFilingFee {
+  code               String   @id
+  state              String   @unique
+  filingFeeCents     Int?
+  additionalFeeNotes String?
+  verifiedAt         DateTime?
+  updatedAt          DateTime @updatedAt
+}
+
+model ServiceDocumentRequirement {
+  id           String  @id @default(cuid())
+  serviceId    String
+  stateCode    String?
+  documentType String
+  required     Boolean @default(true)
+  service      Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  @@index([serviceId, stateCode])
+}
+
+model Application {
+  id                    String            @id @default(cuid())
+  companyId             String
+  customerId            String
+  serviceId             String
+  packageId             String
+  assignedStaffId       String?
+  status                ApplicationStatus @default(DRAFT)
+  internalReviewStatus  String            @default("NOT_REVIEWED")
+  authorityFilingStatus String            @default("NOT_SUBMITTED")
+  additionalServices    String[]          @default([])
+  customerConfirmedAt   DateTime?
+  submittedAt           DateTime?
+  approvedForFilingAt   DateTime?
+  completedAt           DateTime?
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+  company               Company           @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  customer              User              @relation("CustomerApplications", fields: [customerId], references: [id], onDelete: Restrict)
+  service               Service           @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+  package               Package           @relation(fields: [packageId], references: [id], onDelete: Restrict)
+  assignedStaff         User?             @relation("AssignedApplications", fields: [assignedStaffId], references: [id], onDelete: SetNull)
+  statusHistory         ApplicationStatusHistory[]
+  reviews               ApplicationReview[]
+  notes                 InternalNote[]
+  customerResponses     CustomerResponse[]
+  documents             Document[]
+  order                 Order?
+  @@index([customerId, status])
+  @@index([status, submittedAt])
+  @@index([assignedStaffId])
+}
+
+model ApplicationStatusHistory {
+  id             String            @id @default(cuid())
+  applicationId  String
+  previousStatus ApplicationStatus?
+  newStatus      ApplicationStatus
+  changedById    String
+  reason         String
+  createdAt      DateTime          @default(now())
+  application    Application       @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  changedBy      User              @relation(fields: [changedById], references: [id], onDelete: Restrict)
+  @@index([applicationId, createdAt])
+}
+
+model ApplicationReview {
+  id            String   @id @default(cuid())
+  applicationId String
+  reviewerId    String
+  checkKey      String
+  checkedAt     DateTime @default(now())
+  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  reviewer      User        @relation(fields: [reviewerId], references: [id], onDelete: Restrict)
+  @@unique([applicationId, checkKey])
+}
+
+model InternalNote {
+  id            String   @id @default(cuid())
+  applicationId String
+  authorId      String
+  body          String
+  createdAt     DateTime @default(now())
+  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  author        User        @relation(fields: [authorId], references: [id], onDelete: Restrict)
+  @@index([applicationId, createdAt])
+}
+
+model CustomerResponse {
+  id            String   @id @default(cuid())
+  applicationId String
+  customerId    String
+  requestEventId String @unique
+  body          String
+  createdAt     DateTime @default(now())
+  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  customer      User @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  @@index([applicationId, createdAt])
+}
+
+model Document {
+  id                String         @id @default(cuid())
+  applicationId     String
+  companyId         String
+  ownerId           String?
+  uploadedById      String
+  documentType      String
+  originalFilename  String
+  privateStorageKey String         @unique
+  mimeType          String
+  fileSize          Int
+  reviewStatus      DocumentStatus @default(UNDER_REVIEW)
+  reviewedById      String?
+  reviewedAt        DateTime?
+  createdAt         DateTime       @default(now())
+  application       Application    @relation(fields: [applicationId], references: [id], onDelete: Restrict)
+  company           Company        @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  owner             CompanyOwner?  @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+  uploadedBy        User           @relation("UploadedDocuments", fields: [uploadedById], references: [id], onDelete: Restrict)
+  reviewedBy        User?          @relation("ReviewedDocuments", fields: [reviewedById], references: [id], onDelete: SetNull)
+  @@index([applicationId, reviewStatus])
+}
+
+model Order {
+  id                 String        @id @default(cuid())
+  applicationId      String        @unique
+  status             String        @default("OPEN")
+  paymentStatus      PaymentStatus @default(UNPAID)
+  serviceFeeCents    Int
+  governmentFeeCents Int?
+  thirdPartyFeeCents Int?
+  additionalFeeCents Int?
+  discountCents      Int?
+  totalCents         Int?
+  currency           String        @default("USD")
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+  application        Application   @relation(fields: [applicationId], references: [id], onDelete: Restrict)
+  items              OrderItem[]
+  invoice            Invoice?
+  payments           Payment[]
+  refunds            RefundRequest[]
+}
+
+model OrderItem {
+  id          String @id @default(cuid())
+  orderId     String
+  description String
+  amountCents Int?
+  order       Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+}
+
+model Invoice {
+  id        String   @id @default(cuid())
+  orderId   String   @unique
+  number    String   @unique
+  issuedAt  DateTime?
+  createdAt DateTime @default(now())
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Restrict)
+}
+
+model PaymentInstructions {
+  id          String   @id @default("default")
+  body        String   @default("")
+  updatedById String?
+  updatedAt   DateTime @updatedAt
+}
+
+model Payment {
+  id               String        @id @default(cuid())
+  orderId          String
+  amountCents      Int?
+  method           String        @default("MANUAL")
+  reference        String?
+  supportingInfo   String?
+  status           PaymentStatus @default(AWAITING_VERIFICATION)
+  verifiedById     String?
+  verifiedAt       DateTime?
+  createdAt        DateTime      @default(now())
+  order            Order         @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  verifiedBy       User?         @relation("VerifiedPayments", fields: [verifiedById], references: [id], onDelete: SetNull)
+  @@index([orderId, status])
+}
+
+model RefundRequest {
+  id          String       @id @default(cuid())
+  orderId     String
+  amountCents Int?
+  reason      String
+  status      RefundStatus @default(REQUESTED)
+  createdAt   DateTime     @default(now())
+  reviewedAt  DateTime?
+  order       Order        @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  @@index([orderId, status])
+}
+
+model Notification {
+  id            String   @id @default(cuid())
+  userId        String
+  type          String
+  title         String
+  message       String
+  relatedEntity String?
+  readAt        DateTime?
+  createdAt     DateTime @default(now())
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId, readAt, createdAt])
+}
+
+model AuditLog {
+  id           String   @id @default(cuid())
+  actorUserId  String?
+  action       String
+  resourceType String
+  resourceId   String
+  safeMetadata Json?
+  createdAt    DateTime @default(now())
+  actor        User?    @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+  @@index([resourceType, resourceId, createdAt])
+}
+
+model ContentDraft {
+  id        String   @id @default(cuid())
+  area      String   @unique
+  title     String
+  body      String
+  updatedAt DateTime @updatedAt
+}

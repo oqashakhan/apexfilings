@@ -1,0 +1,424 @@
+[
+  {
+    "code": "AL",
+    "state": "Alabama",
+    "filingFee": null,
+    "additionalFees": null,
+    "lastUpdated": null,
+    "notes": [
+      "State entry missing from supplied document; manual review required"
+    ]
+  },
+  {
+    "code": "AK",
+    "state": "Alaska",
+    "filingFee": 250,
+    "additionalFees": "$100 / 2 years",
+    "lastUpdated": null,
+    "notes": []
+  },
+  {
+    "code": "AZ",
+    "state": "Arizona",
+    "filingFee": 50,
+    "additionalFees": "$0",
+    "lastUpdated": null,
+    "notes": []
+  },
+  {
+    "code": "AR",
+    "state": "Arkansas",
+    "filingFee": 45,
+    "additionalFees": "$150 / year",
+    "lastUpdated": null,
+    "notes": []
+  },
+  {
+    "code": "CA",
+    "state": "California",
+    "filingFee": 70,
+    "additionalFees": "$800 / year + $20 / 2 yrs",
+    "lastUpdated": null,
+    "notes": []
+  },
+  {
+    "code": "CO",
+    "state": "Colorado",
+    "filingFee": 50,
+    "additionalFees": "$25 / year",
+    "lastUpdated": null,
+    "notes": []
+  },
+  {
+    "code": "CT",
+    "state": "Connecticut",
+    "filingFee": 120,
+    "additionalFees": "$80 / year",
+    "lastUpdated": null,
+    "notes": []
+  },
+  {
+    "code": "DE",
+    "state": "Delaware",
+    "filingFee": 110,
+    "additionalFees": "$300 / year",
+    "lastUpdated": null,
+    "notes": []
+  },
+  {
+    "code": "DC",
+    "state": "District of Columbia",
+    "filingFee": null,
+    "additionalFees": null,
+    "lastUpdated": null,
+    "notes": [
+      "Ambiguous source row: District of Columbia (DC)Washington; manual review required"
+    ]
+  },
+  {
+    "code": "FL",
+    "state": "Florida",
+    "filingFee": 125,
+    "additionalFees": "$138.75 / year",
+    "lastUpdated": null,
+    "notes": []
+  },
+  {
+    "code": "GA",
+    "state": "Georgia",
+    "filingFee": 100,
+    "additionalFees": "$50 / year",
+    "lastUpdated": null,
+    "notes": []
+  },
+  {
+    "code": "HI",
+    "state": "Hawaii",
+    "filingFee": 50,
+    "additionalFees": "$15 / year",
+    "lastUpdated": null,
+    "notes": []
+  },
+  {
+    "code": "ID",
+    "state": "Idaho",
+    "filingFee": 100,
+    "additionalFees": "$0 (info-report required)",
+    "lastUpdated": null,
+    "notes": [
+      "info-report required"
+    ]
+  },
+  {
+    "code": "IL",
+    "state": "Illinois",
+    "filingFee": 150,
+    "additionalFees": "$75 / year",
+    "lastUpdated": null,
+    "notes": []
+  },
+  {
+    "code": "IN",
+    "state": "Indiana",
+    "filingFee": 95,
+    "additionalFees": "$31 / 2 years",
+    "lastUpdated": null,
+    "notes": []
+  },
+  {
+    "code": "IA",
+    "state": "Iowa",
+    "filingFee": 50,
+    "additionalFees": "$30 / 2 years",
+    "lastUpdated": null,
+    "notes": []
+  },
+  {
+    "code": "KS",
+    "state": "Kansas",
+    "filingFee": 160,
+    "additionalFees": "$50 / year",
+    "lastUpdated": null,
+    "notes": []
+  },
+  {
+    "code": "KY",
+    "state": "Kentucky",
+    "filingFee": 40,
+    "additionalFees": "$15 / year",
+    "lastUpdated": null,
+    "notes": []
+  },
+  {
+    "code": "LA",
+    "state": "Louisiana",
+    "filingFee": 100,
+    "additionalFees": "$35 / year",
+    "lastUpdated": null,
+    "notes": []
+  },
+  {
+    "code": "ME",
+    "state": "Maine",
+    "filingFee": 175,
+    "additionalFees": "$85 / year",
+    "lastUpdated": null,
+    "notes": [
+      "No online processing listed"
+    ]
+  },
+  {
+    "code": "MD",
+    "state": "Maryland",
+    "filingFee": 100,
+    "additionalFees": "$300 / year",
+    "lastUpdated": null,
+    "notes": []
+  },
+  {
+    "code": "MA",
+    "state": "Massachusetts",
+    "filingFee": 500,
+    "additionalFees": "$500 / year",
+    "lastUpdated": null,
+    "notes": []
+  },
+  {
+    "code": "MI",
+    "state": "Michigan",
+    "filingFee": 50,
+    "additionalFees": "$25 / year",
+    "lastUpdated": null,
+    "notes": []
+  },
+  {
+    "code": "MN",
+    "state": "Minnesota",
+    "filingFee": 155,
+    "additionalFees": "$0 (info-report required)",
+    "lastUpdated": null,
+    "notes": [
+      "info-report required"
+    ]
+  },
+  {
+    "code": "MS",
+    "state": "Mississippi",
+    "filingFee": 50,
+    "additionalFees": "$0 (info-report required)",
+    "lastUpdated": null,
+    "notes": [
+      "info-report required"
+    ]
+  },
+  {
+    "code": "MO",
+    "state": "Missouri",
+    "filingFee": 50,
+    "additionalFees": "$0",
+    "lastUpdated": null,
+    "notes": []
+  },
+  {
+    "code": "MT",
+    "state": "Montana",
+    "filingFee": 35,
+    "additionalFees": "$20 / year",
+    "lastUpdated": null,
+    "notes": []
+  },
+  {
+    "code": "NE",
+    "state": "Nebraska",
+    "filingFee": 100,
+    "additionalFees": "$13 / 2 years",
+    "lastUpdated": null,
+    "notes": []
+  },
+  {
+    "code": "NV",
+    "state": "Nevada",
+    "filingFee": 425,
+    "additionalFees": "$350 / year",
+    "lastUpdated": null,
+    "notes": []
+  },
+  {
+    "code": "NH",
+    "state": "New Hampshire",
+    "filingFee": 100,
+    "additionalFees": "$100 / year",
+    "lastUpdated": null,
+    "notes": []
+  },
+  {
+    "code": "NJ",
+    "state": "New Jersey",
+    "filingFee": 125,
+    "additionalFees": "$75 / year",
+    "lastUpdated": null,
+    "notes": []
+  },
+  {
+    "code": "NM",
+    "state": "New Mexico",
+    "filingFee": 50,
+    "additionalFees": "$0",
+    "lastUpdated": null,
+    "notes": []
+  },
+  {
+    "code": "NY",
+    "state": "New York",
+    "filingFee": 200,
+    "additionalFees": "$9 / 2 years",
+    "lastUpdated": null,
+    "notes": []
+  },
+  {
+    "code": "NC",
+    "state": "North Carolina",
+    "filingFee": 125,
+    "additionalFees": "$200 / year",
+    "lastUpdated": null,
+    "notes": []
+  },
+  {
+    "code": "ND",
+    "state": "North Dakota",
+    "filingFee": 135,
+    "additionalFees": "$50 / year",
+    "lastUpdated": null,
+    "notes": []
+  },
+  {
+    "code": "OH",
+    "state": "Ohio",
+    "filingFee": 99,
+    "additionalFees": "$0",
+    "lastUpdated": null,
+    "notes": []
+  },
+  {
+    "code": "OK",
+    "state": "Oklahoma",
+    "filingFee": 100,
+    "additionalFees": "$25 / year",
+    "lastUpdated": null,
+    "notes": []
+  },
+  {
+    "code": "OR",
+    "state": "Oregon",
+    "filingFee": 100,
+    "additionalFees": "$100 / year",
+    "lastUpdated": null,
+    "notes": []
+  },
+  {
+    "code": "PA",
+    "state": "Pennsylvania",
+    "filingFee": 125,
+    "additionalFees": "$7 / year",
+    "lastUpdated": null,
+    "notes": []
+  },
+  {
+    "code": "RI",
+    "state": "Rhode Island",
+    "filingFee": 150,
+    "additionalFees": "$50 / year",
+    "lastUpdated": null,
+    "notes": []
+  },
+  {
+    "code": "SC",
+    "state": "South Carolina",
+    "filingFee": 110,
+    "additionalFees": "$0",
+    "lastUpdated": null,
+    "notes": []
+  },
+  {
+    "code": "SD",
+    "state": "South Dakota",
+    "filingFee": 150,
+    "additionalFees": "$55 / year",
+    "lastUpdated": null,
+    "notes": []
+  },
+  {
+    "code": "TN",
+    "state": "Tennessee",
+    "filingFee": 300,
+    "additionalFees": "$300 / year",
+    "lastUpdated": null,
+    "notes": []
+  },
+  {
+    "code": "TX",
+    "state": "Texas",
+    "filingFee": 308,
+    "additionalFees": "$0 (PIR required)",
+    "lastUpdated": null,
+    "notes": [
+      "PIR required"
+    ]
+  },
+  {
+    "code": "UT",
+    "state": "Utah",
+    "filingFee": 59,
+    "additionalFees": "$18 / year",
+    "lastUpdated": null,
+    "notes": []
+  },
+  {
+    "code": "VT",
+    "state": "Vermont",
+    "filingFee": 155,
+    "additionalFees": "$45 / year",
+    "lastUpdated": null,
+    "notes": []
+  },
+  {
+    "code": "VA",
+    "state": "Virginia",
+    "filingFee": 100,
+    "additionalFees": "$50 / year",
+    "lastUpdated": null,
+    "notes": []
+  },
+  {
+    "code": "WA",
+    "state": "Washington",
+    "filingFee": 200,
+    "additionalFees": "$60 / year",
+    "lastUpdated": null,
+    "notes": []
+  },
+  {
+    "code": "WV",
+    "state": "West Virginia",
+    "filingFee": 100,
+    "additionalFees": "$25 / year",
+    "lastUpdated": null,
+    "notes": []
+  },
+  {
+    "code": "WI",
+    "state": "Wisconsin",
+    "filingFee": 130,
+    "additionalFees": "$25 / year",
+    "lastUpdated": null,
+    "notes": []
+  },
+  {
+    "code": "WY",
+    "state": "Wyoming",
+    "filingFee": 100,
+    "additionalFees": "$60 minimum / year",
+    "lastUpdated": null,
+    "notes": []
+  }
+]

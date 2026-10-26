@@ -1,0 +1,13 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
+const { loadEnvConfig } = require("@next/env");
+const path = require("node:path");
+
+loadEnvConfig(process.cwd());
+const url = new URL(process.env.DATABASE_URL);
+if (!["127.0.0.1", "localhost"].includes(url.hostname) || !["/apex_dashboard", "/apex_dashboard_test"].includes(url.pathname)) {
+  throw new Error("Integration tests require the local Apex development database URL.");
+}
+url.pathname = "/apex_dashboard_test";
+process.env.DATABASE_URL = url.toString();
+process.env.APP_ORIGIN = "http://localhost:3002";
+process.env.PRIVATE_DOCUMENT_DIR = path.resolve(process.cwd(), ".local", "test-documents");
