@@ -18,7 +18,7 @@ import { TestimonialsSection } from './components/sections/TestimonialsSection';
 import { TopStatesSection } from './components/sections/TopStatesSection';
 import { FAQSection } from './components/sections/FAQSection';
 import { ContactSection } from './components/sections/ContactSection';
-import { LoginPortalModal } from './components/modals/LoginPortalModal';
+import { dashboardApplicationUrl, dashboardUrl } from './lib/dashboardLinks';
 import { PricingPage } from './components/pages/PricingPage';
 import { ContactPage } from './components/pages/ContactPage';
 import { RefundPolicyPage } from './components/pages/RefundPolicyPage';
@@ -31,7 +31,6 @@ import { PricingPlan, TopState } from './types';
 
 const WhyApexPage = lazy(() => import('./components/why/WhyApexPage').then((module) => ({ default: module.WhyApexPage })));
 const StartPage = lazy(() => import('./components/start/StartPage').then((module) => ({ default: module.StartPage })));
-const FormationWizard = lazy(() => import('./components/formation/FormationWizard').then((module) => ({ default: module.FormationWizard })));
 const FormationProcessPage = lazy(() => import('./components/pages/FormationProcessPage').then((module) => ({ default: module.FormationProcessPage })));
 const ServiceDetailPage = lazy(() => import('./components/services/ServiceDetailPage').then((module) => ({ default: module.ServiceDetailPage })));
 const UsServicePage = lazy(() => import('./components/services/UsServicePage').then((module) => ({ default: module.UsServicePage })));
@@ -44,7 +43,6 @@ export default function App() {
   const mainRef = useRef<HTMLElement>(null);
   usePageScrollReveals(mainRef, routePath);
 
-  const [loginModalOpen, setLoginModalOpen] = useState(false);
   const [translationNotice, setTranslationNotice] = useState(false);
   const [language, setLanguage] = useState<Language>(() => {
     const saved = window.localStorage.getItem('apex-navigation-language');
@@ -84,15 +82,7 @@ export default function App() {
   };
 
   const navigateToFormation = (options: { source: string; state?: string; plan?: string; residency?: 'us' | 'non-us'; service?: string }) => {
-    const params = new URLSearchParams();
-    params.set('source', options.source);
-    if (options.state) params.set('state', options.state);
-    if (options.plan) params.set('plan', options.plan);
-    if (options.residency) params.set('residency', options.residency);
-    if (options.service) params.set('service', options.service);
-    window.history.pushState(null, '', `/formation/start?${params}`);
-    setPath('/formation/start');
-    window.scrollTo(0, 0);
+    window.location.assign(dashboardApplicationUrl(options));
   };
 
   const returnToSite = () => {
@@ -116,7 +106,7 @@ export default function App() {
   }
 
   if (routePath === '/formation/start') {
-    return <><Suspense fallback={<div className="theme-route-loading min-h-screen bg-[#fcf9f8]" role="status">Loading formation onboarding…</div>}><FormationWizard /></Suspense>{translationNotice && <TranslationNotice />}</>;
+    return <FormationHandoff />;
   }
 
   const serviceSlug = routePath.startsWith('/services/') ? routePath.slice('/services/'.length) : null;
@@ -127,13 +117,13 @@ export default function App() {
   return (
     <div className="marketing-site clay-theme min-h-screen flex flex-col bg-[#fcf9f8] text-slate-700 font-sans selection:bg-[#F04623] selection:text-white">
       {/* Navigation */}
-      <Navbar onOpenClientPortal={() => setLoginModalOpen(true)} language={language} onLanguageChange={handleLanguageChange} />
+      <Navbar language={language} onLanguageChange={handleLanguageChange} />
       {legalRoute && language !== 'en' && <div className="border-b border-amber-200 bg-amber-50 px-4 py-2 text-center text-sm text-amber-950">Machine translation is provided for convenience. The English policy is authoritative. <button type="button" onClick={() => handleLanguageChange('en')} className="font-semibold underline underline-offset-2">Read English original</button></div>}
 
       {/* Main Content */}
       <main ref={mainRef} className="flex-1">
         {serviceSlug ? (
-          serviceSlug === 'uk-ltd-formation' ? <Suspense fallback={<div className="min-h-screen bg-white" />}><UkLtdServicePage onOpenClientPortal={() => setLoginModalOpen(true)} /></Suspense> : usServicePage ? <Suspense fallback={<div className="min-h-screen bg-white" />}><UsServicePage page={usServicePage} /></Suspense> : managementServicePage ? <Suspense fallback={<div className="min-h-screen bg-white" />}><ManagementServicePage page={managementServicePage} onOpenClientPortal={() => setLoginModalOpen(true)} /></Suspense> : selectedService ? <Suspense fallback={<div className="min-h-screen bg-white" />}><ServiceDetailPage service={selectedService} /></Suspense> : <section className="mx-auto min-h-[60vh] max-w-7xl px-4 py-24 text-center"><h1 className="text-3xl font-bold text-[#171717]">Service not found</h1><p className="mt-4 text-slate-600">Explore the services currently available through Apex Filings.</p><a href="/#services" className="mt-6 inline-flex text-sm font-semibold text-[#F04623] underline underline-offset-4">View all services</a></section>
+          serviceSlug === 'uk-ltd-formation' ? <Suspense fallback={<div className="min-h-screen bg-white" />}><UkLtdServicePage onOpenClientPortal={() => window.location.assign(dashboardUrl('/login'))} /></Suspense> : usServicePage ? <Suspense fallback={<div className="min-h-screen bg-white" />}><UsServicePage page={usServicePage} /></Suspense> : managementServicePage ? <Suspense fallback={<div className="min-h-screen bg-white" />}><ManagementServicePage page={managementServicePage} onOpenClientPortal={() => window.location.assign(dashboardUrl('/login'))} /></Suspense> : selectedService ? <Suspense fallback={<div className="min-h-screen bg-white" />}><ServiceDetailPage service={selectedService} /></Suspense> : <section className="mx-auto min-h-[60vh] max-w-7xl px-4 py-24 text-center"><h1 className="text-3xl font-bold text-[#171717]">Service not found</h1><p className="mt-4 text-slate-600">Explore the services currently available through Apex Filings.</p><a href="/#services" className="mt-6 inline-flex text-sm font-semibold text-[#F04623] underline underline-offset-4">View all services</a></section>
         ) : routePath === '/how-it-works' ? <Suspense fallback={<div className="min-h-screen" role="status">Loading your business journey…</div>}><FormationProcessPage /></Suspense>
           : routePath === '/pricing' ? <PricingPage onSelectPlan={handleSelectPlan} />
           : routePath === '/refund-policy' ? <RefundPolicyPage />
@@ -182,13 +172,16 @@ export default function App() {
       <Footer language={language} onLanguageChange={handleLanguageChange} management={Boolean(managementServicePage)} />
 
       {/* Modals & Interactive Overlays */}
-      <LoginPortalModal
-        isOpen={loginModalOpen}
-        onClose={() => setLoginModalOpen(false)}
-      />
       {translationNotice && <TranslationNotice />}
     </div>
   );
+}
+
+function FormationHandoff() {
+  const query = new URLSearchParams(window.location.search);
+  const destination = dashboardApplicationUrl({ state: query.get('state'), plan: query.get('plan') });
+  useEffect(() => { window.location.replace(destination); }, [destination]);
+  return <main className="flex min-h-screen items-center justify-center bg-white px-6 text-center"><div><p className="text-sm text-slate-600">Continuing to your secure Apex Filings application…</p><a className="mt-4 inline-block font-semibold text-[#F04623] underline" href={destination}>Continue to dashboard</a></div></main>;
 }
 
 function TranslationNotice() {

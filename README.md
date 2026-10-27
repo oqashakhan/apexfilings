@@ -6,6 +6,14 @@ Official public website and frontend architecture for **Apex Filings** (apexfili
 
 ## 1. Project Overview
 
+### Public website and dashboard handoff
+
+The public Vite build sends Client Portal traffic to the separate Next.js dashboard. Set `VITE_DASHBOARD_URL=https://app.apexfilings.com` in the public site's **build environment**; for local development, `http://localhost:3001` is accepted. Vite embeds this public origin at build time, so rebuild the public site after changing it. The fallback is `https://app.apexfilings.com`.
+
+The website's LLC buttons carry only a validated US state name and package slug (`basic` or `premium`) to `/login?next=/client/applications/new...`. The dashboard validates that relative return path, preserves it through registration/login, and reads current package prices from its database. The homepage hero still visits `/how-it-works` and the short public planning form before authentication. The public planning form does not submit an application or collect account passwords; the customer completes business and owner details in the authenticated dashboard wizard. Contact and consultation inquiries continue through Formspree. UK Ltd and other services without a dashboard application workflow continue to consultation.
+
+For the dashboard Coolify service, set `APP_ORIGIN=https://app.apexfilings.com` as a server-side secret and deploy the `dashboard/` directory separately. Keep `DATABASE_URL` and `PRIVATE_DOCUMENT_DIR` server-side. Do not push this integration to an automatically deployed production branch until both services have been reviewed and rebuilt together.
+
 Apex Filings empowers international and domestic founders to form and maintain US LLCs, acquire IRS Employer Identification Numbers (EIN), secure 1-year registered agent services, open US business bank accounts (Mercury, Relay, Wise), and accept payments through Stripe and PayPal.
 
 - **Brand:** Apex Filings

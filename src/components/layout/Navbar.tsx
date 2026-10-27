@@ -5,6 +5,7 @@ import { ServicesMegaMenu } from './ServicesMegaMenu';
 import './Navbar.css';
 import { LANGUAGES, type Language } from '../../i18n/languages';
 import { useTheme } from '../../theme/useTheme';
+import { dashboardUrl } from '../../lib/dashboardLinks';
 
 const linkClasses =
   'rounded-lg px-3 py-2.5 text-sm font-medium text-slate-700 transition-colors hover:bg-orange-50 hover:text-[#F04623] aria-[current=page]:bg-orange-50 aria-[current=page]:text-[#F04623] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F04623]';
@@ -13,12 +14,11 @@ const navigationCopy = { home: 'Home', services: 'Services', pricing: 'Pricing',
 const incorporateHref = '/formation/start?source=service&service=llc-formation&residency=us';
 
 interface NavbarProps {
-  onOpenClientPortal: () => void;
   language: Language;
   onLanguageChange: (language: Language) => void;
 }
 
-export function Navbar({ onOpenClientPortal, language, onLanguageChange }: NavbarProps) {
+export function Navbar({ language, onLanguageChange }: NavbarProps) {
   const { theme, toggleTheme } = useTheme();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [servicesOpen, setServicesOpen] = useState(false);
@@ -241,18 +241,15 @@ export function Navbar({ onOpenClientPortal, language, onLanguageChange }: Navba
             )}
           </div>
 
-          <button
-            type="button"
-            aria-label="Client portal — coming soon"
-            title="Client portal — coming soon"
-            onClick={() => {
-              closeMenus();
-              onOpenClientPortal();
-            }}
+          <a
+            href={dashboardUrl('/login')}
+            aria-label="Client Portal login"
+            title="Client Portal"
+            onClick={closeMenus}
             className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-700 transition-colors hover:border-orange-200 hover:bg-orange-50 hover:text-[#F04623] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F04623]"
           >
             <CircleUserRound className="h-5 w-5" aria-hidden="true" />
-          </button>
+          </a>
 
         <button
           type="button"
@@ -296,6 +293,7 @@ export function Navbar({ onOpenClientPortal, language, onLanguageChange }: Navba
             <a href={incorporateHref} onClick={closeMenus} className="mt-3 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#F04623] px-5 py-3 text-sm font-bold text-white transition-colors hover:bg-[#d93d1c] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F04623] focus-visible:ring-offset-2">
               Incorporate Now <ArrowRight className="h-4 w-4" aria-hidden="true" />
             </a>
+            <a href={dashboardUrl('/login')} onClick={closeMenus} className={`${linkClasses} mt-2 flex min-h-11 items-center gap-2`}><CircleUserRound className="h-5 w-5" aria-hidden="true" />Client Portal</a>
           </div>
         </nav>
       )}

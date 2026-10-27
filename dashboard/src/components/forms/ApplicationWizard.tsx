@@ -2,7 +2,7 @@
 
 import { useFieldArray, useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, ArrowRight, Check, Plus, Trash2 } from "lucide-react";
 import { DashboardShell } from "@/components/layout/DashboardShell";
@@ -58,8 +58,29 @@ export function ApplicationWizard() {
   const { refresh, packages } = useClientDemo();
   const form = useForm<WizardValues>({ defaultValues, mode: "onBlur" });
   const resetForm = form.reset;
+  const handoffApplied = useRef(false);
+  const submittingRef = useRef(false);
   const owners = useFieldArray({ control: form.control, name: "owners" });
   const values = useWatch({ control: form.control, defaultValue: defaultValues }) as WizardValues;
+
+  useEffect(() => {
+    if (handoffApplied.current) return;
+    const query = new URLSearchParams(window.location.search);
+    if (query.has("draft")) return;
+    const state = query.get("state");
+    const plan = query.get("plan");
+    if (!packages.length) return;
+    if (state && formationStates.some((item) => item === state)) form.setValue("formationState", state);
+    if (plan === "basic" || plan === "premium") {
+      const selected = packages.find((item) => item.slug === plan);
+      if (selected) form.setValue("packageName", selected.name);
+      else { form.setValue("packageName", ""); setMessage("The selected website package is currently unavailable. Please review the available packages before continuing."); }
+    } else {
+      const basic = packages.find((item) => item.slug === "basic");
+      form.setValue("packageName", basic?.name ?? "");
+    }
+    handoffApplied.current = true;
+  }, [form, packages]);
 
   useEffect(() => {
     const id = new URLSearchParams(window.location.search).get("draft");
@@ -77,7 +98,8 @@ export function ApplicationWizard() {
   async function saveDraft() {
     const validOwners = values.owners.filter((owner) => ownerSchema.safeParse(owner).success);
     const selectedPackage = packages.find((item) => item.name === values.packageName);
-    const payload = { preferredName: values.preferredName, firstAlternativeName: values.firstAlternativeName, secondAlternativeName: values.secondAlternativeName, formationState: values.formationState, businessActivity: values.businessActivity, description: values.description, addressRequirement: values.addressRequirement, membership: values.membership, management: values.management, packageSlug: selectedPackage?.slug ?? (values.packageName === "Premium All-In" ? "premium" : "basic"), additionalServices: values.additionalServices, owners: validOwners };
+    if (!selectedPackage || (selectedPackage.slug !== "basic" && selectedPackage.slug !== "premium")) throw new Error("This package is not available in the current dashboard catalog.");
+    const payload = { preferredName: values.preferredName, firstAlternativeName: values.firstAlternativeName, secondAlternativeName: values.secondAlternativeName, formationState: values.formationState, businessActivity: values.businessActivity, description: values.description, addressRequirement: values.addressRequirement, membership: values.membership, management: values.management, packageSlug: selectedPackage.slug, additionalServices: values.additionalServices, owners: validOwners };
     const response = await fetch(draft ? `/api/v1/client/applications/${encodeURIComponent(draft.id)}` : "/api/v1/client/applications", { method: draft ? "PATCH" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
     const result = await response.json();
     if (!response.ok) throw new Error(result.error ?? "Could not save this application.");
@@ -88,6 +110,7 @@ export function ApplicationWizard() {
   }
 
   async function next() {
+    if (submittingRef.current) return;
     setMessage("");
     form.clearErrors();
     if (step === 0) {
@@ -117,6 +140,7 @@ export function ApplicationWizard() {
       setMessage("Confirm that you reviewed the application before submitting.");
       return;
     }
+    submittingRef.current = true;
     setBusy(true);
     try {
       if (step === 0 || step === 1 || step === 2) await saveDraft();
@@ -128,7 +152,8 @@ export function ApplicationWizard() {
         setDraft(result.application);
         await refresh();
       }
-    } catch (error) { setMessage(error instanceof Error ? error.message : "Please try again."); setBusy(false); return; }
+    } catch (error) { setMessage(error instanceof Error ? error.message : "Please try again."); submittingRef.current = false; setBusy(false); return; }
+    submittingRef.current = false;
     setBusy(false);
     setFurthestStep((current) => Math.max(current, step + 1));
     setStep((current) => Math.min(current + 1, steps.length - 1));
