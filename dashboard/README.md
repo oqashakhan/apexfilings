@@ -9,7 +9,7 @@ Use Node.js 24, npm, and PostgreSQL 16 or newer. From `dashboard/`:
 ```bash
 npm ci
 cp .env.example .env
-# Edit DATABASE_URL, APP_ORIGIN, and PRIVATE_DOCUMENT_DIR.
+# Edit DATABASE_URL, APP_ORIGIN, PUBLIC_SITE_ORIGIN, ONBOARDING_HANDOFF_SECRET, and PRIVATE_DOCUMENT_DIR.
 npm run db:generate
 npm run db:deploy
 npm run db:seed
@@ -29,6 +29,7 @@ The script requires a strong password of at least 16 characters and refuses to r
 ## Current backend flows
 
 - Client registration, login, logout, session lookup, and password-reset token validation; request-reset is generic and does not send production mail until a verified provider is configured.
+- Public five-step onboarding registration through a single origin-allowlisted endpoint; a 15-minute encrypted HttpOnly cookie carries initial business answers into the authenticated application wizard. The public site never stores credentials.
 - Owner/client role checks on pages and APIs; clients are scoped to their own companies, applications, orders, documents, and notifications.
 - Six-step US LLC application: saved draft, owner information, optional service interests, private owner ID uploads, review/confirmation, and an unpaid order. The $199 Basic and $299 Premium prices are Apex service fees only. Government/other fees remain unconfirmed until an owner records them.
 - Owner application review, transition history, customer replies to information requests, internal notes, document review, fee confirmation, owner-configured manual payment instructions, manual payment recording and verification, catalog drafts, notifications, and audit records.
@@ -48,8 +49,8 @@ Integration tests require an isolated local PostgreSQL cluster with an `apex_das
 
 ## Coolify preparation
 
-Deploy this `dashboard/` directory as a **separate** Next.js service using Node.js 24. It serves the UI and API from one origin. Keep the existing public website service unchanged. Provision PostgreSQL as a private Coolify resource with persistent storage and scheduled backups. Set `DATABASE_URL`, `APP_ORIGIN` (exact HTTPS dashboard origin), and an **absolute** `PRIVATE_DOCUMENT_DIR` on a separate private persistent volume. Do not expose PostgreSQL or the document volume to the public internet. Store all values in Coolify secrets, not Git. Run `npm ci`, `npm run db:generate`, and `npm run build` for the image; run `npm run db:deploy` before startup. Set the health check to `/api/v1/health`, enable HTTPS at the reverse proxy, and test backup restoration before handling customer documents.
+Deploy this `dashboard/` directory as a **separate** Next.js service using Node.js 24. It serves the UI and API from one origin. Provision PostgreSQL as a private Coolify resource with persistent storage and scheduled backups. Set `DATABASE_URL`, `APP_ORIGIN` (exact HTTPS dashboard origin), `PUBLIC_SITE_ORIGIN` (exact HTTPS public site origin), `ONBOARDING_HANDOFF_SECRET` (random 32-byte base64url value), and an **absolute** `PRIVATE_DOCUMENT_DIR` on a separate private persistent volume. Generate the handoff secret with `node -e "console.log(require('node:crypto').randomBytes(32).toString('base64url'))"`; do not commit the generated value. Do not expose PostgreSQL or the document volume to the public internet. Store all values in Coolify secrets, not Git. Run `npm ci`, `npm run db:generate`, and `npm run build` for the image; run `npm run db:deploy` before startup. Set the health check to `/api/v1/health`, enable HTTPS at the reverse proxy, and test backup restoration before handling customer documents.
 
-The server rejects cross-origin mutations and uses `Secure`, `HttpOnly`, `SameSite=Lax` session cookies in production. `APP_ORIGIN` must match the browser origin exactly. The owner can configure payment instructions in Admin Settings; no bank details are seeded. Production reset emails, verified payment instructions, malware scanning, and a document retention/deletion policy must be configured and reviewed before live customer onboarding. This repository does not deploy automatically.
+The server rejects cross-origin mutations except the dedicated onboarding `prepare` and `register` actions, which accept only the configured public origin with credentialed CORS. All other auth, application, and document endpoints retain same-origin checks. Production session and onboarding cookies are `Secure`, `HttpOnly`, `SameSite=Lax`. `APP_ORIGIN` must match the browser origin exactly. The owner can configure payment instructions in Admin Settings; no bank details are seeded. Production reset emails, verified payment instructions, malware scanning, and a document retention/deletion policy must be configured and reviewed before live customer onboarding. This repository does not deploy automatically.
 
 Dependency note: the October 2026 npm audit flags a high-severity `deepmerge-ts` advisory through Prisma 6's configuration/CLI dependency. Zod was updated to the patched 4.6.6 release. Upgrading Prisma to 7 is a separate migration because its client generation and connection configuration changed; review that upgrade before production deployment. Do not run `npm audit fix --force` without testing schema generation, migrations, and the integration suite.

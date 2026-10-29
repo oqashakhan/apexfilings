@@ -1,9 +1,9 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
-import { Prisma } from "@prisma/client";
 import { db } from "@/server/db";
 import { actor, ApiError, body, checkOrigin, cookieName, date, handleError, json } from "@/server/http";
 import { hashPassword, hashToken, normalizeEmail, passwordStrong, randomToken, verifyPassword } from "@/server/security";
+import { makeSession, registerClientSession } from "@/server/client-auth";
 import { mkdir, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 
@@ -13,7 +13,6 @@ const registration = z.object({ fullName: z.string().trim().min(2).max(120), ema
 const credentials = z.object({ email, password: z.string().min(1) });
 const resetRequest = z.object({ email });
 const resetConfirm = z.object({ token: z.string().min(40).max(200), password: z.string(), confirm: z.string() });
-const sessionAge = 60 * 60 * 24 * 7;
 
 async function throttle(emailValue: string, scope = "login") {
   const key = hashToken(`${scope}:${normalizeEmail(emailValue)}`);
@@ -27,14 +26,6 @@ async function loginFailure(key: string) {
   const current = await db.authThrottle.findUnique({ where: { key } });
   const failures = (current?.failures ?? 0) + 1;
   await db.authThrottle.upsert({ where: { key }, create: { key, failures }, update: { failures, blockedUntil: failures >= 8 ? new Date(now.getTime() + 15 * 60_000) : null } });
-}
-
-async function makeSession(userId: string, role: "OWNER" | "CLIENT") {
-  const token = randomToken();
-  await db.session.create({ data: { userId, tokenHash: hashToken(token), expiresAt: new Date(Date.now() + sessionAge * 1000) } });
-  const response = json({ ok: true, role });
-  response.cookies.set(cookieName, token, { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", path: "/", maxAge: sessionAge });
-  return response;
 }
 
 async function deliverReset(emailValue: string, token: string) {
@@ -60,15 +51,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ ac
     const { action } = await context.params;
     if (action === "register") {
       const input = registration.parse(await body(request));
-      if (input.password !== input.confirm || !passwordStrong(input.password)) throw new ApiError(400, "Use a matching password of 12–128 characters with a letter, number, and symbol");
-      const normalized = normalizeEmail(input.email);
-      const existing = await db.user.findUnique({ where: { emailNormalized: normalized }, select: { id: true } });
-      if (existing) throw new ApiError(400, "Account could not be created");
-      let user;
-      try { user = await db.user.create({ data: { fullName: input.fullName, email: normalized, emailNormalized: normalized, phone: input.phone, passwordHash: await hashPassword(input.password), role: "CLIENT" } }); }
-      catch (error) { if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") throw new ApiError(400, "Account could not be created"); throw error; }
-      await db.auditLog.create({ data: { actorUserId: user.id, action: "ACCOUNT_REGISTERED", resourceType: "User", resourceId: user.id } });
-      return makeSession(user.id, "CLIENT");
+      return registerClientSession(input);
     }
     if (action === "login") {
       const input = credentials.parse(await body(request));

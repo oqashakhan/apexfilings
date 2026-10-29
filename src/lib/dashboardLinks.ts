@@ -31,3 +31,19 @@ export function applicationDestination(options: { state?: string | null; plan?: 
 export function dashboardApplicationUrl(options: { state?: string | null; plan?: string | null }): string {
   return `${dashboardUrl('/login')}?next=${encodeURIComponent(applicationDestination(options))}`;
 }
+
+export function dashboardOnboardingUrl(action: 'register' | 'prepare'): string {
+  return `${dashboardOrigin}/api/v1/onboarding/${action}`;
+}
+
+export function dashboardNewApplicationUrl(): string {
+  return `${dashboardOrigin}/client/applications/new`;
+}
+
+export function dashboardOnboardingApplicationUrl(): string {
+  return `${dashboardNewApplicationUrl()}?handoff=1`;
+}
+
+export function dashboardOnboardingLoginUrl(): string {
+  return `${dashboardUrl('/login')}?next=${encodeURIComponent('/client/applications/new?handoff=1')}`;
+}

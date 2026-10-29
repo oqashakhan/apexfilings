@@ -58,6 +58,7 @@ export function ApplicationWizard() {
   const { refresh, packages } = useClientDemo();
   const form = useForm<WizardValues>({ defaultValues, mode: "onBlur" });
   const resetForm = form.reset;
+  const setFormValue = form.setValue;
   const handoffApplied = useRef(false);
   const submittingRef = useRef(false);
   const owners = useFieldArray({ control: form.control, name: "owners" });
@@ -74,13 +75,33 @@ export function ApplicationWizard() {
     if (plan === "basic" || plan === "premium") {
       const selected = packages.find((item) => item.slug === plan);
       if (selected) form.setValue("packageName", selected.name);
-      else { form.setValue("packageName", ""); setMessage("The selected website package is currently unavailable. Please review the available packages before continuing."); }
+      else { form.setValue("packageName", ""); queueMicrotask(() => setMessage("The selected website package is currently unavailable. Please review the available packages before continuing.")); }
     } else {
       const basic = packages.find((item) => item.slug === "basic");
       form.setValue("packageName", basic?.name ?? "");
     }
     handoffApplied.current = true;
   }, [form, packages]);
+
+  useEffect(() => {
+    const query = new URLSearchParams(window.location.search);
+    if (query.has("draft") || query.get("handoff") !== "1") return;
+    let active = true;
+    void fetch("/api/v1/onboarding/current", { cache: "no-store" })
+      .then((response) => response.ok ? response.json() : null)
+      .then((result) => {
+        if (!active) return;
+        if (!result?.details) { setMessage("Your initial details have expired. Please enter them below to continue."); return; }
+        const details = result.details as { businessType: string; country: string; formationState: string; preferredName: string };
+        if (details.businessType !== "LLC" || !formationStates.some((item) => item === details.formationState)) return;
+        setFormValue("preferredName", details.preferredName);
+        setFormValue("formationState", details.formationState);
+        const residence = new Intl.DisplayNames(["en"], { type: "region" }).of(details.country);
+        if (residence) setFormValue("owners.0.residence", residence);
+      })
+      .catch(() => { if (active) setMessage("Your initial details could not be loaded. Please enter them before continuing."); });
+    return () => { active = false; };
+  }, [setFormValue]);
 
   useEffect(() => {
     const id = new URLSearchParams(window.location.search).get("draft");
@@ -104,7 +125,10 @@ export function ApplicationWizard() {
     const result = await response.json();
     if (!response.ok) throw new Error(result.error ?? "Could not save this application.");
     setDraft(result.application);
-    if (!draft) window.history.replaceState(null, "", `/client/applications/new?draft=${encodeURIComponent(result.application.id)}`);
+    if (!draft) {
+      window.history.replaceState(null, "", `/client/applications/new?draft=${encodeURIComponent(result.application.id)}`);
+      void fetch("/api/v1/onboarding/current", { method: "DELETE" }).catch(() => {});
+    }
     await refresh();
     return result.application as ClientRecord;
   }

@@ -24,6 +24,48 @@ async function call(path, method = "GET", payload, cookie = "") {
 }
 function expect(actual, expected, label) { assert.equal(actual.response.status, expected, `${label}: ${JSON.stringify(actual.data)}`); }
 
+test("public onboarding handoff uses the dashboard session and protects its origin", async () => {
+  const origin = "http://localhost:3000";
+  const details = { businessType: "LLC", country: "PK", formationState: "Wyoming", preferredName: `Example Ventures ${suffix}` };
+  const headers = { Origin: origin, "Sec-Fetch-Site": "same-site", "Content-Type": "application/json" };
+  const endpoint = `${root}/api/v1/onboarding`;
+  const preflight = await fetch(`${endpoint}/register`, { method: "OPTIONS", headers: { Origin: origin, "Sec-Fetch-Site": "same-site", "Access-Control-Request-Method": "POST", "Access-Control-Request-Headers": "content-type" } });
+  assert.equal(preflight.status, 204);
+  assert.equal(preflight.headers.get("access-control-allow-origin"), origin);
+  assert.equal(preflight.headers.get("access-control-allow-credentials"), "true");
+  const forbidden = await fetch(`${endpoint}/prepare`, { method: "POST", headers: { ...headers, Origin: "https://untrusted.example" }, body: JSON.stringify(details) });
+  assert.equal(forbidden.status, 403);
+  const badState = await fetch(`${endpoint}/prepare`, { method: "POST", headers, body: JSON.stringify({ ...details, formationState: "Atlantis" }) });
+  assert.equal(badState.status, 400);
+  const created = await fetch(`${endpoint}/register`, { method: "POST", headers, body: JSON.stringify({ fullName: "Onboarding Test Client", email: `onboarding-${suffix}@example.test`, phone: "+1 555 000 0012", password, confirm: password, acceptedTerms: true, details }) });
+  assert.equal(created.status, 200, await created.text());
+  const cookies = created.headers.getSetCookie().map((value) => value.split(";")[0]).join("; ");
+  assert.match(cookies, /apex_session=/);
+  assert.match(cookies, /apex_onboarding=/);
+  const current = await fetch(`${endpoint}/current`, { headers: { Cookie: cookies } });
+  assert.equal(current.status, 200);
+  assert.deepEqual((await current.json()).details, details);
+  const account = await fetch(`${root}/api/v1/auth/current`, { headers: { Cookie: cookies } });
+  assert.equal((await account.json()).user.role, "CLIENT");
+  const clientPage = await fetch(`${root}/client/applications/new?handoff=1`, { headers: { Cookie: cookies }, redirect: "manual" });
+  assert.equal(clientPage.status, 200);
+  const registeredUser = await db.user.findUniqueOrThrow({ where: { emailNormalized: `onboarding-${suffix}@example.test` } });
+  assert.equal(await db.application.count({ where: { customerId: registeredUser.id } }), 0, "opening the wizard does not create a duplicate draft");
+  const cleared = await fetch(`${endpoint}/current`, { method: "DELETE", headers: { Cookie: cookies, Origin: root } });
+  assert.equal(cleared.status, 200);
+  assert.match(cleared.headers.get("set-cookie") ?? "", /Max-Age=0/i);
+  const afterClear = await fetch(`${endpoint}/current`, { headers: { Cookie: cookies.split("; ").filter((cookie) => !cookie.startsWith("__Host-apex_onboarding=") && !cookie.startsWith("apex_onboarding=")).join("; ") } });
+  assert.equal((await afterClear.json()).details, null);
+  const prepared = await fetch(`${endpoint}/prepare`, { method: "POST", headers, body: JSON.stringify(details) });
+  assert.equal(prepared.status, 200);
+  const handoffCookie = prepared.headers.getSetCookie().map((value) => value.split(";")[0]).join("; ");
+  const signIn = await call("/api/v1/auth/login", "POST", { email: `onboarding-${suffix}@example.test`, password });
+  expect(signIn, 200, "existing-client sign in");
+  const resumed = await fetch(`${endpoint}/current`, { headers: { Cookie: `${handoffCookie}; ${signIn.cookie}` } });
+  assert.deepEqual((await resumed.json()).details, details);
+  await db.$disconnect();
+});
+
 test("authenticated dashboard workflow and ownership", async () => {
   try {
     expect(await call("/api/v1/health"), 200, "health");

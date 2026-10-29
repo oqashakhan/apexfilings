@@ -7,7 +7,7 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   Bell, BriefcaseBusiness, ChevronDown, ChevronLeft, ChevronRight, CreditCard,
   FileCheck2, FileClock, FileText, FolderOpen, Headphones, LayoutDashboard,
-  LogOut, Menu, Moon, Package, Search, Settings, ShieldCheck, Sun, Users,
+  LogOut, Menu, Moon, Package, Search, Settings, Sun, Users,
   UserRound, Wallet, X, PanelsTopLeft, Building2,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -56,7 +56,7 @@ export function DashboardShell({ role, title, children }: { role: PreviewRole; t
   const [collapsed, setCollapsed] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [search, setSearch] = useState("");
-  const [openMenu, setOpenMenu] = useState<"notifications" | "profile" | null>(null);
+  const [openMenu, setOpenMenu] = useState<"notifications" | "profile" | "sidebar-profile" | null>(null);
   const nav = role === "admin" ? adminNav : clientNav;
   const found = useMemo(() => nav.filter((item) => item.label.toLowerCase().includes(search.toLowerCase())).slice(0, 5), [nav, search]);
 
@@ -85,6 +85,31 @@ export function DashboardShell({ role, title, children }: { role: PreviewRole; t
     return () => window.removeEventListener("keydown", onEscape);
   }, []);
 
+  useEffect(() => {
+    try { if (localStorage.getItem("apex-dashboard-sidebar") === "collapsed") queueMicrotask(() => setCollapsed(true)); } catch {}
+  }, []);
+
+  useEffect(() => {
+    if (!drawerOpen || !window.matchMedia("(max-width: 900px)").matches) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = previous; };
+  }, [drawerOpen]);
+
+  useEffect(() => {
+    const media = window.matchMedia("(max-width: 900px)");
+    const onResize = () => { if (!media.matches) { setDrawerOpen(false); setOpenMenu(null); } };
+    media.addEventListener("change", onResize);
+    return () => media.removeEventListener("change", onResize);
+  }, []);
+
+  function toggleSidebar() {
+    setCollapsed((current) => {
+      try { localStorage.setItem("apex-dashboard-sidebar", current ? "expanded" : "collapsed"); } catch {}
+      return !current;
+    });
+  }
+
   function toggleTheme() {
     const next = document.documentElement.dataset.dashboardTheme !== "dark";
     document.documentElement.dataset.dashboardTheme = next ? "dark" : "light";
@@ -96,23 +121,29 @@ export function DashboardShell({ role, title, children }: { role: PreviewRole; t
       <div className="sidebar-brand">
         <Link href={"/" + role + "/dashboard"} className="brand-link" aria-label="Apex Filings dashboard home">
           <Image src="/apex-icon.png" alt="" className="brand-icon" width={38} height={38} />
-          {!collapsed && <span className="brand-name">Apex Filings<span className="brand-subtitle">DASHBOARD</span></span>}
+          <span className="brand-name">Apex Filings<span className="brand-subtitle">DASHBOARD</span></span>
         </Link>
         <button className="icon-button sidebar-close" aria-label="Close menu" onClick={() => setDrawerOpen(false)}><X size={19} /></button>
       </div>
-      <div className="sidebar-workspace">{!collapsed ? <><span className="eyebrow">WORKSPACE</span><strong>{role === "admin" ? "Admin Console" : "Client Portal"}</strong></> : <ShieldCheck size={20} />}</div>
       <nav className="sidebar-nav" aria-label={role === "admin" ? "Admin navigation" : "Client navigation"}>
         {nav.map((item, index) => {
           const Icon = item.icon;
           const href = "/" + role + "/" + item.slug;
           const active = pathname === href || (pathname.startsWith(href + "/") && item.slug !== "dashboard");
           const adminGroup = role === "admin" ? ({ 0: "Overview", 1: "Operations", 6: "Management", 9: "Account" } as Record<number, string>)[index] : undefined;
-          return <Fragment key={item.slug}>{adminGroup && <span className="sidebar-group-heading">{adminGroup}</span>}<Link href={href} className={"nav-item" + (active ? " active" : "")} onClick={() => { setDrawerOpen(false); setOpenMenu(null); }} title={collapsed ? item.label : undefined} aria-current={active ? "page" : undefined}><Icon size={19} strokeWidth={1.9} /><span>{item.label}</span>{active && !collapsed && <span className="nav-active-dot" />}</Link></Fragment>;
+          const clientGroup = role === "client" ? ({ 0: "Workspace", 5: "Services", 8: "Account" } as Record<number, string>)[index] : undefined;
+          return <Fragment key={item.slug}>{(adminGroup || clientGroup) && <span className="sidebar-group-heading">{adminGroup || clientGroup}</span>}<Link href={href} className={"nav-item" + (active ? " active" : "")} onClick={() => { setDrawerOpen(false); setOpenMenu(null); }} title={collapsed ? item.label : undefined} aria-label={collapsed ? item.label : undefined} aria-current={active ? "page" : undefined}><Icon size={18} strokeWidth={1.8} /><span>{item.label}</span></Link></Fragment>;
         })}
       </nav>
       <div className="sidebar-bottom">
-        <div className="preview-help"><span className="help-icon"><Headphones size={18} /></span>{!collapsed && <div><strong>Need guidance?</strong><span>Contact the Apex Filings team.</span></div>}</div>
-        <button className="nav-item logout-item" onClick={() => void logout()}><LogOut size={19} /><span>Log out</span></button>
+        <div className="sidebar-account-anchor">
+          <button className="sidebar-account" aria-label="Open account menu" aria-expanded={openMenu === "sidebar-profile"} onClick={() => setOpenMenu(openMenu === "sidebar-profile" ? null : "sidebar-profile")} title={collapsed ? "Account" : undefined}>
+            <span className="avatar">{profile?.fullName?.charAt(0).toUpperCase() ?? "A"}</span>
+            <span className="sidebar-account-copy"><strong>{profile?.fullName ?? "Account"}</strong><small>{role === "admin" ? "Owner / Admin" : "Client"}</small></span>
+            <ChevronDown className="sidebar-account-chevron" size={16} />
+          </button>
+          {openMenu === "sidebar-profile" && <div className="sidebar-account-menu"><span>{profile?.email ?? "Account"}</span><Link href={"/" + role + (role === "admin" ? "/settings" : "/profile")} onClick={() => { setOpenMenu(null); setDrawerOpen(false); }}>Profile & settings</Link><button onClick={() => void logout()}><LogOut size={16} /> Log out</button></div>}
+        </div>
       </div>
     </>
   );
@@ -124,7 +155,7 @@ export function DashboardShell({ role, title, children }: { role: PreviewRole; t
       <div className="dashboard-main">
         <header className="topbar">
           <div className="topbar-left">
-            <button className="icon-button desktop-collapse" aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"} onClick={() => setCollapsed(!collapsed)}>{collapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}</button>
+            <button className="icon-button desktop-collapse" aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"} onClick={toggleSidebar}>{collapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}</button>
             <button className="icon-button mobile-menu" aria-label="Open navigation" onClick={() => setDrawerOpen(true)}><Menu size={22} /></button>
             <span className="topbar-crumb">{role === "admin" ? "Admin" : "Client"} <ChevronRight size={14} /> <strong>{title}</strong></span>
           </div>
