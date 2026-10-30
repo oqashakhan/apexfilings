@@ -18,7 +18,7 @@ const titles: Record<Mode, { eyebrow: string; title: string; subtitle: string }>
 };
 const emailSchema = z.email("Enter a valid email address.");
 
-export function AuthScreen({ mode, next }: { mode: Mode; next?: string | null }) {
+export function AuthScreen({ mode, next, googleEnabled = false }: { mode: Mode; next?: string | null; googleEnabled?: boolean }) {
   const router = useRouter();
   const { register, handleSubmit, reset } = useForm<AuthFields>({ defaultValues: { name: "", email: "", phone: "", password: "", confirm: "", remember: false } });
   const [showPassword, setShowPassword] = useState(false);
@@ -64,5 +64,5 @@ export function AuthScreen({ mode, next }: { mode: Mode; next?: string | null })
       {mode === "login" && <div className="auth-options"><span>Sessions expire after seven days.</span><Link href="/forgot-password">Forgot password?</Link></div>}
       {error && <p className="form-error" role="alert">{error}</p>}{message && <div className="auth-message" role="status"><CheckCircle2 size={18} />{message}</div>}
       <button className="button button-primary auth-submit" type="submit" disabled={busy}>{busy ? "Please wait…" : mode === "login" ? "Sign in" : mode === "register" ? "Create account" : mode === "forgot" ? "Request reset" : "Reset password"}<ArrowRight size={18} /></button>
-    </form>{mode === "login" ? <p className="auth-switch">New to Apex Filings? <Link href={next ? `/register?next=${encodeURIComponent(next)}` : "/register"}>Create an account</Link></p> : <p className="auth-switch"><Link href={next ? `/login?next=${encodeURIComponent(next)}` : "/login"}>Back to sign in</Link></p>}</div></div></div></div>;
+    </form>{(mode === "login" || mode === "register") && <div style={{ marginTop: 20, textAlign: "center" }}><p style={{ color: "var(--muted)", fontSize: 12, marginBottom: 12 }}>or continue with</p><a className="button button-secondary auth-submit" aria-disabled={!googleEnabled} href={googleEnabled ? `/api/v1/auth/google${next ? `?next=${encodeURIComponent(next)}` : ""}` : undefined} onClick={(event) => { if (!googleEnabled) { event.preventDefault(); setError("Google sign-in is not configured yet."); } }} style={{ justifyContent: "center", cursor: googleEnabled ? "pointer" : "not-allowed" }}><span aria-hidden="true" style={{ fontWeight: 800, color: "#4285f4", fontSize: 19 }}>G</span> Continue with Google</a></div>}{mode === "login" ? <p className="auth-switch">New to Apex Filings? <Link href={next ? `/register?next=${encodeURIComponent(next)}` : "/register"}>Create an account</Link></p> : <p className="auth-switch"><Link href={next ? `/login?next=${encodeURIComponent(next)}` : "/login"}>Back to sign in</Link></p>}</div></div></div></div>;
 }

@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { db } from "@/server/db";
 import { actor, ApiError, checkOrigin, handleError, json } from "@/server/http";
 import { loadDocument, maxDocumentBytes, removeDocument, safeFilename, storeDocument, validateDocument } from "@/server/storage";
+import { emailHtml, queueEmail, queueNotification } from "@/server/mail";
 
 export const runtime = "nodejs";
 type Params = { params: Promise<{ segments: string[] }> };
@@ -45,7 +46,15 @@ export async function POST(request: NextRequest, context: Params) {
     const created = await db.$transaction(async (tx) => {
       const document = await tx.document.create({ data: { applicationId, companyId: application.companyId, ownerId, uploadedById: user.id, documentType, originalFilename: safeFilename(file.name), privateStorageKey: storageKey!, mimeType: identified.mime, fileSize: buffer.length, reviewStatus: finalDocument ? "COMPLETED_COMPANY_DOCUMENT" : "UNDER_REVIEW" } });
       await tx.auditLog.create({ data: { actorUserId: user.id, action: "DOCUMENT_UPLOADED", resourceType: "Document", resourceId: document.id, safeMetadata: { documentType, fileSize: buffer.length } } });
-      if (finalDocument) await tx.notification.create({ data: { userId: application.customerId, type: "FINAL_DOCUMENT", title: "Company document available", message: "A completed company document is available in your dashboard.", relatedEntity: applicationId } });
+      if (finalDocument) {
+        await queueNotification(tx, `document-final:${document.id}`, application.customerId, "FINAL_DOCUMENT", "Company document available", "A completed company document is available in your dashboard.", applicationId);
+        const customer = await tx.user.findUniqueOrThrow({ where: { id: application.customerId }, select: { email: true, notificationPreference: true } });
+        if (customer.notificationPreference?.documentEmail !== false) await queueEmail(tx, `document-final:${document.id}`, customer.email, "Your company document is available — Apex Filings", emailHtml("Company document available", ["A completed company document is ready in your secure dashboard. Sign in to download it."], { label: "View documents", href: `${process.env.APP_ORIGIN ?? "http://localhost:3001"}/client/documents` }));
+      } else {
+        const owners = await tx.user.findMany({ where: { role: "OWNER", status: "ACTIVE" }, select: { id: true } });
+        for (const owner of owners) await queueNotification(tx, `document-upload:${document.id}:${owner.id}`, owner.id, "DOCUMENT_UPLOADED", "Customer document uploaded", `A document was uploaded for ${application.company.preferredName}.`, applicationId);
+        if (process.env.ADMIN_NOTIFICATION_EMAIL) await queueEmail(tx, `document-upload:${document.id}:admin`, process.env.ADMIN_NOTIFICATION_EMAIL, "Customer document uploaded — Apex Filings", emailHtml("Document needs review", [`Company: ${application.company.preferredName}`, `Application reference: ${applicationId}`, "Open the secure dashboard to review. Private documents are never attached to email."], { label: "Review documents", href: `${process.env.APP_ORIGIN ?? "http://localhost:3001"}/admin/applications/${applicationId}` }));
+      }
       return document;
     });
     return json({ document: { id: created.id, applicationId, documentType, ownerId, reviewStatus: created.reviewStatus, originalFilename: created.originalFilename, fileSize: created.fileSize } }, 201);

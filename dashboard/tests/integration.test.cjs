@@ -70,6 +70,13 @@ test("authenticated dashboard workflow and ownership", async () => {
   try {
     expect(await call("/api/v1/health"), 200, "health");
     expect(await call("/api/v1/client/dashboard"), 401, "anonymous client data");
+    expect(await call("/api/v1/jobs/email", "POST", {}), 401, "email worker requires a secret");
+    expect(await call("/api/v1/auth/google"), 503, "Google sign-in reports missing configuration safely");
+    for (const page of ["login", "register"]) {
+      const screen = await fetch(`${root}/${page}`);
+      assert.equal(screen.status, 200, `${page} renders`);
+      assert.match(await screen.text(), /Continue with Google/, `${page} offers Google sign-in`);
+    }
     expect(await call("/api/v1/auth/register", "POST", { fullName: "Test User", email: "invalid", phone: "12345678", password, confirm: password }), 400, "registration validation");
     const first = await call("/api/v1/auth/register", "POST", { fullName: "Apex Test Client", email: `client-${suffix}@example.test`, phone: "+1 555 000 0000", password, confirm: password, role: "OWNER" });
     expect(first, 200, "register first client");
@@ -86,6 +93,15 @@ test("authenticated dashboard workflow and ownership", async () => {
     expect(second, 200, "register second client");
     const otherUser = await db.user.findUniqueOrThrow({ where: { emailNormalized: `other-${suffix}@example.test` } });
     const user = await db.user.findUniqueOrThrow({ where: { emailNormalized: `client-${suffix}@example.test` } });
+    const verificationMail = await db.emailOutbox.findUniqueOrThrow({ where: { eventKey: `verify:${user.id}:initial` } });
+    const verificationToken = verificationMail.html.match(/verify-email\?token=([^"&]+)/)?.[1];
+    assert.ok(verificationToken, "verification email contains a single-use link");
+    expect(await call("/api/v1/auth/verify-email", "POST", { token: verificationToken }), 200, "verify email");
+    expect(await call("/api/v1/auth/verify-email", "POST", { token: verificationToken }), 400, "verification link is single-use");
+    const expiredToken = randomBytes(32).toString("base64url");
+    await db.emailVerification.create({ data: { userId: user.id, tokenHash: createHash("sha256").update(expiredToken).digest("hex"), expiresAt: new Date(Date.now() - 1000) } });
+    expect(await call("/api/v1/auth/verify-email", "POST", { token: expiredToken }), 400, "expired verification link rejected");
+    assert.ok((await db.user.findUniqueOrThrow({ where: { id: user.id } })).emailVerifiedAt, "mailbox verification persisted");
     assert.notEqual(user.passwordHash, password);
     assert.equal(await argon2.verify(user.passwordHash, password), true);
     expect(await call("/api/v1/admin/dashboard", "GET", undefined, first.cookie), 403, "client cannot read admin");
@@ -101,6 +117,10 @@ test("authenticated dashboard workflow and ownership", async () => {
     const draft = await call("/api/v1/client/applications", "POST", draftInput, first.cookie);
     expect(draft, 201, "create draft");
     const app = draft.data.application;
+    const repeatedDraft = await call("/api/v1/client/applications", "POST", draftInput, first.cookie);
+    expect(repeatedDraft, 200, "retry reuses draft");
+    assert.equal(repeatedDraft.data.application.id, app.id);
+    assert.equal(await db.application.count({ where: { customerId: user.id, company: { preferredName: draftInput.preferredName } } }), 1, "retry does not create another application");
     expect(await call(`/api/v1/client/applications/${app.id}`, "GET", undefined, second.cookie), 404, "cross-customer application read");
     expect(await call(`/api/v1/client/applications/${app.id}`, "PATCH", { ...draftInput, description: "Updated software consulting services" }, first.cookie), 200, "update draft");
     expect(await call(`/api/v1/client/applications/${app.id}/submit`, "POST", { confirmed: true }, first.cookie), 409, "missing owner ID");
@@ -115,6 +135,17 @@ test("authenticated dashboard workflow and ownership", async () => {
     expect(await call(`/api/v1/documents/${upload.data.document.id}`, "GET", undefined, first.cookie), 403, "unreviewed client download");
     const submitted = await call(`/api/v1/client/applications/${app.id}/submit`, "POST", { confirmed: true }, first.cookie);
     expect(submitted, 200, "submit application");
+    assert.equal(await db.emailOutbox.count({ where: { eventKey: `application-submitted:${app.id}:customer` } }), 1, "submission queues one customer email");
+    assert.equal(await db.notification.count({ where: { eventKey: `application-submitted:${app.id}:client` } }), 1, "submission queues one in-app notification");
+    const firstNotices = await call("/api/v1/client/notifications", "GET", undefined, first.cookie);
+    expect(firstNotices, 200, "client can read own notifications");
+    assert.ok(firstNotices.data.unreadCount >= 1);
+    const otherNotices = await call("/api/v1/client/notifications", "GET", undefined, second.cookie);
+    expect(otherNotices, 200, "other client notification list");
+    assert.ok(!otherNotices.data.notifications.some((item) => item.relatedEntity === app.id), "client notification isolation");
+    expect(await call("/api/v1/client/notifications/read-all", "PATCH", {}, first.cookie), 200, "mark all notifications read");
+    assert.equal((await call("/api/v1/client/notifications?filter=unread", "GET", undefined, first.cookie)).data.unreadCount, 0);
+    expect(await call("/api/v1/client/applications", "POST", draftInput, first.cookie), 409, "submitted application cannot be recreated by a retry");
     expect(await call(`/api/v1/client/applications/${app.id}/submit`, "POST", { confirmed: true }, first.cookie), 409, "duplicate submission");
     const orderId = submitted.data.orderId;
 

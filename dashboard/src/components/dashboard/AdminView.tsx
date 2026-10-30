@@ -6,7 +6,9 @@ import { AdminOverview } from "@/components/dashboard/AdminOverview";
 import { AdminApplications } from "@/components/dashboard/AdminApplications";
 import { AdminApplicationDetail } from "@/components/dashboard/AdminApplicationDetail";
 import { AdminClients, AdminClientDetail, AdminOrders, AdminOrderDetail, AdminDocuments, AdminPayments } from "@/components/dashboard/AdminOperations";
-import { AdminServices, AdminWebsiteContent, AdminNotifications, AdminSettings } from "@/components/dashboard/AdminManagement";
+import { AdminServices, AdminWebsiteContent, AdminSettings } from "@/components/dashboard/AdminManagement";
+import { NotificationCenter } from "@/components/dashboard/NotificationCenter";
+import { AccountSecurity } from "@/components/dashboard/AccountSecurity";
 
 const titles: Record<string, string> = {
   dashboard: "Dashboard", applications: "Applications", clients: "Clients", orders: "Orders",
@@ -28,8 +30,8 @@ export function AdminView({ section, detailId }: { section: string; detailId?: s
     case "payments": content = <AdminPayments />; break;
     case "services": content = <AdminServices />; break;
     case "website-content": content = <AdminWebsiteContent />; break;
-    case "notifications": content = <AdminNotifications />; break;
-    case "settings": content = <AdminSettings />; break;
+    case "notifications": content = <NotificationCenter role="admin" />; break;
+    case "settings": content = <><AdminSettings /><AccountSecurity /></>; break;
     default: content = <PageHeader title="Page not found" description="Choose a page from the dashboard navigation." />;
   }
   return <DashboardShell role="admin" title={titles[section] ?? "Not Found"}>{content}</DashboardShell>;

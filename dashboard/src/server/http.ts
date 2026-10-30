@@ -5,14 +5,17 @@ import { Role, type User } from "@prisma/client";
 import { db } from "@/server/db";
 import { hashToken } from "@/server/security";
 
+const apiErrorBrand: unique symbol = Symbol.for("apex.api-error");
+
 export class ApiError extends Error {
+  readonly [apiErrorBrand] = true;
   constructor(public status: number, message: string) { super(message); }
 }
 
 export const json = (data: unknown, status = 200) => NextResponse.json(data, { status, headers: { "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" } });
 export const fail = (message: string, status: number) => json({ error: message }, status);
 export function handleError(error: unknown) {
-  if (error instanceof ApiError) return fail(error.message, error.status);
+  if (error instanceof ApiError || (error instanceof Error && (error as ApiError)[apiErrorBrand] === true && Number.isInteger((error as ApiError).status))) return fail(error.message, (error as ApiError).status);
   if (error instanceof ZodError) return json({ error: "Invalid request", issues: error.issues.map((item) => ({ path: item.path, message: item.message })) }, 400);
   // Never return database, filesystem, token, or customer details in an error response.
   console.error("API request failed", error instanceof Error ? error.name : "unknown");

@@ -67,14 +67,22 @@ model User {
   email           String
   emailNormalized String        @unique
   phone           String?
-  passwordHash    String
+  passwordHash    String?
   role            Role          @default(CLIENT)
   status          AccountStatus @default(ACTIVE)
   emailVerifiedAt DateTime?
+  verificationRequired Boolean @default(false)
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
   sessions        Session[]
   resets          PasswordReset[]
+  emailVerifications EmailVerification[]
+  emailChanges    EmailChange[]
+  googleAccounts  GoogleAccount[]
+  oauthAttempts   OAuthAttempt[]
+  trustedDevices  TrustedDevice[]
+  securityEvents  SecurityEvent[]
+  notificationPreference NotificationPreference?
   companies       Company[]     @relation("CustomerCompanies")
   applications    Application[] @relation("CustomerApplications")
   documents       Document[]    @relation("UploadedDocuments")
@@ -119,6 +127,107 @@ model PasswordReset {
   createdAt DateTime @default(now())
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   @@index([userId, expiresAt])
+}
+
+model EmailVerification {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId, expiresAt])
+}
+
+model EmailChange {
+  id                 String   @id @default(cuid())
+  userId             String
+  tokenHash          String   @unique
+  newEmail           String
+  newEmailNormalized String
+  expiresAt          DateTime
+  usedAt             DateTime?
+  createdAt          DateTime @default(now())
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId, expiresAt])
+}
+
+model GoogleAccount {
+  id        String   @id @default(cuid())
+  userId    String
+  subject   String   @unique
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId])
+}
+
+model OAuthAttempt {
+  stateHash String   @id
+  verifier  String
+  nonce     String
+  userId    String?
+  nextPath  String?
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([expiresAt])
+}
+
+model TrustedDevice {
+  id         String   @id @default(cuid())
+  userId     String
+  deviceHash String
+  createdAt  DateTime @default(now())
+  lastUsedAt DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([userId, deviceHash])
+}
+
+model SecurityEvent {
+  id            String   @id @default(cuid())
+  userId        String
+  type          String
+  deviceHash    String?
+  createdAt     DateTime @default(now())
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId, createdAt])
+}
+
+model NotificationPreference {
+  userId           String  @id
+  everyLoginEmail  Boolean @default(false)
+  applicationEmail Boolean @default(true)
+  paymentEmail     Boolean @default(true)
+  documentEmail    Boolean @default(true)
+  supportEmail     Boolean @default(true)
+  user             User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum EmailDeliveryStatus {
+  QUEUED
+  SENDING
+  SENT
+  DELIVERED
+  FAILED
+}
+
+model EmailOutbox {
+  id             String              @id @default(cuid())
+  eventKey       String              @unique
+  toEmail        String
+  subject        String
+  html           String
+  status         EmailDeliveryStatus @default(QUEUED)
+  attempts       Int                 @default(0)
+  nextAttemptAt  DateTime             @default(now())
+  leaseUntil     DateTime?
+  providerId     String?             @unique
+  lastError      String?
+  createdAt      DateTime            @default(now())
+  sentAt         DateTime?
+  deliveredAt    DateTime?
+  @@index([status, nextAttemptAt])
 }
 
 model AuthThrottle {
@@ -404,6 +513,7 @@ model Notification {
   title         String
   message       String
   relatedEntity String?
+  eventKey      String?  @unique
   readAt        DateTime?
   createdAt     DateTime @default(now())
   user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)

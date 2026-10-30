@@ -14,3 +14,4 @@ process.env.APP_ORIGIN = "http://localhost:3002";
 process.env.PRIVATE_DOCUMENT_DIR = path.resolve(process.cwd(), ".local", "test-documents");
 process.env.PUBLIC_SITE_ORIGIN = "http://localhost:3000";
 process.env.ONBOARDING_HANDOFF_SECRET = randomBytes(32).toString("base64url");
+process.env.TEST_EMAIL_OUTBOX = "1";

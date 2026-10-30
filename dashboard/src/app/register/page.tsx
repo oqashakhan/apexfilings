@@ -7,5 +7,5 @@ export default async function RegisterPage({ searchParams }: { searchParams: Pro
   const next = safeApplicationReturn((await searchParams).next);
   const user = await serverActor();
   if (user) redirect(user.role === "OWNER" ? "/admin/dashboard" : next ?? "/client/dashboard");
-  return <AuthScreen mode="register" next={next} />;
+  return <AuthScreen mode="register" next={next} googleEnabled={Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET)} />;
 }

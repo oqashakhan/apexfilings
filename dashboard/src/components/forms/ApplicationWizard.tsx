@@ -107,11 +107,17 @@ export function ApplicationWizard() {
     const id = new URLSearchParams(window.location.search).get("draft");
     if (!id) return;
     let active = true;
-    void fetch(`/api/v1/client/applications/${encodeURIComponent(id)}`, { cache: "no-store" }).then((response) => response.json()).then((result) => {
+    void Promise.all([
+      fetch(`/api/v1/client/applications/${encodeURIComponent(id)}`, { cache: "no-store" }).then((response) => response.json()),
+      fetch("/api/v1/onboarding/current", { cache: "no-store" }).then((response) => response.ok ? response.json() : null).catch(() => null),
+    ]).then(([result, handoff]) => {
       if (!active || !result.application || result.application.statusCode !== "DRAFT") return;
       const item = result.application as ClientRecord & { packageSlug: string; additionalServices: string[]; company: ClientRecord["company"] & { alternatives: string[]; businessActivity: string; description: string; addressRequirement: string; membership: string; management: string; owners: { fullName: string; email: string; phone: string; nationality: string; residence: string; address: string; ownership: number }[] } };
       setDraft(item);
-      resetForm({ ...defaultValues, preferredName: item.company.name, firstAlternativeName: item.company.alternatives[0] ?? "", secondAlternativeName: item.company.alternatives[1] ?? "", formationState: item.company.state, businessActivity: item.company.businessActivity, description: item.company.description, addressRequirement: item.company.addressRequirement, membership: item.company.membership, management: item.company.management, packageName: item.packageSlug === "premium" ? "Premium All-In" : "Basic LLC Formation", additionalServices: item.additionalServices, owners: item.company.owners.length ? item.company.owners : defaultValues.owners });
+      const details = handoff?.details as { country?: string; formationState?: string; preferredName?: string } | undefined;
+      const matchesHandoff = !item.company.owners.length && details?.formationState === item.company.state && details.preferredName === item.company.name;
+      const residence = matchesHandoff && details.country ? new Intl.DisplayNames(["en"], { type: "region" }).of(details.country) : null;
+      resetForm({ ...defaultValues, preferredName: item.company.name, firstAlternativeName: item.company.alternatives[0] ?? "", secondAlternativeName: item.company.alternatives[1] ?? "", formationState: item.company.state, businessActivity: item.company.businessActivity, description: item.company.description, addressRequirement: item.company.addressRequirement, membership: item.company.membership, management: item.company.management, packageName: item.packageSlug === "premium" ? "Premium All-In" : "Basic LLC Formation", additionalServices: item.additionalServices, owners: item.company.owners.length ? item.company.owners : [{ ...defaultValues.owners[0], residence: residence ?? "" }] });
     }).catch(() => { if (active) setMessage("Could not load this draft."); });
     return () => { active = false; };
   }, [resetForm]);
@@ -127,8 +133,8 @@ export function ApplicationWizard() {
     setDraft(result.application);
     if (!draft) {
       window.history.replaceState(null, "", `/client/applications/new?draft=${encodeURIComponent(result.application.id)}`);
-      void fetch("/api/v1/onboarding/current", { method: "DELETE" }).catch(() => {});
     }
+    if (validOwners.length) void fetch("/api/v1/onboarding/current", { method: "DELETE" }).catch(() => {});
     await refresh();
     return result.application as ClientRecord;
   }

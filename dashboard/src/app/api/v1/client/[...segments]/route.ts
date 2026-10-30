@@ -5,6 +5,7 @@ import { db } from "@/server/db";
 import { ApiError, body, checkOrigin, handleError, json, requireRole } from "@/server/http";
 import { applicationDraftInput } from "@/server/validation";
 import { statusNames } from "@/server/workflow";
+import { emailHtml, queueEmail, queueNotification } from "@/server/mail";
 
 export const runtime = "nodejs";
 type Params = { params: Promise<{ segments: string[] }> };
@@ -28,6 +29,20 @@ async function validateCatalog(input: z.infer<typeof applicationDraftInput>) {
   ]);
   if (!state || !pack?.available || !service?.available) throw new ApiError(400, "State or package unavailable");
   return { pack, service };
+}
+
+function sameDraftRequest(item: Prisma.ApplicationGetPayload<{ include: typeof appInclude }>, input: z.infer<typeof applicationDraftInput>) {
+  const company = item.company;
+  const sameOwners = item.company.owners.length === input.owners.length && input.owners.every((owner) => item.company.owners.some((saved) =>
+    saved.email === owner.email.trim().toLowerCase() && saved.fullLegalName === owner.fullName && saved.phone === owner.phone &&
+    saved.nationality === owner.nationality && saved.countryOfResidence === owner.residence && saved.residentialAddress === owner.address &&
+    saved.ownershipBasisPoints === Math.round(owner.ownership * 100)));
+  return company.preferredName === input.preferredName && company.alternativeName1 === input.firstAlternativeName &&
+    (company.alternativeName2 ?? "") === input.secondAlternativeName && company.formationState === input.formationState &&
+    company.businessActivity === input.businessActivity && company.businessDescription === input.description &&
+    company.addressRequirements === input.addressRequirement && company.ownershipType === input.membership &&
+    company.managementStructure === input.management && item.package.slug === input.packageSlug &&
+    JSON.stringify([...item.additionalServices].sort()) === JSON.stringify([...input.additionalServices].sort()) && sameOwners;
 }
 
 function validateOwners(input: z.infer<typeof applicationDraftInput>) {
@@ -99,9 +114,12 @@ export async function GET(request: NextRequest, context: Params) {
       return json({ documents: items });
     }
     if (resource === "notifications") {
-      const items = await db.notification.findMany({ where: { userId: user.id }, orderBy: { createdAt: "desc" }, take: 100 });
-      return json({ notifications: items });
+      const filter = new URL(request.url).searchParams.get("filter");
+      const where = { userId: user.id, ...(filter === "unread" ? { readAt: null } : filter === "read" ? { readAt: { not: null } } : {}) };
+      const [notifications, unreadCount] = await Promise.all([db.notification.findMany({ where, orderBy: { createdAt: "desc" }, take: 100 }), db.notification.count({ where: { userId: user.id, readAt: null } })]);
+      return json({ notifications, unreadCount });
     }
+    if (resource === "notification-preferences") return json({ preferences: await db.notificationPreference.findUnique({ where: { userId: user.id } }) });
     throw new ApiError(404, "Not found");
   } catch (error) { return handleError(error); }
 }
@@ -114,18 +132,33 @@ export async function POST(request: NextRequest, context: Params) {
     if (resource === "applications" && !id) {
       const input = applicationDraftInput.parse(await body(request));
       const { pack, service } = await validateCatalog(input);
-      const item = await db.$transaction(async (tx) => {
+      const result = await db.$transaction(async (tx) => {
+        // Serialize draft creation for this customer so a network retry cannot create two applications.
+        await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${user.id} FOR UPDATE`;
+        const candidates = await tx.application.findMany({
+          where: { customerId: user.id, company: { preferredName: input.preferredName, formationState: input.formationState } },
+          include: appInclude,
+          orderBy: { createdAt: "desc" },
+        });
+        const matching = candidates.find((candidate) => sameDraftRequest(candidate, input));
+        if (matching) {
+          if (matching.status !== "DRAFT") throw new ApiError(409, "This application has already been submitted");
+          return { id: matching.id, reused: true };
+        }
+        if (candidates.length) throw new ApiError(409, "An application for this company and state already exists. Open My Applications to continue it.");
         const company = await tx.company.create({ data: { customerId: user.id, preferredName: input.preferredName, alternativeName1: input.firstAlternativeName, alternativeName2: input.secondAlternativeName || null, formationState: input.formationState, businessActivity: input.businessActivity, businessDescription: input.description, addressRequirements: input.addressRequirement, ownershipType: input.membership, managementStructure: input.management, owners: { create: input.owners.map((owner) => ({ fullLegalName: owner.fullName, email: owner.email.trim().toLowerCase(), phone: owner.phone, nationality: owner.nationality, countryOfResidence: owner.residence, residentialAddress: owner.address, ownershipBasisPoints: Math.round(owner.ownership * 100) })) } } });
         const application = await tx.application.create({ data: { companyId: company.id, customerId: user.id, serviceId: service.id, packageId: pack.id, additionalServices: input.additionalServices } });
         await tx.applicationStatusHistory.create({ data: { applicationId: application.id, newStatus: "DRAFT", changedById: user.id, reason: "Draft created" } });
         await tx.auditLog.create({ data: { actorUserId: user.id, action: "APPLICATION_DRAFT_CREATED", resourceType: "Application", resourceId: application.id } });
-        return application;
+        return { id: application.id, reused: false };
       });
-      return json({ application: cleanApplication(await findOwnApplication(item.id, user.id)) }, 201);
+      return json({ application: cleanApplication(await findOwnApplication(result.id, user.id)) }, result.reused ? 200 : 201);
     }
     if (resource === "applications" && id && action === "submit") {
       const input = z.object({ confirmed: z.literal(true) }).parse(await body(request));
       if (!input.confirmed) throw new ApiError(400, "Review confirmation required");
+      const account = await db.user.findUniqueOrThrow({ where: { id: user.id }, select: { verificationRequired: true, emailVerifiedAt: true, notificationPreference: true } });
+      if (account.verificationRequired && !account.emailVerifiedAt) throw new ApiError(403, "Verify your email address before submitting an application");
       const current = await findOwnApplication(id, user.id);
       if (current.status !== "DRAFT") throw new ApiError(409, "Application has already been submitted");
       const form = applicationDraftInput.parse({ preferredName: current.company.preferredName, firstAlternativeName: current.company.alternativeName1, secondAlternativeName: current.company.alternativeName2 ?? "", formationState: current.company.formationState, businessActivity: current.company.businessActivity, description: current.company.businessDescription, addressRequirement: current.company.addressRequirements, membership: current.company.ownershipType, management: current.company.managementStructure, packageSlug: current.package.slug, additionalServices: current.additionalServices, owners: current.company.owners.map((owner) => ({ fullName: owner.fullLegalName, email: owner.email, phone: owner.phone, nationality: owner.nationality, residence: owner.countryOfResidence, address: owner.residentialAddress, ownership: owner.ownershipBasisPoints / 100 })) });
@@ -140,8 +173,15 @@ export async function POST(request: NextRequest, context: Params) {
         const claim = await tx.application.updateMany({ where: { id, customerId: user.id, status: "DRAFT" }, data: { status: "AWAITING_PAYMENT", customerConfirmedAt: new Date(), submittedAt: new Date() } });
         if (claim.count !== 1) throw new ApiError(409, "Application has already been submitted");
         const order = await tx.order.create({ data: { applicationId: id, serviceFeeCents: current.package.serviceFeeCents, currency: current.package.currency, paymentStatus: "UNPAID", items: { create: [{ description: current.package.name, amountCents: current.package.serviceFeeCents }] } } });
+        await queueNotification(tx, `order-created:${order.id}`, user.id, "ORDER_CREATED", "Order created", "Your application order is available. Payment has not been verified.", id);
+        if (account.notificationPreference?.paymentEmail !== false) await queueEmail(tx, `order-created:${order.id}`, user.email, "Your Apex Filings order is available", emailHtml("Order created", [`Order reference: ${order.id}`, `Application reference: ${id}`, "Payment has not yet been verified. Sign in to view the order."], { label: "View order", href: `${process.env.APP_ORIGIN ?? "http://localhost:3001"}/client/orders/${order.id}` }));
         await tx.applicationStatusHistory.create({ data: { applicationId: id, previousStatus: "DRAFT", newStatus: "AWAITING_PAYMENT", changedById: user.id, reason: "Customer confirmed application; payment not verified" } });
-        await tx.notification.create({ data: { userId: user.id, type: "APPLICATION_SUBMITTED", title: "Application received", message: "Your formation application was submitted. Payment details will follow after fees are confirmed.", relatedEntity: id } });
+        await queueNotification(tx, `application-submitted:${id}:client`, user.id, "APPLICATION_SUBMITTED", "Application received", "Your formation application was submitted. Payment details will follow after fees are confirmed.", id);
+        const owners = await tx.user.findMany({ where: { role: "OWNER", status: "ACTIVE" }, select: { id: true } });
+        for (const owner of owners) await queueNotification(tx, `application-submitted:${id}:owner:${owner.id}`, owner.id, "NEW_APPLICATION", "New LLC application submitted", `${current.company.preferredName} is ready for review.`, id);
+        const appLink = `${process.env.APP_ORIGIN ?? "http://localhost:3001"}/client/applications/${id}`;
+        if (account.notificationPreference?.applicationEmail !== false) await queueEmail(tx, `application-submitted:${id}:customer`, user.email, "Your LLC Application Has Been Received — Apex Filings", emailHtml("We received your LLC application", [`Company: ${current.company.preferredName}`, `State: ${current.company.formationState}`, `Application reference: ${id}`, "Status: Awaiting Payment. This is not a government filing approval."], { label: "View application", href: appLink }));
+        if (process.env.ADMIN_NOTIFICATION_EMAIL) await queueEmail(tx, `application-submitted:${id}:admin`, process.env.ADMIN_NOTIFICATION_EMAIL, "New LLC Application Submitted — Apex Filings", emailHtml("New LLC application", [`Customer: ${user.fullName}`, `Email: ${user.email}`, `Company: ${current.company.preferredName}`, `Application reference: ${id}`], { label: "Review application", href: `${process.env.APP_ORIGIN ?? "http://localhost:3001"}/admin/applications/${id}` }));
         await tx.auditLog.create({ data: { actorUserId: user.id, action: "APPLICATION_SUBMITTED", resourceType: "Application", resourceId: id } });
         return order;
       });
@@ -176,10 +216,20 @@ export async function PATCH(request: NextRequest, context: Params) {
     const user = await requireRole(request, "CLIENT");
     const [resource, id] = (await context.params).segments;
     if (resource === "applications" && id) return json({ application: await updateDraft(id, user.id, applicationDraftInput.parse(await body(request))) });
+    if (resource === "notifications" && id === "read-all") {
+      const changed = await db.notification.updateMany({ where: { userId: user.id, readAt: null }, data: { readAt: new Date() } });
+      return json({ ok: true, changed: changed.count });
+    }
     if (resource === "notifications" && id) {
-      const update = await db.notification.updateMany({ where: { id, userId: user.id }, data: { readAt: new Date() } });
+      const input = z.object({ read: z.boolean().default(true) }).parse(await body(request));
+      const update = await db.notification.updateMany({ where: { id, userId: user.id }, data: { readAt: input.read ? new Date() : null } });
       if (!update.count) throw new ApiError(404, "Notification not found");
       return json({ ok: true });
+    }
+    if (resource === "notification-preferences") {
+      const input = z.object({ everyLoginEmail: z.boolean(), applicationEmail: z.boolean(), paymentEmail: z.boolean(), documentEmail: z.boolean(), supportEmail: z.boolean() }).parse(await body(request));
+      const preferences = await db.notificationPreference.upsert({ where: { userId: user.id }, create: { userId: user.id, ...input }, update: input });
+      return json({ preferences });
     }
     throw new ApiError(404, "Not found");
   } catch (error) { return handleError(error); }

@@ -6,7 +6,7 @@ const day = (date: Date | null | undefined) => date?.toISOString().slice(0, 10) 
 const payStatus = (status: string) => ({ UNPAID: "Pending", AWAITING_VERIFICATION: "Awaiting Verification", VERIFIED: "Paid", REJECTED: "Failed", REFUNDED: "Refunded" } as Record<string, string>)[status] ?? "Pending";
 const docStatus = (status: string) => ({ REQUIRED: "Required", UNDER_REVIEW: "Under Review", ACCEPTED: "Accepted", REPLACEMENT_REQUIRED: "Replacement Required", COMPLETED_COMPANY_DOCUMENT: "Completed Company Document" } as Record<string, string>)[status] ?? status;
 
-export async function adminSnapshot() {
+export async function adminSnapshot(ownerId: string) {
   const [users, companies, rawApplications, rawDocuments, rawOrders, rawPayments, rawRefunds, rawServices, rawPackages, rawFees, rawContent, rawNotifications, rawAudit] = await Promise.all([
     db.user.findMany({ where: { role: "CLIENT" }, select: { id: true, fullName: true, email: true, phone: true, status: true, createdAt: true, companies: { select: { id: true } } }, orderBy: { createdAt: "desc" }, take: 1000 }),
     db.company.findMany({ select: { id: true, customerId: true, preferredName: true, formationState: true }, take: 1000 }),
@@ -15,7 +15,7 @@ export async function adminSnapshot() {
     db.order.findMany({ take: 1000 }), db.payment.findMany({ take: 1000 }), db.refundRequest.findMany({ take: 1000 }),
     db.service.findMany({ orderBy: { name: "asc" } }), db.package.findMany({ include: { packageServices: { include: { service: true } } }, orderBy: { serviceFeeCents: "asc" } }),
     db.stateFilingFee.findMany({ orderBy: { state: "asc" } }), db.contentDraft.findMany(),
-    db.notification.findMany({ where: { user: { role: "OWNER" } }, orderBy: { createdAt: "desc" }, take: 100 }),
+    db.notification.findMany({ where: { userId: ownerId }, orderBy: { createdAt: "desc" }, take: 100 }),
     db.auditLog.findMany({ orderBy: { createdAt: "desc" }, take: 100 }),
   ]);
   const applications = rawApplications.map((item) => ({ id: item.id, clientId: item.customerId, companyId: item.companyId, preferredName: item.company.preferredName, alternatives: [item.company.alternativeName1, item.company.alternativeName2].filter((name): name is string => Boolean(name)), state: item.company.formationState, packageName: item.package.name, businessActivity: item.company.businessActivity, description: item.company.businessDescription, addressRequirement: item.company.addressRequirements ?? "", management: item.company.managementStructure ?? "", owners: item.company.owners.map((owner) => ({ id: owner.id, name: owner.fullLegalName, email: owner.email, phone: owner.phone, nationality: owner.nationality, residence: owner.countryOfResidence, address: owner.residentialAddress, ownership: owner.ownershipBasisPoints / 100 })), additionalServices: item.additionalServices, status: statusNames[item.status], submittedAt: day(item.submittedAt), customerConfirmed: Boolean(item.customerConfirmedAt) }));

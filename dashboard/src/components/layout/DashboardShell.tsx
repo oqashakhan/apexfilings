@@ -51,7 +51,7 @@ function ClientCompanySwitcher() {
 export function DashboardShell({ role, title, children }: { role: PreviewRole; title: string; children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const [profile, setProfile] = useState<{ fullName: string; email: string } | null>(null);
+  const [profile, setProfile] = useState<{ fullName: string; email: string; emailVerified?: boolean } | null>(null);
   const [notifications, setNotifications] = useState<{ id: string; title: string; message: string; readAt: string | null }[]>([]);
   const [collapsed, setCollapsed] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -71,6 +71,12 @@ export function DashboardShell({ role, title, children }: { role: PreviewRole; t
     await fetch("/api/v1/auth/logout", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
     router.replace("/login");
     router.refresh();
+  }
+
+  async function resendVerification() {
+    const response = await fetch("/api/v1/auth/resend-verification", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+    const result = await response.json();
+    window.alert(response.ok ? result.message : result.error ?? "Could not request verification email.");
   }
 
   useEffect(() => {
@@ -168,8 +174,8 @@ export function DashboardShell({ role, title, children }: { role: PreviewRole; t
             </div>
             <button className="icon-button theme-toggle" onClick={toggleTheme} aria-label="Toggle color theme" title="Toggle color theme"><Sun className="theme-sun" size={19} /><Moon className="theme-moon" size={19} /></button>
             <div className="menu-anchor">
-              <button className="icon-button notification-button" aria-label="Notifications" aria-expanded={openMenu === "notifications"} onClick={() => setOpenMenu(openMenu === "notifications" ? null : "notifications")}><Bell size={19} />{notifications.some((item) => !item.readAt) && <span className="notification-dot" />}</button>
-              {openMenu === "notifications" && <div className="topbar-popover"><strong>Notifications</strong>{notifications.length ? notifications.slice(0, 3).map((item) => <p key={item.id}><strong>{item.title}</strong><br />{item.message}</p>) : <p>No notifications yet.</p>}{role === "admin" && <Link href="/admin/notifications">View all <ChevronRight size={15} /></Link>}</div>}
+              <button className="icon-button notification-button" aria-label={`Notifications, ${notifications.filter((item) => !item.readAt).length} unread`} aria-expanded={openMenu === "notifications"} onClick={() => setOpenMenu(openMenu === "notifications" ? null : "notifications")}><Bell size={19} />{notifications.some((item) => !item.readAt) && <span className="notification-dot" />}</button>
+              {openMenu === "notifications" && <div className="topbar-popover"><strong>Notifications · {notifications.filter((item) => !item.readAt).length} unread</strong>{notifications.length ? notifications.slice(0, 3).map((item) => <p key={item.id}><strong>{item.title}</strong><br />{item.message}</p>) : <p>No notifications yet.</p>}<Link href={`/${role}/notifications`} onClick={() => setOpenMenu(null)}>View all <ChevronRight size={15} /></Link></div>}
             </div>
             <div className="menu-anchor">
               <button className="profile-trigger" aria-label="Open profile menu" aria-expanded={openMenu === "profile"} onClick={() => setOpenMenu(openMenu === "profile" ? null : "profile")}><span className="avatar">{profile?.fullName?.charAt(0).toUpperCase() ?? "A"}</span><span className="profile-label"><strong>{profile?.fullName ?? "Account"}</strong><small>{role === "admin" ? "Owner / Admin" : "Client"}</small></span><ChevronDown size={15} /></button>
@@ -177,6 +183,7 @@ export function DashboardShell({ role, title, children }: { role: PreviewRole; t
             </div>
           </div>
         </header>
+        {profile?.emailVerified === false && <div className="preview-strip" role="status">Verify your email before submitting an application. <button className="table-link" onClick={() => void resendVerification()}>Resend verification email</button></div>}
         <main className="page-content">{children}</main>
       </div>
     </div>
