@@ -1,7 +1,9 @@
 import { NextRequest } from "next/server";
 import { timingSafeEqual } from "node:crypto";
+import { Resend } from "resend";
 import { db } from "@/server/db";
 import { json } from "@/server/http";
+import { decryptOtpEmail } from "@/server/email-otp";
 
 export const runtime = "nodejs";
 
@@ -19,6 +21,7 @@ export async function POST(request: NextRequest) {
   const apiKey = process.env.RESEND_API_KEY;
   const from = process.env.EMAIL_FROM;
   if (!apiKey || !from) return json({ error: "Email delivery is not configured" }, 503);
+  const resend = new Resend(apiKey);
   const now = new Date();
   const pending = await db.emailOutbox.findMany({ where: { OR: [{ status: "QUEUED", nextAttemptAt: { lte: now } }, { status: "SENDING", leaseUntil: { lt: now } }] }, orderBy: { createdAt: "asc" }, take: 20 });
   let sent = 0;
@@ -28,10 +31,9 @@ export async function POST(request: NextRequest) {
     const claimed = await db.emailOutbox.updateMany({ where: { id: item.id, status: item.status, attempts: item.attempts }, data: { status: "SENDING", attempts: { increment: 1 }, leaseUntil: lease } });
     if (!claimed.count) continue;
     try {
-      const response = await fetch("https://api.resend.com/emails", { method: "POST", headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json", "Idempotency-Key": item.eventKey }, body: JSON.stringify({ from: `Apex Filings <${from}>`, to: [item.toEmail], subject: item.subject, html: item.html }), signal: AbortSignal.timeout(15_000) });
-      const result = await response.json() as { id?: string; message?: string };
-      if (!response.ok || !result.id) throw new Error(`Resend returned ${response.status}: ${result.message ?? "delivery request failed"}`);
-      await db.emailOutbox.update({ where: { id: item.id }, data: { status: "SENT", providerId: result.id, sentAt: new Date(), leaseUntil: null, lastError: null } });
+      const { data, error } = await resend.emails.send({ from: `Apex Filings <${from}>`, to: [item.toEmail], subject: item.subject, html: decryptOtpEmail(item.html) }, { idempotencyKey: item.eventKey });
+      if (error || !data?.id) throw new Error(error?.name ?? "Delivery request failed");
+      await db.emailOutbox.update({ where: { id: item.id }, data: { status: "SENT", providerId: data.id, sentAt: new Date(), leaseUntil: null, lastError: null } });
       sent++;
     } catch (error) {
       const attempts = item.attempts + 1;

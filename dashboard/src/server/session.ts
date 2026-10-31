@@ -11,12 +11,13 @@ export async function serverActor() {
   if (!token) return null;
   const session = await db.session.findUnique({ where: { tokenHash: hashToken(token) }, include: { user: true } });
   if (!session || session.revokedAt || session.expiresAt <= new Date() || session.user.status !== "ACTIVE") return null;
-  return { id: session.user.id, fullName: session.user.fullName, email: session.user.email, role: session.user.role };
+  return { id: session.user.id, fullName: session.user.fullName, email: session.user.email, role: session.user.role, emailVerified: !session.user.verificationRequired || Boolean(session.user.emailVerifiedAt) };
 }
 
 export async function requirePageRole(role: Role) {
   const user = await serverActor();
   if (!user) redirect("/login");
   if (user.role !== role) redirect(user.role === "OWNER" ? "/admin/dashboard" : user.role === "CLIENT" ? "/client/dashboard" : "/login");
+  if (role === "CLIENT" && !user.emailVerified) redirect("/verify-email");
   return user;
 }

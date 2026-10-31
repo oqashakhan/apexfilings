@@ -20,7 +20,7 @@ type ContextValue = Snapshot & {
   canApprove: (id: string) => boolean;
   changeStatus: (id: string, status: ApplicationStatus, reason: string) => Promise<boolean>;
   reviewDocument: (id: string, status: AdminDocument["status"]) => Promise<void>;
-  reviewPayment: (id: string, status: PaymentStatus) => Promise<void>;
+  reviewPayment: (id: string, status: PaymentStatus, reason?: string) => Promise<void>;
   confirmOrderFees: (id: string, fees: { governmentFeeCents: number; thirdPartyFeeCents: number; additionalFeeCents: number; discountCents: number }) => Promise<void>;
   recordManualPayment: (orderId: string, amountCents: number, reference: string, supportingInfo?: string) => Promise<void>;
   reviewRefund: (id: string, status: AdminRefund["status"], reason?: string) => Promise<void>;
@@ -71,7 +71,7 @@ export function AdminDemoProvider({ children }: { children: React.ReactNode }) {
     },
     changeStatus: async (id, status, reason) => { try { await act(`applications/${id}/status`, "POST", { status: statusCodes[status], reason }); return true; } catch { return false; } },
     reviewDocument: async (id, status) => { await act(`documents/${id}/review`, "POST", { status: status === "Accepted" ? "ACCEPTED" : "REPLACEMENT_REQUIRED" }); },
-    reviewPayment: async (id, status) => { if (status !== "Paid") throw new Error("Only owner verification is connected"); await act(`payments/${id}/verify`, "POST", {}); },
+    reviewPayment: async (id, status, reason) => { if (status === "Paid") await act(`payments/${id}/verify`, "POST", {}); else if (status === "Failed" && reason && reason.trim().length >= 3) await act(`payments/${id}/reject`, "POST", { reason: reason.trim() }); else throw new Error("Choose a review decision and provide a reason for rejection"); },
     confirmOrderFees: async (id, fees) => { await act(`orders/${id}`, "PATCH", fees); },
     recordManualPayment: async (orderId, amountCents, reference, supportingInfo) => { await act("payments", "POST", { orderId, amountCents, reference, supportingInfo }); },
     reviewRefund: async (id, status, reason) => { if (!reason || reason.trim().length < 3) throw new Error("Enter a review reason"); const code = status === "Under Review" ? "UNDER_REVIEW" : status === "Approved" ? "APPROVED" : "DECLINED"; await act(`refunds/${id}/review`, "POST", { status: code, reason: reason.trim() }); },

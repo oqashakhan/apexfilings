@@ -9,14 +9,17 @@ import { AdminClients, AdminClientDetail, AdminOrders, AdminOrderDetail, AdminDo
 import { AdminServices, AdminWebsiteContent, AdminSettings } from "@/components/dashboard/AdminManagement";
 import { NotificationCenter } from "@/components/dashboard/NotificationCenter";
 import { AccountSecurity } from "@/components/dashboard/AccountSecurity";
+import { GoogleOAuthAlert } from "@/components/forms/GoogleOAuthAlert";
+import { EmailDeliveryView } from "@/components/dashboard/EmailDeliveryView";
+import { SupportCenter } from "@/components/dashboard/SupportCenter";
 
 const titles: Record<string, string> = {
   dashboard: "Dashboard", applications: "Applications", clients: "Clients", orders: "Orders",
   documents: "Documents", payments: "Payments", services: "Services & Pricing",
-  "website-content": "Website Content", notifications: "Notifications", settings: "Settings",
+  "website-content": "Website Content", notifications: "Notifications", "email-delivery": "Email Delivery", support: "Support", settings: "Settings",
 };
 
-export function AdminView({ section, detailId }: { section: string; detailId?: string }) {
+export function AdminView({ section, detailId, oauthError }: { section: string; detailId?: string; oauthError?: string }) {
   let content: React.ReactNode;
   if (detailId && section === "applications") content = <AdminApplicationDetail id={detailId} />;
   else if (detailId && section === "clients") content = <AdminClientDetail id={detailId} />;
@@ -31,7 +34,9 @@ export function AdminView({ section, detailId }: { section: string; detailId?: s
     case "services": content = <AdminServices />; break;
     case "website-content": content = <AdminWebsiteContent />; break;
     case "notifications": content = <NotificationCenter role="admin" />; break;
-    case "settings": content = <><AdminSettings /><AccountSecurity /></>; break;
+    case "email-delivery": content = <EmailDeliveryView />; break;
+    case "support": content = <SupportCenter role="admin" />; break;
+    case "settings": content = <><GoogleOAuthAlert code={oauthError} context="settings" /><AdminSettings /><AccountSecurity /></>; break;
     default: content = <PageHeader title="Page not found" description="Choose a page from the dashboard navigation." />;
   }
   return <DashboardShell role="admin" title={titles[section] ?? "Not Found"}>{content}</DashboardShell>;

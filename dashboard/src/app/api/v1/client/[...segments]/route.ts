@@ -105,7 +105,7 @@ export async function GET(request: NextRequest, context: Params) {
       return json({ companies: items });
     }
     if (resource === "orders") {
-      const items = await db.order.findMany({ where: { application: { customerId: user.id }, ...(id ? { id } : {}) }, include: { application: { select: { company: { select: { preferredName: true } }, package: { select: { name: true } } } } }, orderBy: { createdAt: "desc" } });
+      const items = await db.order.findMany({ where: { application: { customerId: user.id }, ...(id ? { id } : {}) }, include: { invoice: true, refunds: { select: { id: true, status: true, createdAt: true } }, application: { select: { company: { select: { preferredName: true } }, package: { select: { name: true } } } } }, orderBy: { createdAt: "desc" } });
       if (id && !items.length) throw new ApiError(404, "Order not found");
       return json({ orders: items.map(({ application, ...order }) => ({ ...order, companyName: application.company.preferredName, packageName: application.package.name })) });
     }
@@ -120,6 +120,11 @@ export async function GET(request: NextRequest, context: Params) {
       return json({ notifications, unreadCount });
     }
     if (resource === "notification-preferences") return json({ preferences: await db.notificationPreference.findUnique({ where: { userId: user.id } }) });
+    if (resource === "support") {
+      const tickets = await db.supportTicket.findMany({ where: { customerId: user.id, ...(id ? { id } : {}) }, include: { replies: { select: { id: true, body: true, createdAt: true, author: { select: { role: true } } }, orderBy: { createdAt: "asc" } } }, orderBy: { createdAt: "desc" }, take: 50 });
+      if (id && !tickets.length) throw new ApiError(404, "Support request not found");
+      return json({ tickets });
+    }
     throw new ApiError(404, "Not found");
   } catch (error) { return handleError(error); }
 }
@@ -129,6 +134,52 @@ export async function POST(request: NextRequest, context: Params) {
     checkOrigin(request);
     const user = await requireRole(request, "CLIENT");
     const [resource, id, action] = (await context.params).segments;
+    if (resource === "refunds" && !id) {
+      const input = z.object({ orderId: z.string().min(1), reason: z.string().trim().min(10).max(2000) }).parse(await body(request));
+      const order = await db.order.findFirst({ where: { id: input.orderId, application: { customerId: user.id } }, select: { id: true, applicationId: true, paymentStatus: true } });
+      if (!order) throw new ApiError(404, "Order not found");
+      if (order.paymentStatus !== "VERIFIED") throw new ApiError(409, "A verified payment is required before requesting a refund");
+      const refund = await db.$transaction(async (tx) => {
+        await tx.$queryRaw`SELECT "id" FROM "Order" WHERE "id" = ${order.id} FOR UPDATE`;
+        if (await tx.refundRequest.count({ where: { orderId: order.id } })) throw new ApiError(409, "A refund request already exists for this order");
+        const created = await tx.refundRequest.create({ data: { orderId: order.id, reason: input.reason } });
+        const owners = await tx.user.findMany({ where: { role: "OWNER", status: "ACTIVE" }, select: { id: true } });
+        for (const owner of owners) await queueNotification(tx, `refund-new:${created.id}:${owner.id}`, owner.id, "REFUND_REQUEST", "New refund request", `A client requested review of order ${order.id}.`, created.id);
+        if (process.env.ADMIN_NOTIFICATION_EMAIL) await queueEmail(tx, `refund-new:${created.id}:admin`, process.env.ADMIN_NOTIFICATION_EMAIL, "Refund review requested — Apex Filings", emailHtml("New refund request", [`Order reference: ${order.id}`, "Review the request in the secure dashboard. No funds have moved."], { label: "Review refunds", href: `${process.env.APP_ORIGIN ?? "http://localhost:3001"}/admin/payments` }));
+        await queueNotification(tx, `refund-new:${created.id}:client`, user.id, "PAYMENT_UPDATE", "Refund request received", "Your request is awaiting review. No funds have moved.", order.applicationId);
+        const preferences = await tx.notificationPreference.findUnique({ where: { userId: user.id } });
+        if (preferences?.paymentEmail !== false) await queueEmail(tx, `refund-new:${created.id}:client`, user.email, "Refund request received — Apex Filings", emailHtml("Refund request received", [`Order reference: ${order.id}`, "Our team will review the request. This does not mean a refund has been approved or sent."], { label: "View order", href: `${process.env.APP_ORIGIN ?? "http://localhost:3001"}/client/orders/${order.id}` }));
+        return created;
+      });
+      return json({ refund }, 201);
+    }
+    if (resource === "support" && !id) {
+      const input = z.object({ subject: z.string().trim().min(5).max(160), message: z.string().trim().min(10).max(4000) }).parse(await body(request));
+      const recent = await db.supportTicket.count({ where: { customerId: user.id, createdAt: { gt: new Date(Date.now() - 24 * 60 * 60_000) } } });
+      if (recent >= 5) throw new ApiError(429, "Too many support requests. Please try again later.");
+      const ticket = await db.$transaction(async (tx) => {
+        const created = await tx.supportTicket.create({ data: { customerId: user.id, subject: input.subject, body: input.message } });
+        const owners = await tx.user.findMany({ where: { role: "OWNER", status: "ACTIVE" }, select: { id: true } });
+        for (const owner of owners) await queueNotification(tx, `support-new:${created.id}:${owner.id}`, owner.id, "SUPPORT_NEW", "New support request", `A client sent a support request: ${input.subject}.`, created.id);
+        if (process.env.ADMIN_NOTIFICATION_EMAIL) await queueEmail(tx, `support-new:${created.id}:admin`, process.env.ADMIN_NOTIFICATION_EMAIL, "New support request — Apex Filings", emailHtml("New support request", [`Subject: ${input.subject}`, "Sign in to read and respond securely. No private message content is included in this email."], { label: "Open support", href: `${process.env.APP_ORIGIN ?? "http://localhost:3001"}/admin/support` }));
+        await queueNotification(tx, `support-new:${created.id}:client`, user.id, "SUPPORT_NEW", "Support request received", "Your support request is in the team queue.", created.id);
+        return created;
+      });
+      return json({ ticket }, 201);
+    }
+    if (resource === "support" && id && action === "reply") {
+      const input = z.object({ message: z.string().trim().min(2).max(4000) }).parse(await body(request));
+      const ticket = await db.supportTicket.findFirst({ where: { id, customerId: user.id } });
+      if (!ticket) throw new ApiError(404, "Support request not found");
+      await db.$transaction(async (tx) => {
+        const reply = await tx.supportReply.create({ data: { ticketId: id, authorId: user.id, body: input.message } });
+        await tx.supportTicket.update({ where: { id }, data: { status: "OPEN" } });
+        const owners = await tx.user.findMany({ where: { role: "OWNER", status: "ACTIVE" }, select: { id: true } });
+        for (const owner of owners) await queueNotification(tx, `support-reply:${reply.id}:${owner.id}`, owner.id, "SUPPORT_REPLY", "Customer replied to support", `A client replied to ${ticket.subject}.`, id);
+        if (process.env.ADMIN_NOTIFICATION_EMAIL) await queueEmail(tx, `support-reply:${reply.id}:admin`, process.env.ADMIN_NOTIFICATION_EMAIL, "Customer replied to support — Apex Filings", emailHtml("Support reply received", [`Subject: ${ticket.subject}`, "Sign in to read the reply securely."], { label: "Open support", href: `${process.env.APP_ORIGIN ?? "http://localhost:3001"}/admin/support` }));
+      });
+      return json({ ok: true }, 201);
+    }
     if (resource === "applications" && !id) {
       const input = applicationDraftInput.parse(await body(request));
       const { pack, service } = await validateCatalog(input);

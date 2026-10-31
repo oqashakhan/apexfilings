@@ -3,9 +3,10 @@ import { safeApplicationReturn } from "@/lib/application-return";
 import { serverActor } from "@/server/session";
 import { redirect } from "next/navigation";
 
-export default async function LoginPage({ searchParams }: { searchParams: Promise<{ next?: string }> }) {
-  const next = safeApplicationReturn((await searchParams).next);
+export default async function LoginPage({ searchParams }: { searchParams: Promise<{ next?: string | string[]; oauth_error?: string | string[] }> }) {
+  const query = await searchParams;
+  const next = safeApplicationReturn(typeof query.next === "string" ? query.next : null);
   const user = await serverActor();
   if (user) redirect(user.role === "OWNER" ? "/admin/dashboard" : next ?? "/client/dashboard");
-  return <AuthScreen mode="login" next={next} googleEnabled={Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET)} />;
+  return <AuthScreen mode="login" next={next} oauthError={typeof query.oauth_error === "string" ? query.oauth_error : undefined} googleEnabled={Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET)} />;
 }

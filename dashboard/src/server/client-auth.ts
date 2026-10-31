@@ -4,44 +4,42 @@ import { db } from "@/server/db";
 import { ApiError, cookieName, json } from "@/server/http";
 import { hashPassword, hashToken, normalizeEmail, passwordStrong, randomToken } from "@/server/security";
 import { emailHtml, mailConfigured, queueEmail, queueNotification } from "@/server/mail";
+import { issueEmailOtp, otpDeliveryAvailable } from "@/server/email-otp";
 
 export type ClientRegistration = { fullName: string; email: string; phone: string; password: string; confirm: string };
 const sessionAge = 60 * 60 * 24 * 7;
 
 export async function registerClientSession(input: ClientRegistration, auditMetadata?: Record<string, string>) {
-  const testOutbox = process.env.TEST_EMAIL_OUTBOX === "1" && /@(?:127\.0\.0\.1|localhost):\d+\/apex_dashboard_test(?:\?|$)/.test(process.env.DATABASE_URL ?? "");
-  if (process.env.NODE_ENV === "production" && !mailConfigured() && !testOutbox) throw new ApiError(503, "Account email delivery is not configured");
+  otpDeliveryAvailable();
   if (input.password !== input.confirm || !passwordStrong(input.password)) {
     throw new ApiError(400, "Use a matching password of 12–128 characters with a letter, number, and symbol");
   }
   const normalized = normalizeEmail(input.email);
   const passwordHash = await hashPassword(input.password);
   const token = randomToken();
-  const verificationToken = randomToken();
   try {
     await db.$transaction(async (tx) => {
       const user = await tx.user.create({ data: { fullName: input.fullName, email: normalized, emailNormalized: normalized, phone: input.phone, passwordHash, role: "CLIENT", verificationRequired: true } });
       await tx.auditLog.create({ data: { actorUserId: user.id, action: "ACCOUNT_REGISTERED", resourceType: "User", resourceId: user.id, ...(auditMetadata ? { safeMetadata: auditMetadata } : {}) } });
       await tx.session.create({ data: { userId: user.id, tokenHash: hashToken(token), expiresAt: new Date(Date.now() + sessionAge * 1000) } });
-      await tx.emailVerification.create({ data: { userId: user.id, tokenHash: hashToken(verificationToken), expiresAt: new Date(Date.now() + 24 * 60 * 60_000) } });
-      const link = `${process.env.APP_ORIGIN ?? "http://localhost:3001"}/verify-email?token=${encodeURIComponent(verificationToken)}`;
-      await queueEmail(tx, `verify:${user.id}:initial`, normalized, "Verify your email — Apex Filings", emailHtml("Verify your email", ["Confirm your email address to activate your Apex Filings account. This link expires in 24 hours."], { label: "Verify email", href: link }));
+      await issueEmailOtp(tx, user.id, normalized);
       const owners = await tx.user.findMany({ where: { role: "OWNER", status: "ACTIVE" }, select: { id: true } });
       for (const owner of owners) await queueNotification(tx, `registration:${user.id}:${owner.id}`, owner.id, "NEW_REGISTRATION", "New client registered", `${input.fullName} created a client account.`, user.id);
+      if (process.env.ADMIN_NOTIFICATION_EMAIL) await queueEmail(tx, `registration:${user.id}:admin`, process.env.ADMIN_NOTIFICATION_EMAIL, "New client registration — Apex Filings", emailHtml("New client registration", ["A customer created an account and must verify their email before continuing.", `Client reference: ${user.id}`], { label: "View client", href: `${process.env.APP_ORIGIN ?? "http://localhost:3001"}/admin/clients/${user.id}` }));
     });
     const response = json({ ok: true, role: "CLIENT", emailVerificationRequired: true, emailDeliveryConfigured: mailConfigured() });
     response.cookies.set(cookieName, token, { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", path: "/", maxAge: sessionAge });
     return response;
   } catch (error) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") throw new ApiError(400, "Account could not be created. If you already have an account, please sign in.");
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") return json({ error: "Account could not be created. If you already have an account, please sign in." }, 400);
     throw error;
   }
 }
 
-export async function makeSession(userId: string, role: "OWNER" | "CLIENT") {
+export async function makeSession(userId: string, role: "OWNER" | "CLIENT", emailVerificationRequired = false) {
   const token = randomToken();
   await db.session.create({ data: { userId, tokenHash: hashToken(token), expiresAt: new Date(Date.now() + sessionAge * 1000) } });
-  const response = json({ ok: true, role });
+  const response = json({ ok: true, role, emailVerificationRequired });
   response.cookies.set(cookieName, token, { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", path: "/", maxAge: sessionAge });
   return response;
 }

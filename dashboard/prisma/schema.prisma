@@ -87,6 +87,8 @@ model User {
   applications    Application[] @relation("CustomerApplications")
   documents       Document[]    @relation("UploadedDocuments")
   notifications   Notification[]
+  supportTickets  SupportTicket[] @relation("SupportCustomer")
+  supportReplies  SupportReply[]
   auditEntries    AuditLog[]
   statusChanges   ApplicationStatusHistory[]
   reviews         ApplicationReview[]
@@ -133,11 +135,14 @@ model EmailVerification {
   id        String   @id @default(cuid())
   userId    String
   tokenHash String   @unique
+  method    String   @default("LINK")
+  attempts  Int      @default(0)
   expiresAt DateTime
   usedAt    DateTime?
   createdAt DateTime @default(now())
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   @@index([userId, expiresAt])
+  @@index([userId, method, createdAt])
 }
 
 model EmailChange {
@@ -518,6 +523,31 @@ model Notification {
   createdAt     DateTime @default(now())
   user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   @@index([userId, readAt, createdAt])
+}
+
+model SupportTicket {
+  id         String   @id @default(cuid())
+  customerId String
+  subject    String
+  body       String
+  status     String   @default("OPEN")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  customer   User     @relation("SupportCustomer", fields: [customerId], references: [id], onDelete: Restrict)
+  replies    SupportReply[]
+  @@index([customerId, createdAt])
+  @@index([status, createdAt])
+}
+
+model SupportReply {
+  id        String   @id @default(cuid())
+  ticketId  String
+  authorId  String
+  body      String
+  createdAt DateTime @default(now())
+  ticket    SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Restrict)
+  author    User @relation(fields: [authorId], references: [id], onDelete: Restrict)
+  @@index([ticketId, createdAt])
 }
 
 model AuditLog {

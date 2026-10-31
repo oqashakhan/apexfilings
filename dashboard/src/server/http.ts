@@ -39,20 +39,25 @@ export async function body(request: NextRequest, maxBytes = 65536): Promise<unkn
 }
 
 export const cookieName = process.env.NODE_ENV === "production" ? "__Host-apex_session" : "apex_session";
-export type Actor = Pick<User, "id" | "fullName" | "email" | "role" | "status">;
+export type Actor = Pick<User, "id" | "fullName" | "email" | "role" | "status" | "verificationRequired" | "emailVerifiedAt">;
 
 export async function actor(request: NextRequest): Promise<Actor> {
   const raw = request.cookies.get(cookieName)?.value;
   if (!raw || raw.length < 40) throw new ApiError(401, "Sign in required");
   const session = await db.session.findUnique({ where: { tokenHash: hashToken(raw) }, include: { user: true } });
   if (!session || session.revokedAt || session.expiresAt <= new Date() || session.user.status !== "ACTIVE") throw new ApiError(401, "Session expired");
-  const { id, fullName, email, role, status } = session.user;
-  return { id, fullName, email, role, status };
+  const { id, fullName, email, role, status, verificationRequired, emailVerifiedAt } = session.user;
+  return { id, fullName, email, role, status, verificationRequired, emailVerifiedAt };
+}
+
+export function assertVerifiedClient(user: Actor) {
+  if (user.role === "CLIENT" && user.verificationRequired && !user.emailVerifiedAt) throw new ApiError(403, "Verify your email address before continuing");
 }
 
 export async function requireRole(request: NextRequest, role: Role) {
   const user = await actor(request);
   if (user.role !== role) throw new ApiError(403, "Not authorized");
+  if (role === "CLIENT") assertVerifiedClient(user);
   return user;
 }
 

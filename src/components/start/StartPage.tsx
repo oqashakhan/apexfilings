@@ -8,7 +8,7 @@ import { US_STATES } from '../../data/usStates';
 import { COUNTRIES } from '../../data/countries';
 import { SearchSelect } from './SearchSelect';
 import './StartPage.css';
-import { dashboardOnboardingApplicationUrl, dashboardOnboardingLoginUrl, dashboardOnboardingUrl } from '../../lib/dashboardLinks';
+import { dashboardOnboardingLoginUrl, dashboardOnboardingUrl, dashboardOnboardingVerifyUrl } from '../../lib/dashboardLinks';
 
 const schema = z.object({
   businessType: z.literal('LLC', { error: 'Select LLC to continue.' }),
@@ -87,7 +87,7 @@ export function StartPage({ onBackToSite, initialState }: { onBackToSite: () => 
       const response = await fetch(dashboardOnboardingUrl('register'), { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ fullName: answers.fullName.trim(), email: answers.email.trim(), phone: answers.phone.trim(), password: answers.password, confirm: answers.confirmPassword, acceptedTerms: answers.acceptedTerms, details: details(answers) }) });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error ?? 'Account could not be created. Please try again.');
-      window.location.assign(dashboardOnboardingApplicationUrl());
+      window.location.assign(dashboardOnboardingVerifyUrl());
     } catch (error) { setServerError(error instanceof Error ? error.message : 'Could not connect to the dashboard. Please try again.'); submittingRef.current = false; setBusy(false); }
   };
   const errorFor = (field: keyof Answers) => errors[field] ? <p id={`${field}-error`} className="wizard-error" role="alert">{errors[field]?.message}</p> : null;

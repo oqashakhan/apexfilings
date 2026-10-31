@@ -5,7 +5,7 @@ import { formationStates } from "@/lib/formation-states";
 import { ApiError } from "@/server/http";
 
 export const onboardingCookieName = process.env.NODE_ENV === "production" ? "__Host-apex_onboarding" : "apex_onboarding";
-export const onboardingMaxAge = 15 * 60;
+export const onboardingMaxAge = 24 * 60 * 60;
 
 const detailsSchema = z.object({
   businessType: z.literal("LLC"),

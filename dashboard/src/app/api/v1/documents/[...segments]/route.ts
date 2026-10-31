@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { db } from "@/server/db";
-import { actor, ApiError, checkOrigin, handleError, json } from "@/server/http";
+import { actor, assertVerifiedClient, ApiError, checkOrigin, handleError, json } from "@/server/http";
 import { loadDocument, maxDocumentBytes, removeDocument, safeFilename, storeDocument, validateDocument } from "@/server/storage";
 import { emailHtml, queueEmail, queueNotification } from "@/server/mail";
 
@@ -12,6 +12,7 @@ export async function POST(request: NextRequest, context: Params) {
   try {
     checkOrigin(request);
     const user = await actor(request);
+    assertVerifiedClient(user);
     const [action] = (await context.params).segments;
     if (action !== "upload") throw new ApiError(404, "Not found");
     if (Number(request.headers.get("content-length") ?? 0) > maxDocumentBytes + 20_000) throw new ApiError(413, "Upload too large");
@@ -67,6 +68,7 @@ export async function POST(request: NextRequest, context: Params) {
 export async function GET(request: NextRequest, context: Params) {
   try {
     const user = await actor(request);
+    assertVerifiedClient(user);
     const [id] = (await context.params).segments;
     const document = await db.document.findUnique({ where: { id }, select: { id: true, applicationId: true, originalFilename: true, privateStorageKey: true, mimeType: true, reviewStatus: true, application: { select: { customerId: true } } } });
     if (!document) throw new ApiError(404, "Document not found");

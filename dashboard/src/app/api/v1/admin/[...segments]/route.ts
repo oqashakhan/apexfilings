@@ -39,6 +39,8 @@ async function statusChange(id: string, userId: string, next: ApplicationStatus,
     if (changed.count !== 1) throw new ApiError(409, "Application changed; refresh and try again");
     const event = await tx.applicationStatusHistory.create({ data: { applicationId: id, previousStatus: existing.status, newStatus: next, changedById: userId, reason } });
     await queueNotification(tx, `status:${event.id}`, existing.customerId, "STATUS_UPDATED", "Application status updated", `Your application is now ${statusNames[next]}.`, id);
+    const otherOwners = await tx.user.findMany({ where: { role: "OWNER", status: "ACTIVE", id: { not: userId } }, select: { id: true } });
+    for (const owner of otherOwners) await queueNotification(tx, `status:${event.id}:owner:${owner.id}`, owner.id, "STATUS_UPDATED", "Application status changed", `${existing.company.preferredName} is now ${statusNames[next]}.`, id);
     const preference = await tx.notificationPreference.findUnique({ where: { userId: existing.customerId } });
     if (preference?.applicationEmail !== false) await queueEmail(tx, `status:${event.id}`, existing.customer.email, `LLC application update — ${statusNames[next]} — Apex Filings`, emailHtml("Application status updated", [`Company: ${existing.company.preferredName}`, `Application reference: ${id}`, `Current status: ${statusNames[next]}`, next === "APPROVED_FOR_FILING" ? "Approved for filing means internal review is complete. It is not government approval." : "Sign in to see details and any action required."], { label: "View application", href: `${process.env.APP_ORIGIN ?? "http://localhost:3001"}/client/applications/${id}` }));
     await tx.auditLog.create({ data: { actorUserId: userId, action: "APPLICATION_STATUS_CHANGED", resourceType: "Application", resourceId: id, safeMetadata: { previous: existing.status, next } } });
@@ -107,6 +109,15 @@ export async function GET(request: NextRequest, context: Params) {
     }
     if (resource === "website-content") return json({ drafts: await db.contentDraft.findMany({ orderBy: { area: "asc" } }) });
     if (resource === "payment-instructions") return json({ instructions: (await db.paymentInstructions.findUnique({ where: { id: "default" } }))?.body ?? "" });
+    if (resource === "email-delivery") {
+      const requested = url.searchParams.get("status");
+      const status = requested && ["QUEUED", "SENDING", "SENT", "DELIVERED", "FAILED"].includes(requested) ? requested as "QUEUED" | "SENDING" | "SENT" | "DELIVERED" | "FAILED" : undefined;
+      const [items, grouped] = await Promise.all([
+        db.emailOutbox.findMany({ where: status ? { status } : {}, select: { id: true, eventKey: true, toEmail: true, subject: true, status: true, attempts: true, createdAt: true, sentAt: true, deliveredAt: true }, orderBy: { createdAt: "desc" }, take: 100 }),
+        db.emailOutbox.groupBy({ by: ["status"], _count: { _all: true } }),
+      ]);
+      return json({ items, counts: Object.fromEntries(grouped.map((group) => [group.status, group._count._all])) });
+    }
     if (resource === "notifications") {
       const filter = url.searchParams.get("filter");
       const where = { userId: owner.id, ...(filter === "unread" ? { readAt: null } : filter === "read" ? { readAt: { not: null } } : {}) };
@@ -114,6 +125,11 @@ export async function GET(request: NextRequest, context: Params) {
       return json({ notifications, unreadCount });
     }
     if (resource === "notification-preferences") return json({ preferences: await db.notificationPreference.findUnique({ where: { userId: owner.id } }) });
+    if (resource === "support") {
+      const tickets = await db.supportTicket.findMany({ where: id ? { id } : {}, include: { customer: { select: { id: true, fullName: true, email: true } }, replies: { select: { id: true, body: true, createdAt: true, author: { select: { role: true } } }, orderBy: { createdAt: "asc" } } }, orderBy: { updatedAt: "desc" }, take: 100 });
+      if (id && !tickets.length) throw new ApiError(404, "Support request not found");
+      return json({ tickets });
+    }
     if (resource === "audit") return json({ items: await db.auditLog.findMany({ select: { id: true, actorUserId: true, action: true, resourceType: true, resourceId: true, safeMetadata: true, createdAt: true }, orderBy: { createdAt: "desc" }, skip: (page - 1) * take, take }) });
     throw new ApiError(404, "Not found");
   } catch (error) { return handleError(error); }
@@ -124,6 +140,19 @@ export async function POST(request: NextRequest, context: Params) {
     checkOrigin(request);
     const user = await requireRole(request, "OWNER");
     const [resource, id, action] = (await context.params).segments;
+    if (resource === "support" && id && action === "reply") {
+      const input = z.object({ message: z.string().trim().min(2).max(4000) }).parse(await body(request));
+      const ticket = await db.supportTicket.findUnique({ where: { id }, include: { customer: { select: { email: true, notificationPreference: true } } } });
+      if (!ticket) throw new ApiError(404, "Support request not found");
+      await db.$transaction(async (tx) => {
+        const reply = await tx.supportReply.create({ data: { ticketId: id, authorId: user.id, body: input.message } });
+        await tx.supportTicket.update({ where: { id }, data: { status: "REPLIED" } });
+        await queueNotification(tx, `support-answer:${reply.id}`, ticket.customerId, "SUPPORT_REPLY", "Support replied", `The team replied to your request: ${ticket.subject}.`, id);
+        if (ticket.customer.notificationPreference?.supportEmail !== false) await queueEmail(tx, `support-answer:${reply.id}`, ticket.customer.email, "Apex Filings replied to your support request", emailHtml("Your support request has a reply", [`Subject: ${ticket.subject}`, "Sign in to read the response securely."], { label: "View support", href: `${process.env.APP_ORIGIN ?? "http://localhost:3001"}/client/support` }));
+        await tx.auditLog.create({ data: { actorUserId: user.id, action: "SUPPORT_REPLIED", resourceType: "SupportTicket", resourceId: id } });
+      });
+      return json({ ok: true }, 201);
+    }
     if (resource === "applications" && id && action === "status") {
       const input = statusInput.parse(await body(request));
       return json({ application: await statusChange(id, user.id, input.status, input.reason) });
@@ -169,6 +198,7 @@ export async function POST(request: NextRequest, context: Params) {
         const related = await tx.order.findUniqueOrThrow({ where: { id: input.orderId }, include: { application: { include: { customer: { include: { notificationPreference: true } } } } } });
         const owners = await tx.user.findMany({ where: { role: "OWNER", status: "ACTIVE" }, select: { id: true } });
         for (const owner of owners) await queueNotification(tx, `payment-review:${payment.id}:${owner.id}`, owner.id, "PAYMENT_REVIEW", "Payment needs verification", `Manual payment for order ${input.orderId} is awaiting review.`, related.applicationId);
+        if (process.env.ADMIN_NOTIFICATION_EMAIL) await queueEmail(tx, `payment-review:${payment.id}:admin`, process.env.ADMIN_NOTIFICATION_EMAIL, "Payment verification requested — Apex Filings", emailHtml("Payment needs verification", [`Order reference: ${input.orderId}`, "Open the secure dashboard to review the recorded manual payment."], { label: "Review payment", href: `${process.env.APP_ORIGIN ?? "http://localhost:3001"}/admin/payments` }));
         await queueNotification(tx, `payment-review:${payment.id}:customer`, related.application.customerId, "PAYMENT_UPDATE", "Payment awaiting verification", "A payment was recorded for review. It has not been verified yet.", related.applicationId);
         if (related.application.customer.notificationPreference?.paymentEmail !== false) await queueEmail(tx, `payment-review:${payment.id}:customer`, related.application.customer.email, "Payment awaiting verification — Apex Filings", emailHtml("Payment awaiting verification", [`Order reference: ${input.orderId}`, "A payment was recorded for review. This is not a successful-payment confirmation."], { label: "View order", href: `${process.env.APP_ORIGIN ?? "http://localhost:3001"}/client/orders/${input.orderId}` }));
         await tx.auditLog.create({ data: { actorUserId: user.id, action: "MANUAL_PAYMENT_RECORDED", resourceType: "Payment", resourceId: payment.id } });
@@ -193,6 +223,25 @@ export async function POST(request: NextRequest, context: Params) {
         const customer = await tx.user.findUniqueOrThrow({ where: { id: payment.order.application.customerId }, select: { email: true, notificationPreference: true } });
         if (customer.notificationPreference?.paymentEmail !== false) await queueEmail(tx, `payment-verified:${id}`, customer.email, "Your payment was verified — Apex Filings", emailHtml("Payment verified", [`Order reference: ${payment.orderId}`, "Your manual payment has been verified by Apex Filings."], { label: "View order", href: `${process.env.APP_ORIGIN ?? "http://localhost:3001"}/client/orders/${payment.orderId}` }));
         await tx.auditLog.create({ data: { actorUserId: user.id, action: "MANUAL_PAYMENT_VERIFIED", resourceType: "Payment", resourceId: id } });
+      });
+      return json({ ok: true });
+    }
+    if (resource === "payments" && id && action === "reject") {
+      const input = z.object({ reason: z.string().trim().min(3).max(500) }).parse(await body(request));
+      const payment = await db.payment.findUnique({
+        where: { id },
+        include: { order: { include: { application: { include: { customer: { include: { notificationPreference: true } } } } } } },
+      });
+      if (!payment || payment.status !== "AWAITING_VERIFICATION") throw new ApiError(409, "Payment is not awaiting verification");
+      await db.$transaction(async (tx) => {
+        const claimed = await tx.payment.updateMany({ where: { id, status: "AWAITING_VERIFICATION" }, data: { status: "REJECTED" } });
+        if (!claimed.count) throw new ApiError(409, "Payment was already reviewed");
+        const order = await tx.order.updateMany({ where: { id: payment.orderId, paymentStatus: "AWAITING_VERIFICATION" }, data: { paymentStatus: "UNPAID" } });
+        if (!order.count) throw new ApiError(409, "Order status changed; refresh and try again");
+        const customer = payment.order.application.customer;
+        await queueNotification(tx, `payment-rejected:${id}`, customer.id, "PAYMENT_UPDATE", "Payment verification rejected", "The recorded payment could not be verified. Review your order and contact support.", payment.order.applicationId);
+        if (customer.notificationPreference?.paymentEmail !== false) await queueEmail(tx, `payment-rejected:${id}`, customer.email, "Payment verification update — Apex Filings", emailHtml("Payment could not be verified", [`Order reference: ${payment.orderId}`, "Please review your order and contact support for the next step. No payment was confirmed."], { label: "View order", href: `${process.env.APP_ORIGIN ?? "http://localhost:3001"}/client/orders/${payment.orderId}` }));
+        await tx.auditLog.create({ data: { actorUserId: user.id, action: "MANUAL_PAYMENT_REJECTED", resourceType: "Payment", resourceId: id, safeMetadata: { reason: input.reason } } });
       });
       return json({ ok: true });
     }
@@ -249,9 +298,14 @@ export async function PATCH(request: NextRequest, context: Params) {
       const order = await db.$transaction(async (tx) => {
         const claim = await tx.order.updateMany({ where: { id, paymentStatus: "UNPAID" }, data: { ...input, totalCents } });
         if (!claim.count) throw new ApiError(409, "Order changed during fee confirmation");
+        const invoice = await tx.invoice.upsert({ where: { orderId: id }, create: { orderId: id, number: `AF-${id}`, issuedAt: new Date() }, update: {} });
+        const related = await tx.order.findUniqueOrThrow({ where: { id }, include: { application: { include: { customer: { include: { notificationPreference: true } } } } } });
+        if (!(await tx.notification.findUnique({ where: { eventKey: `invoice:${invoice.id}` } }))) {
+          await queueNotification(tx, `invoice:${invoice.id}`, related.application.customerId, "PAYMENT_UPDATE", "Invoice available", "Your confirmed order total and invoice reference are available in your dashboard.", related.applicationId);
+          if (related.application.customer.notificationPreference?.paymentEmail !== false) await queueEmail(tx, `invoice:${invoice.id}`, related.application.customer.email, "Your Apex Filings invoice is available", emailHtml("Invoice available", [`Invoice reference: ${invoice.number}`, `Order reference: ${id}`, "Sign in to review the confirmed amount. This is not a payment receipt."], { label: "View order", href: `${process.env.APP_ORIGIN ?? "http://localhost:3001"}/client/orders/${id}` }));
+        }
         const instructions = await tx.paymentInstructions.findUnique({ where: { id: "default" } });
         if (instructions?.body.trim() && !(await tx.notification.findUnique({ where: { eventKey: `payment-instructions:${id}` } }))) {
-          const related = await tx.order.findUniqueOrThrow({ where: { id }, include: { application: { include: { customer: { include: { notificationPreference: true } } } } } });
           await queueNotification(tx, `payment-instructions:${id}`, related.application.customerId, "PAYMENT_UPDATE", "Payment instructions available", "Your order total and payment instructions are available in the dashboard.", related.applicationId);
           if (related.application.customer.notificationPreference?.paymentEmail !== false) await queueEmail(tx, `payment-instructions:${id}`, related.application.customer.email, "Payment instructions available — Apex Filings", emailHtml("Payment instructions available", [`Order reference: ${id}`, "Your total and payment instructions are available in your secure dashboard. Do not send payment details by email."], { label: "View order", href: `${process.env.APP_ORIGIN ?? "http://localhost:3001"}/client/orders/${id}` }));
         }

@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import {
-  Bell, BriefcaseBusiness, ChevronDown, ChevronLeft, ChevronRight, CreditCard,
+  Bell, BriefcaseBusiness, ChevronDown, ChevronLeft, ChevronRight, CreditCard, MailCheck,
   FileCheck2, FileClock, FileText, FolderOpen, Headphones, LayoutDashboard,
   LogOut, Menu, Moon, Package, Search, Settings, Sun, Users,
   UserRound, Wallet, X, PanelsTopLeft, Building2,
@@ -13,6 +13,7 @@ import {
 import type { LucideIcon } from "lucide-react";
 import type { PreviewRole } from "@/lib/permissions";
 import { useClientDemo } from "@/components/dashboard/ClientDemoContext";
+import { noticeHref } from "@/components/dashboard/NotificationCenter";
 
 type NavItem = { label: string; slug: string; icon: LucideIcon };
 
@@ -26,6 +27,8 @@ const adminNav: NavItem[] = [
   { label: "Services & Pricing", slug: "services", icon: BriefcaseBusiness },
   { label: "Website Content", slug: "website-content", icon: PanelsTopLeft },
   { label: "Notifications", slug: "notifications", icon: Bell },
+  { label: "Email Delivery", slug: "email-delivery", icon: MailCheck },
+  { label: "Support", slug: "support", icon: Headphones },
   { label: "Settings", slug: "settings", icon: Settings },
 ];
 const clientNav: NavItem[] = [
@@ -52,7 +55,7 @@ export function DashboardShell({ role, title, children }: { role: PreviewRole; t
   const pathname = usePathname();
   const router = useRouter();
   const [profile, setProfile] = useState<{ fullName: string; email: string; emailVerified?: boolean } | null>(null);
-  const [notifications, setNotifications] = useState<{ id: string; title: string; message: string; readAt: string | null }[]>([]);
+  const [notifications, setNotifications] = useState<{ id: string; type: string; title: string; message: string; relatedEntity: string | null; readAt: string | null }[]>([]);
   const [collapsed, setCollapsed] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -63,8 +66,11 @@ export function DashboardShell({ role, title, children }: { role: PreviewRole; t
   useEffect(() => {
     let active = true;
     void fetch("/api/v1/auth/current", { cache: "no-store" }).then((response) => response.json()).then((result) => { if (active) setProfile(result.user ?? null); }).catch(() => {});
-    void fetch(`/api/v1/${role === "admin" ? "admin" : "client"}/notifications`, { cache: "no-store" }).then((response) => response.json()).then((result) => { if (active) setNotifications(result.notifications ?? []); }).catch(() => {});
-    return () => { active = false; };
+    const refreshNotices = () => { if (document.visibilityState === "visible") void fetch(`/api/v1/${role === "admin" ? "admin" : "client"}/notifications`, { cache: "no-store" }).then((response) => response.json()).then((result) => { if (active) setNotifications(result.notifications ?? []); }).catch(() => {}); };
+    refreshNotices();
+    const interval = window.setInterval(refreshNotices, 30_000);
+    document.addEventListener("visibilitychange", refreshNotices);
+    return () => { active = false; window.clearInterval(interval); document.removeEventListener("visibilitychange", refreshNotices); };
   }, [role]);
 
   async function logout() {
@@ -136,7 +142,7 @@ export function DashboardShell({ role, title, children }: { role: PreviewRole; t
           const Icon = item.icon;
           const href = "/" + role + "/" + item.slug;
           const active = pathname === href || (pathname.startsWith(href + "/") && item.slug !== "dashboard");
-          const adminGroup = role === "admin" ? ({ 0: "Overview", 1: "Operations", 6: "Management", 9: "Account" } as Record<number, string>)[index] : undefined;
+          const adminGroup = role === "admin" ? ({ 0: "Overview", 1: "Operations", 6: "Management", 11: "Account" } as Record<number, string>)[index] : undefined;
           const clientGroup = role === "client" ? ({ 0: "Workspace", 5: "Services", 8: "Account" } as Record<number, string>)[index] : undefined;
           return <Fragment key={item.slug}>{(adminGroup || clientGroup) && <span className="sidebar-group-heading">{adminGroup || clientGroup}</span>}<Link href={href} className={"nav-item" + (active ? " active" : "")} onClick={() => { setDrawerOpen(false); setOpenMenu(null); }} title={collapsed ? item.label : undefined} aria-label={collapsed ? item.label : undefined} aria-current={active ? "page" : undefined}><Icon size={18} strokeWidth={1.8} /><span>{item.label}</span></Link></Fragment>;
         })}
@@ -175,7 +181,7 @@ export function DashboardShell({ role, title, children }: { role: PreviewRole; t
             <button className="icon-button theme-toggle" onClick={toggleTheme} aria-label="Toggle color theme" title="Toggle color theme"><Sun className="theme-sun" size={19} /><Moon className="theme-moon" size={19} /></button>
             <div className="menu-anchor">
               <button className="icon-button notification-button" aria-label={`Notifications, ${notifications.filter((item) => !item.readAt).length} unread`} aria-expanded={openMenu === "notifications"} onClick={() => setOpenMenu(openMenu === "notifications" ? null : "notifications")}><Bell size={19} />{notifications.some((item) => !item.readAt) && <span className="notification-dot" />}</button>
-              {openMenu === "notifications" && <div className="topbar-popover"><strong>Notifications · {notifications.filter((item) => !item.readAt).length} unread</strong>{notifications.length ? notifications.slice(0, 3).map((item) => <p key={item.id}><strong>{item.title}</strong><br />{item.message}</p>) : <p>No notifications yet.</p>}<Link href={`/${role}/notifications`} onClick={() => setOpenMenu(null)}>View all <ChevronRight size={15} /></Link></div>}
+              {openMenu === "notifications" && <div className="topbar-popover"><strong>Notifications · {notifications.filter((item) => !item.readAt).length} unread</strong>{notifications.length ? notifications.slice(0, 3).map((item) => { const href = noticeHref(role, item); return href ? <Link key={item.id} href={href} onClick={() => setOpenMenu(null)}><strong>{item.title}</strong><br />{item.message}</Link> : <p key={item.id}><strong>{item.title}</strong><br />{item.message}</p>; }) : <p>No notifications yet.</p>}<Link href={`/${role}/notifications`} onClick={() => setOpenMenu(null)}>View all <ChevronRight size={15} /></Link></div>}
             </div>
             <div className="menu-anchor">
               <button className="profile-trigger" aria-label="Open profile menu" aria-expanded={openMenu === "profile"} onClick={() => setOpenMenu(openMenu === "profile" ? null : "profile")}><span className="avatar">{profile?.fullName?.charAt(0).toUpperCase() ?? "A"}</span><span className="profile-label"><strong>{profile?.fullName ?? "Account"}</strong><small>{role === "admin" ? "Owner / Admin" : "Client"}</small></span><ChevronDown size={15} /></button>

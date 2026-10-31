@@ -44,6 +44,10 @@ export function dashboardOnboardingApplicationUrl(): string {
   return `${dashboardNewApplicationUrl()}?handoff=1`;
 }
 
+export function dashboardOnboardingVerifyUrl(): string {
+  return `${dashboardOrigin}/verify-email?next=${encodeURIComponent('/client/applications/new?handoff=1')}`;
+}
+
 export function dashboardOnboardingLoginUrl(): string {
   return `${dashboardUrl('/login')}?next=${encodeURIComponent('/client/applications/new?handoff=1')}`;
 }

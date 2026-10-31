@@ -15,3 +15,5 @@ process.env.PRIVATE_DOCUMENT_DIR = path.resolve(process.cwd(), ".local", "test-d
 process.env.PUBLIC_SITE_ORIGIN = "http://localhost:3000";
 process.env.ONBOARDING_HANDOFF_SECRET = randomBytes(32).toString("base64url");
 process.env.TEST_EMAIL_OUTBOX = "1";
+process.env.ADMIN_NOTIFICATION_EMAIL = "admin-notifications@example.test";
+process.env.EMAIL_OTP_SECRET = Buffer.alloc(32, 42).toString("base64url");

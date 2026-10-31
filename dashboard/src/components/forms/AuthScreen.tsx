@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { ArrowRight, CheckCircle2, Eye, EyeOff, LockKeyhole, Mail, ShieldCheck } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
+import { GoogleOAuthAlert } from "@/components/forms/GoogleOAuthAlert";
 
 type Mode = "login" | "register" | "forgot" | "reset";
 type AuthFields = { name: string; email: string; phone: string; password: string; confirm: string; remember: boolean };
@@ -18,7 +19,7 @@ const titles: Record<Mode, { eyebrow: string; title: string; subtitle: string }>
 };
 const emailSchema = z.email("Enter a valid email address.");
 
-export function AuthScreen({ mode, next, googleEnabled = false }: { mode: Mode; next?: string | null; googleEnabled?: boolean }) {
+export function AuthScreen({ mode, next, oauthError, googleEnabled = false }: { mode: Mode; next?: string | null; oauthError?: string; googleEnabled?: boolean }) {
   const router = useRouter();
   const { register, handleSubmit, reset } = useForm<AuthFields>({ defaultValues: { name: "", email: "", phone: "", password: "", confirm: "", remember: false } });
   const [showPassword, setShowPassword] = useState(false);
@@ -48,7 +49,7 @@ export function AuthScreen({ mode, next, googleEnabled = false }: { mode: Mode; 
       const response = await fetch(`/api/v1/auth/${action}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload), credentials: "same-origin" });
       const result = await response.json();
       if (!response.ok) { setError(result.error ?? "Request failed. Please try again."); return; }
-      if (mode === "login" || mode === "register") { router.replace(result.role === "OWNER" ? "/admin/dashboard" : next ?? "/client/dashboard"); router.refresh(); return; }
+      if (mode === "login" || mode === "register") { router.replace(result.role === "OWNER" ? "/admin/dashboard" : result.emailVerificationRequired ? `/verify-email${next ? `?next=${encodeURIComponent(next)}` : ""}` : next ?? "/client/dashboard"); router.refresh(); return; }
       setMessage(mode === "forgot" ? result.message : "Password updated. Please sign in.");
       reset();
     } catch { setError("Connection failed. Please try again."); }
@@ -56,10 +57,10 @@ export function AuthScreen({ mode, next, googleEnabled = false }: { mode: Mode; 
   }
 
   const info = titles[mode];
-  return <div className="auth-page"><div className="auth-layout"><div className="auth-side"><Link className="auth-brand" href="/"><Image src="/apex-icon.png" alt="Apex Filings icon" width={52} height={52} /><span>Apex Filings</span></Link><div className="auth-story"><span className="eyebrow">APEX FILINGS DASHBOARD</span><h1>Everything for your business, in one clear place.</h1><p>A streamlined workspace for company formation, documents, orders, and support.</p><div className="auth-feature"><span><ShieldCheck size={21} /></span><div><strong>Designed for clarity</strong><small>Follow progress and find the next step quickly.</small></div></div></div><span className="auth-side-footer">Secure dashboard</span></div><div className="auth-main"><div className="auth-card"><span className="eyebrow accent">{info.eyebrow}</span><h2>{info.title}</h2><p className="auth-subtitle">{info.subtitle}</p>{mode === "forgot" && <div className="auth-preview-alert"><LockKeyhole size={17} /><span>Email delivery is being configured. For security, requests always receive the same response.</span></div>}<form onSubmit={handleSubmit(submit)} noValidate>
+  return <div className="auth-page"><div className="auth-layout"><div className="auth-side"><Link className="auth-brand" href="/"><Image src="/apex-icon.png" alt="Apex Filings icon" width={52} height={52} /><span>Apex Filings</span></Link><div className="auth-story"><span className="eyebrow">APEX FILINGS DASHBOARD</span><h1>Everything for your business, in one clear place.</h1><p>A streamlined workspace for company formation, documents, orders, and support.</p><div className="auth-feature"><span><ShieldCheck size={21} /></span><div><strong>Designed for clarity</strong><small>Follow progress and find the next step quickly.</small></div></div></div><span className="auth-side-footer">Secure dashboard</span></div><div className="auth-main"><div className="auth-card"><span className="eyebrow accent">{info.eyebrow}</span><h2>{info.title}</h2><p className="auth-subtitle">{info.subtitle}</p>{mode === "login" && <GoogleOAuthAlert code={oauthError} />}{mode === "forgot" && <div className="auth-preview-alert"><LockKeyhole size={17} /><span>Email delivery is being configured. For security, requests always receive the same response.</span></div>}<form onSubmit={handleSubmit(submit)} noValidate>
       {mode === "register" && <><label>Full name<input autoComplete="name" {...register("name")} placeholder="Your full name" /></label><label>Phone number<input autoComplete="tel" type="tel" {...register("phone")} placeholder="+1 (555) 000-0000" /></label></>}
       {mode !== "reset" && <label>Email address<span className="input-icon"><Mail size={18} /></span><input autoComplete="email" type="email" {...register("email")} placeholder="you@example.com" /></label>}
-      {(mode === "login" || mode === "register" || mode === "reset") && <label>Password<span className="password-wrap"><input autoComplete={mode === "login" ? "current-password" : "new-password"} type={showPassword ? "text" : "password"} {...register("password")} placeholder={mode === "login" ? "Enter your password" : "At least 12 characters"} /><button type="button" aria-label={showPassword ? "Hide password" : "Show password"} onClick={() => setShowPassword(!showPassword)}>{showPassword ? <EyeOff size={18} /> : <Eye size={18} />}</button></span></label>}
+      {(mode === "login" || mode === "register" || mode === "reset") && <label>Password<span className="password-wrap"><input id={mode === "login" ? "login-password" : undefined} autoComplete={mode === "login" ? "current-password" : "new-password"} type={showPassword ? "text" : "password"} {...register("password")} placeholder={mode === "login" ? "Enter your password" : "At least 12 characters"} /><button type="button" aria-label={showPassword ? "Hide password" : "Show password"} onClick={() => setShowPassword(!showPassword)}>{showPassword ? <EyeOff size={18} /> : <Eye size={18} />}</button></span></label>}
       {(mode === "register" || mode === "reset") && <label>Confirm password<span className="password-wrap"><input autoComplete="new-password" type={showConfirm ? "text" : "password"} {...register("confirm")} placeholder="Confirm password" /><button type="button" aria-label={showConfirm ? "Hide confirmation" : "Show confirmation"} onClick={() => setShowConfirm(!showConfirm)}>{showConfirm ? <EyeOff size={18} /> : <Eye size={18} />}</button></span></label>}
       {mode === "login" && <div className="auth-options"><span>Sessions expire after seven days.</span><Link href="/forgot-password">Forgot password?</Link></div>}
       {error && <p className="form-error" role="alert">{error}</p>}{message && <div className="auth-message" role="status"><CheckCircle2 size={18} />{message}</div>}
