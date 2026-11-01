@@ -25,7 +25,7 @@ Create a Google OAuth **Web application** client. Set the authorized JavaScript 
 
 ## Resend
 
-Verify `apexfilings.com` in Resend using its required DNS records before setting `EMAIL_FROM=info@apexfilings.com`. `EMAIL_FROM` must be a bare verified email address; the code supplies the display name “Apex Filings”. Set `ADMIN_NOTIFICATION_EMAIL` to the team inbox that should receive new application messages. Do not use an unverified sender.
+Verify `apexfilings.com` in Resend using its required DNS records before setting `EMAIL_FROM=info@apexfilings.com`. The startup check and sender accept either the bare address `info@apexfilings.com` (preferred) or `Apex Filings <info@apexfilings.com>`; surrounding whitespace is trimmed. The sender is always normalized to one `Apex Filings <...>` display name. Other domains and arbitrary display names remain invalid. Set `ADMIN_NOTIFICATION_EMAIL` to the team inbox that should receive new application messages. Do not use an unverified sender.
 
 Create a Resend webhook for `email.delivered`, `email.bounced`, `email.suppressed`, and `email.complained` at `https://app.apexfilings.com/api/v1/webhooks/resend`. Set its signing secret as `RESEND_WEBHOOK_SECRET`. The webhook verifies the raw payload signature before changing delivery status.
 

@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import { senderAddress } from "../src/server/email-from.js";
 
 const required = ["DATABASE_URL", "APP_ORIGIN", "PUBLIC_SITE_ORIGIN", "ONBOARDING_HANDOFF_SECRET", "RESEND_API_KEY", "EMAIL_FROM", "ADMIN_NOTIFICATION_EMAIL", "EMAIL_OTP_SECRET", "EMAIL_JOB_SECRET"];
 const missing = required.filter((name) => !process.env[name]);
@@ -6,7 +7,7 @@ if (missing.length) console.error(`Missing server variables: ${missing.join(", "
 
 const otpSecret = process.env.EMAIL_OTP_SECRET ? Buffer.from(process.env.EMAIL_OTP_SECRET, "base64url") : null;
 if (otpSecret && otpSecret.length !== 32) console.error("EMAIL_OTP_SECRET must decode to exactly 32 bytes.");
-if (process.env.EMAIL_FROM && !/@apexfilings\.com$/i.test(process.env.EMAIL_FROM)) console.error("EMAIL_FROM must use the verified apexfilings.com domain.");
+if (process.env.EMAIL_FROM && !senderAddress(process.env.EMAIL_FROM)) console.error("EMAIL_FROM must be a verified apexfilings.com address, optionally formatted as Apex Filings <address>.");
 
 let databaseReady = false;
 if (process.env.DATABASE_URL) {
@@ -21,6 +22,6 @@ if (process.env.DATABASE_URL) {
   } finally { await db.$disconnect(); }
 }
 
-const ready = !missing.length && (!otpSecret || otpSecret.length === 32) && (!process.env.EMAIL_FROM || /@apexfilings\.com$/i.test(process.env.EMAIL_FROM)) && databaseReady;
+const ready = !missing.length && (!otpSecret || otpSecret.length === 32) && (!process.env.EMAIL_FROM || Boolean(senderAddress(process.env.EMAIL_FROM))) && databaseReady;
 console.log(ready ? "Registration prerequisites: ready. Confirm the Coolify email scheduled task and Resend sender separately." : "Registration prerequisites: not ready.");
 if (!ready) process.exitCode = 1;

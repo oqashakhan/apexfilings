@@ -1,8 +1,9 @@
 import "server-only";
 import type { Prisma } from "@prisma/client";
+import { senderAddress } from "@/server/email-from";
 
 export function mailConfigured() {
-  return Boolean(process.env.RESEND_API_KEY && process.env.EMAIL_FROM);
+  return Boolean(process.env.RESEND_API_KEY && senderAddress(process.env.EMAIL_FROM));
 }
 
 const escape = (value: string) => value.replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]!);

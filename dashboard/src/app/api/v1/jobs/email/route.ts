@@ -3,6 +3,7 @@ import { timingSafeEqual } from "node:crypto";
 import { db } from "@/server/db";
 import { json } from "@/server/http";
 import { dispatchEmail } from "@/server/email-dispatch";
+import { mailConfigured } from "@/server/mail";
 
 export const runtime = "nodejs";
 
@@ -17,9 +18,7 @@ function authorized(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   if (!authorized(request)) return json({ error: "Unauthorized" }, 401);
-  const apiKey = process.env.RESEND_API_KEY;
-  const from = process.env.EMAIL_FROM;
-  if (!apiKey || !from) return json({ error: "Email delivery is not configured" }, 503);
+  if (!mailConfigured()) return json({ error: "Email delivery is not configured" }, 503);
   const now = new Date();
   const pending = await db.emailOutbox.findMany({ where: { OR: [{ status: "QUEUED", nextAttemptAt: { lte: now } }, { status: "SENDING", leaseUntil: { lt: now } }] }, orderBy: { createdAt: "asc" }, take: 5 });
   let sent = 0;

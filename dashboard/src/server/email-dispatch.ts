@@ -2,12 +2,13 @@ import "server-only";
 import { Resend } from "resend";
 import { db } from "@/server/db";
 import { decryptOtpEmail } from "@/server/email-otp";
+import { resendSender } from "@/server/email-from";
 
 export type DispatchResult = "accepted" | "pending" | "expired";
 
 export async function dispatchEmail(id: string): Promise<DispatchResult> {
   const apiKey = process.env.RESEND_API_KEY;
-  const from = process.env.EMAIL_FROM;
+  const from = resendSender(process.env.EMAIL_FROM);
   if (!apiKey || !from) return "pending";
 
   const item = await db.emailOutbox.findUnique({ where: { id } });
@@ -29,7 +30,7 @@ export async function dispatchEmail(id: string): Promise<DispatchResult> {
   try {
     const testBaseUrl = process.env.TEST_EMAIL_OUTBOX === "1" && /@(?:127\.0\.0\.1|localhost):\d+\/apex_dashboard_test(?:\?|$)/.test(process.env.DATABASE_URL ?? "") ? process.env.TEST_RESEND_BASE_URL : undefined;
     const resend = new Resend(apiKey, testBaseUrl ? { baseUrl: testBaseUrl } : undefined);
-    const { data, error } = await resend.emails.send({ from: `Apex Filings <${from}>`, to: [item.toEmail], subject: item.subject, html: decryptOtpEmail(item.html) }, { idempotencyKey: item.eventKey, signal: AbortSignal.timeout(8_000) });
+    const { data, error } = await resend.emails.send({ from, to: [item.toEmail], subject: item.subject, html: decryptOtpEmail(item.html) }, { idempotencyKey: item.eventKey, signal: AbortSignal.timeout(8_000) });
     if (error || !data?.id) throw new Error(error?.name ?? "Delivery request failed");
     await db.emailOutbox.update({ where: { id }, data: { status: "SENT", providerId: data.id, sentAt: new Date(), leaseUntil: null, lastError: null } });
     return "accepted";
