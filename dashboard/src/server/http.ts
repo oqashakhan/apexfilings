@@ -1,5 +1,6 @@
 import "server-only";
 import { NextRequest, NextResponse } from "next/server";
+import { randomBytes } from "node:crypto";
 import { ZodError } from "zod";
 import { Role, type User } from "@prisma/client";
 import { db } from "@/server/db";
@@ -18,8 +19,11 @@ export function handleError(error: unknown) {
   if (error instanceof ApiError || (error instanceof Error && (error as ApiError)[apiErrorBrand] === true && Number.isInteger((error as ApiError).status))) return fail(error.message, (error as ApiError).status);
   if (error instanceof ZodError) return json({ error: "Invalid request", issues: error.issues.map((item) => ({ path: item.path, message: item.message })) }, 400);
   // Never return database, filesystem, token, or customer details in an error response.
-  console.error("API request failed", error instanceof Error ? error.name : "unknown");
-  return fail("Request could not be completed", 500);
+  const errorId = randomBytes(6).toString("hex");
+  const errorName = error instanceof Error ? error.name : "unknown";
+  const code = typeof error === "object" && error !== null && "code" in error && typeof error.code === "string" ? error.code : undefined;
+  console.error("API request failed", { errorId, errorName, code });
+  return json({ error: "Request could not be completed", errorId }, 500);
 }
 
 export function checkOrigin(request: NextRequest) {

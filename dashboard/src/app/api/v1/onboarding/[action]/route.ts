@@ -61,7 +61,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ ac
     const input = registration.parse(raw);
     const details = validatedOnboardingDetails(input.details);
     const sealed = sealOnboardingDetails(details);
-    const response = await registerClientSession(input, { termsAcceptedAt: new Date().toISOString(), source: "public-onboarding" });
+    const response = await registerClientSession(input, request, { termsAcceptedAt: new Date().toISOString(), source: "public-onboarding" });
     response.cookies.set(onboardingCookieName, sealed, onboardingCookieOptions);
     return cors(response, origin);
   } catch (error) { return cors(handleError(error), origin); }

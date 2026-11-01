@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowRight, MailCheck, ShieldCheck } from "lucide-react";
 
-export function VerifyEmailScreen({ next, legacyToken }: { next: string | null; legacyToken: string | null }) {
+export function VerifyEmailScreen({ next, legacyToken, initialDeliveryUnconfirmed = false }: { next: string | null; legacyToken: string | null; initialDeliveryUnconfirmed?: boolean }) {
   const router = useRouter();
   const [digits, setDigits] = useState<string[]>(Array(6).fill(""));
   const inputs = useRef<(HTMLInputElement | null)[]>([]);
@@ -15,6 +15,7 @@ export function VerifyEmailScreen({ next, legacyToken }: { next: string | null; 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const [deliveryUnconfirmed, setDeliveryUnconfirmed] = useState(initialDeliveryUnconfirmed);
   const destination = next ?? "/client/dashboard";
 
   useEffect(() => {
@@ -29,6 +30,7 @@ export function VerifyEmailScreen({ next, legacyToken }: { next: string | null; 
       if (data.user?.emailVerified) { router.replace(destination); return; }
       setEmail(data.user?.email ?? "");
       setCooldown(data.verificationRetryAfterSeconds ?? 0);
+      setDeliveryUnconfirmed(!["SENT", "DELIVERED"].includes(data.verificationDeliveryStatus ?? ""));
     }).catch(() => { if (active) setError("Could not load your account. Please refresh or sign in again."); });
     return () => { active = false; };
   }, [destination, legacyToken, next, router]);
@@ -85,9 +87,9 @@ export function VerifyEmailScreen({ next, legacyToken }: { next: string | null; 
     setBusy(true); setError(""); setMessage("");
     try {
       const response = await fetch("/api/v1/auth/resend-verification", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
-      const result = await response.json();
-      if (!response.ok) { setError(result.error ?? "Could not send another code."); if (response.status === 429) setCooldown(60); return; }
-      setDigits(Array(6).fill("")); setCooldown(60); setMessage("A new code has been sent. Check your inbox and spam folder."); inputs.current[0]?.focus();
+      const result = response.headers.get("content-type")?.includes("application/json") ? await response.json().catch(() => null) : null;
+      if (!response.ok) { setError(result?.error ?? `Email service returned HTTP ${response.status}. Please try again later.`); if (response.status === 429) setCooldown(60); return; }
+      setDigits(Array(6).fill("")); setCooldown(60); setDeliveryUnconfirmed(result?.emailDeliveryStatus !== "accepted"); setMessage(result?.emailDeliveryStatus === "accepted" ? "A new code was accepted for delivery. Check your inbox and spam folder." : "We could not confirm email delivery. Retry when the cooldown ends."); inputs.current[0]?.focus();
     } catch { setError("Connection failed. Please try again."); }
     finally { setBusy(false); }
   }
@@ -97,7 +99,7 @@ export function VerifyEmailScreen({ next, legacyToken }: { next: string | null; 
     <div className="otp-symbol"><MailCheck size={29} aria-hidden="true" /></div>
     <span className="eyebrow accent">ACCOUNT SECURITY</span>
     <h1 id="otp-title">Verify Your Email</h1>
-    <p className="otp-description">Enter the six-digit code we sent to {email ? <strong>{email}</strong> : "your email address"}. It expires in 10 minutes.</p>
+    <p className="otp-description">{deliveryUnconfirmed ? "Your account is saved, but we could not confirm delivery of the verification email to " : "Enter the six-digit code sent to "}{email ? <strong>{email}</strong> : "your email address"}. Codes expire in 5 minutes.</p>
     <form onSubmit={verify}>
       <div className="otp-inputs" aria-label="Six-digit verification code" onPaste={(event) => { const text = event.clipboardData.getData("text"); if (/^\s*\d{6}\s*$/.test(text)) { event.preventDefault(); fill(text.trim()); } }}>
         {digits.map((digit, index) => <input key={index} ref={(node) => { inputs.current[index] = node; }} aria-label={`Digit ${index + 1}`} autoComplete={index === 0 ? "one-time-code" : "off"} inputMode="numeric" pattern="[0-9]*" maxLength={1} value={digit} onChange={(event) => { const value = event.target.value.replace(/\D/g, ""); if (value.length > 1) fill(value, index); else { setDigits((current) => current.map((item, i) => i === index ? value : item)); if (value && index < 5) inputs.current[index + 1]?.focus(); setError(""); } }} onKeyDown={(event) => { if (event.key === "Backspace" && !digit && index > 0) inputs.current[index - 1]?.focus(); if (event.key === "ArrowLeft" && index > 0) inputs.current[index - 1]?.focus(); if (event.key === "ArrowRight" && index < 5) inputs.current[index + 1]?.focus(); }} />)}

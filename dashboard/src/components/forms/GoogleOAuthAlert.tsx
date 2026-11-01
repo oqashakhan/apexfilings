@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable @next/next/no-html-link-for-pages -- Google OAuth requires a full browser redirect. */
 
 import { getGoogleOAuthFeedback } from "@/lib/google-oauth-feedback";
 

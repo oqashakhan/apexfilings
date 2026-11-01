@@ -47,9 +47,15 @@ export function AuthScreen({ mode, next, oauthError, googleEnabled = false }: { 
     setBusy(true);
     try {
       const response = await fetch(`/api/v1/auth/${action}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload), credentials: "same-origin" });
-      const result = await response.json();
-      if (!response.ok) { setError(result.error ?? "Request failed. Please try again."); return; }
-      if (mode === "login" || mode === "register") { router.replace(result.role === "OWNER" ? "/admin/dashboard" : result.emailVerificationRequired ? `/verify-email${next ? `?next=${encodeURIComponent(next)}` : ""}` : next ?? "/client/dashboard"); router.refresh(); return; }
+      const result = response.headers.get("content-type")?.includes("application/json") ? await response.json().catch(() => null) : null;
+      if (!response.ok) { setError(result?.error ?? `Account service returned HTTP ${response.status}. Please try again or contact support.`); return; }
+      if (!result) { setError("The server returned an unexpected response. Please try again or contact support."); return; }
+      if (mode === "login" || mode === "register") {
+        const verificationQuery = new URLSearchParams();
+        if (next) verificationQuery.set("next", next);
+        if (result.emailDeliveryStatus === "unconfirmed") verificationQuery.set("delivery", "unconfirmed");
+        router.replace(result.role === "OWNER" ? "/admin/dashboard" : result.emailVerificationRequired ? `/verify-email${verificationQuery.size ? `?${verificationQuery.toString()}` : ""}` : next ?? "/client/dashboard"); router.refresh(); return;
+      }
       setMessage(mode === "forgot" ? result.message : "Password updated. Please sign in.");
       reset();
     } catch { setError("Connection failed. Please try again."); }

@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
-const { test } = require("node:test");
+const { test, before, after } = require("node:test");
+const { createServer } = require("node:http");
 const assert = require("node:assert/strict");
 const { randomBytes, createHash, createHmac, createDecipheriv } = require("node:crypto");
 const { PrismaClient } = require("@prisma/client");
@@ -8,11 +9,38 @@ const argon2 = require("argon2");
 const root = "http://localhost:3002";
 const db = new PrismaClient();
 const suffix = randomBytes(6).toString("hex");
+const testIp = `198.51.${parseInt(suffix.slice(0, 2), 16)}.${parseInt(suffix.slice(2, 4), 16)}`;
+const limitedIp = `203.0.${parseInt(suffix.slice(4, 6), 16)}.${parseInt(suffix.slice(6, 8), 16)}`;
 const password = `Apex!${randomBytes(16).toString("hex")}7`;
 const ownerPassword = `Owner!${randomBytes(16).toString("hex")}7`;
+const providerIds = new Map();
+const providerAttempts = new Map();
+let failFirstCustomerOtp = true;
+const fakeResend = createServer(async (request, response) => {
+  const chunks = [];
+  for await (const chunk of request) chunks.push(chunk);
+  const payload = JSON.parse(Buffer.concat(chunks).toString("utf8"));
+  const recipient = Array.isArray(payload.to) ? payload.to[0] : payload.to;
+  const idempotencyKey = request.headers["idempotency-key"] ?? randomBytes(8).toString("hex");
+  providerAttempts.set(idempotencyKey, (providerAttempts.get(idempotencyKey) ?? 0) + 1);
+  response.setHeader("Content-Type", "application/json");
+  if (request.url !== "/emails") { response.writeHead(404).end(JSON.stringify({ message: "Not found" })); return; }
+  if (failFirstCustomerOtp && recipient === `client-${suffix}@example.test` && payload.subject === "Your Apex Filings verification code") {
+    failFirstCustomerOtp = false;
+    response.writeHead(503).end(JSON.stringify({ name: "application_error", message: "Temporary mock failure" }));
+    return;
+  }
+  if (!providerIds.has(idempotencyKey)) providerIds.set(idempotencyKey, `mock-${randomBytes(12).toString("hex")}`);
+  response.writeHead(200).end(JSON.stringify({ id: providerIds.get(idempotencyKey) }));
+});
+before(async () => {
+  await new Promise((resolve) => fakeResend.listen(3033, "127.0.0.1", resolve));
+  await db.emailOutbox.updateMany({ where: { status: { in: ["QUEUED", "SENDING"] } }, data: { status: "FAILED", leaseUntil: null, lastError: "Prior local test run" } });
+});
+after(async () => { await new Promise((resolve) => fakeResend.close(resolve)); });
 
 async function call(path, method = "GET", payload, cookie = "") {
-  const headers = { Origin: root };
+  const headers = { Origin: root, "X-Real-IP": testIp };
   if (cookie) headers.Cookie = cookie;
   let body;
   if (payload instanceof FormData) body = payload;
@@ -45,7 +73,7 @@ async function latestOtp(userId) {
 test("public onboarding handoff uses the dashboard session and protects its origin", async () => {
   const origin = "http://localhost:3000";
   const details = { businessType: "LLC", country: "PK", formationState: "Wyoming", preferredName: `Example Ventures ${suffix}` };
-  const headers = { Origin: origin, "Sec-Fetch-Site": "same-site", "Content-Type": "application/json" };
+  const headers = { Origin: origin, "Sec-Fetch-Site": "same-site", "Content-Type": "application/json", "X-Real-IP": testIp };
   const endpoint = `${root}/api/v1/onboarding`;
   const preflight = await fetch(`${endpoint}/register`, { method: "OPTIONS", headers: { Origin: origin, "Sec-Fetch-Site": "same-site", "Access-Control-Request-Method": "POST", "Access-Control-Request-Headers": "content-type" } });
   assert.equal(preflight.status, 204);
@@ -120,7 +148,24 @@ test("authenticated dashboard workflow and ownership", async () => {
     }
     expect(await call("/api/v1/auth/register", "POST", { fullName: "Test User", email: "invalid", phone: "12345678", password, confirm: password }), 400, "registration validation");
     const first = await call("/api/v1/auth/register", "POST", { fullName: "Apex Test Client", email: `client-${suffix}@example.test`, phone: "+1 555 000 0000", password, confirm: password, role: "OWNER" });
-    expect(first, 200, "register first client");
+    expect(first, 202, "register first client with unconfirmed test-outbox delivery");
+    assert.equal(first.data.emailDeliveryStatus, "unconfirmed", "registration does not claim a queued test email was sent");
+    const firstQueuedOtp = await db.emailVerification.findFirstOrThrow({ where: { user: { emailNormalized: `client-${suffix}@example.test` }, method: "OTP" }, orderBy: { createdAt: "desc" } });
+    const firstQueuedMail = await db.emailOutbox.findUniqueOrThrow({ where: { eventKey: `verify-otp:${firstQueuedOtp.id}` } });
+    assert.equal(firstQueuedMail.status, "QUEUED", "provider failure leaves OTP in durable outbox");
+    assert.equal(firstQueuedMail.attempts, 1, "provider failure records first attempt");
+    await db.emailOutbox.update({ where: { id: firstQueuedMail.id }, data: { nextAttemptAt: new Date(Date.now() - 1000) } });
+    const unauthorizedJob = await call("/api/v1/jobs/email", "POST", {});
+    expect(unauthorizedJob, 401, "email worker requires its secret");
+    const jobResponse = await fetch(root + "/api/v1/jobs/email", { method: "POST", headers: { Authorization: `Bearer ${process.env.EMAIL_JOB_SECRET}` } });
+    assert.equal(jobResponse.status, 200, "authorized worker runs");
+    const retriedMail = await db.emailOutbox.findUniqueOrThrow({ where: { id: firstQueuedMail.id } });
+    assert.equal(retriedMail.status, "SENT", `temporary provider failure retried successfully; attempts=${retriedMail.attempts}, error=${retriedMail.lastError}`);
+    assert.equal(retriedMail.attempts, 2, "retry count persisted");
+    const otpProviderAttempts = providerAttempts.get(`verify-otp:${firstQueuedOtp.id}`);
+    assert.equal((await fetch(root + "/api/v1/jobs/email", { method: "POST", headers: { Authorization: `Bearer ${process.env.EMAIL_JOB_SECRET}` } })).status, 200);
+    assert.equal((await db.emailOutbox.findUniqueOrThrow({ where: { id: firstQueuedMail.id } })).attempts, 2, "accepted email is not retried again");
+    assert.equal(providerAttempts.get(`verify-otp:${firstQueuedOtp.id}`), otpProviderAttempts, "provider does not receive a duplicate accepted OTP");
     assert.equal(first.data.emailVerificationRequired, true);
     assert.equal("code" in first.data, false, "registration does not return an OTP");
     const who = await call("/api/v1/auth/current", "GET", undefined, first.cookie);
@@ -135,6 +180,7 @@ test("authenticated dashboard workflow and ownership", async () => {
     assert.match(await verifyPage.text(), /Verify Your Email/, "six-digit verification screen renders");
     const user = await db.user.findUniqueOrThrow({ where: { emailNormalized: `client-${suffix}@example.test` } });
     const firstOtp = await latestOtp(user.id);
+    assert.ok(firstOtp.record.expiresAt.getTime() - firstOtp.record.createdAt.getTime() <= 5 * 60_000 + 2000, "OTP expires within five minutes");
     expect(await call("/api/v1/auth/verify-otp", "POST", { code: firstOtp.code }), 401, "anonymous OTP verification blocked");
     expect(await call("/api/v1/auth/verify-otp", "POST", { code: "999999" === firstOtp.code ? "999998" : "999999" }, first.cookie), 400, "wrong code rejected");
     expect(await call("/api/v1/auth/resend-verification", "POST", {}, first.cookie), 429, "resend cooldown enforced");
@@ -176,6 +222,17 @@ test("authenticated dashboard workflow and ownership", async () => {
     const duplicate = await call("/api/v1/auth/register", "POST", { fullName: "Duplicate Test", email: user.email.toUpperCase(), phone: "+1 555 000 0020", password, confirm: password });
     expect(duplicate, 400, "duplicate email safely rejected");
     assert.ok(!JSON.stringify(duplicate.data).includes("OWNER"), "duplicate response reveals no role");
+    let emailRateLimited = false;
+    for (let attempt = 0; attempt < 6; attempt++) {
+      const attemptResponse = await call("/api/v1/auth/register", "POST", { fullName: "Duplicate Test", email: user.email, phone: "+1 555 000 0020", password, confirm: password });
+      if (attemptResponse.response.status === 429) { emailRateLimited = true; break; }
+      expect(attemptResponse, 400, `duplicate registration attempt ${attempt + 1}`);
+    }
+    assert.equal(emailRateLimited, true, "registration rate limited per email");
+    for (let attempt = 0; attempt <= 20; attempt++) {
+      const response = await fetch(root + "/api/v1/auth/register", { method: "POST", headers: { Origin: root, "X-Real-IP": limitedIp, "Content-Type": "application/json" }, body: JSON.stringify({ fullName: "Rate Limit Test", email: `ip-${suffix}-${attempt}@example.test`, phone: "+1 555 000 0020", password: "x", confirm: "x" }) });
+      assert.equal(response.status, attempt === 20 ? 429 : 400, `registration IP limit attempt ${attempt + 1}`);
+    }
     const limited = await call("/api/v1/auth/register", "POST", { fullName: "Limited Client", email: `limited-${suffix}@example.test`, phone: "+1 555 000 0021", password, confirm: password });
     expect(limited, 200, "register attempt-limit client");
     const limitedUser = await db.user.findUniqueOrThrow({ where: { emailNormalized: `limited-${suffix}@example.test` } });
@@ -192,6 +249,7 @@ test("authenticated dashboard workflow and ownership", async () => {
     expect(await call("/api/v1/admin/dashboard", "GET", undefined, first.cookie), 403, "client cannot read admin");
     expect(await call("/api/v1/auth/login", "POST", { email: user.email, password: "wrong" }), 401, "wrong password");
     expect(await call("/api/v1/auth/login", "POST", { email: user.email.toUpperCase(), password }), 200, "normalized login");
+    assert.ok(await db.emailOutbox.count({ where: { toEmail: user.email, subject: "New Sign-In to Your Apex Filings Account" } }), "new-device sign-in queues branded security email");
     const resetKnown = await call("/api/v1/auth/request-reset", "POST", { email: user.email });
     const resetUnknown = await call("/api/v1/auth/request-reset", "POST", { email: `missing-${suffix}@example.test` });
     expect(resetKnown, 200, "known-account reset request");
@@ -221,6 +279,9 @@ test("authenticated dashboard workflow and ownership", async () => {
     const submitted = await call(`/api/v1/client/applications/${app.id}/submit`, "POST", { confirmed: true }, first.cookie);
     expect(submitted, 200, "submit application");
     assert.equal(await db.emailOutbox.count({ where: { eventKey: `application-submitted:${app.id}:customer` } }), 1, "submission queues one customer email");
+    const adminApplicationMail = await db.emailOutbox.findUniqueOrThrow({ where: { eventKey: `application-submitted:${app.id}:admin` } });
+    assert.match(adminApplicationMail.html, /State: Wyoming/, "owner submission email includes state");
+    assert.match(adminApplicationMail.html, /Status: Awaiting Payment/, "owner submission email identifies the internal status");
     assert.equal(await db.notification.count({ where: { eventKey: `application-submitted:${app.id}:client` } }), 1, "submission queues one in-app notification");
     const firstNotices = await call("/api/v1/client/notifications", "GET", undefined, first.cookie);
     expect(firstNotices, 200, "client can read own notifications");
@@ -276,6 +337,7 @@ test("authenticated dashboard workflow and ownership", async () => {
     expect(await call(`/api/v1/admin/payments/${payment.data.payment.id}/reject`, "POST", { reason: "Fictional reference could not be confirmed." }, first.cookie), 403, "client cannot reject payment");
     expect(await call(`/api/v1/admin/payments/${payment.data.payment.id}/reject`, "POST", { reason: "Fictional reference could not be confirmed." }, admin.cookie), 200, "owner rejects unverified payment");
     assert.equal(await db.emailOutbox.count({ where: { eventKey: `payment-rejected:${payment.data.payment.id}` } }), 1, "payment rejection queues one customer email");
+    assert.equal(await db.emailOutbox.count({ where: { eventKey: `payment-rejected:${payment.data.payment.id}:admin` } }), 1, "payment problem queues one owner email");
     expect(await call(`/api/v1/admin/payments/${payment.data.payment.id}/reject`, "POST", { reason: "Repeated rejection." }, admin.cookie), 409, "duplicate rejection prevented");
     payment = await call("/api/v1/admin/payments", "POST", { orderId, amountCents: 29900, reference: `RETRY-${suffix}` }, admin.cookie);
     expect(payment, 201, "payment can be recorded again after rejection");

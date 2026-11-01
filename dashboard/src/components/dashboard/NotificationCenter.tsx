@@ -12,7 +12,7 @@ export function noticeHref(role: "admin" | "client", item: Pick<Notice, "type" |
   if (!item.relatedEntity) return null;
   if (item.type === "NEW_REGISTRATION" && role === "admin") return `/admin/clients/${encodeURIComponent(item.relatedEntity)}`;
   if (item.type === "REFUND_REQUEST" && role === "admin") return "/admin/payments";
-  if (item.type.startsWith("SUPPORT_")) return `/${role}/support`;
+  if (item.type.startsWith("SUPPORT_")) return `/${role}/support#ticket-${encodeURIComponent(item.relatedEntity)}`;
   if (["NEW_APPLICATION", "APPLICATION_SUBMITTED", "STATUS_UPDATED", "DOCUMENT_REVIEW", "DOCUMENT_UPLOADED", "FINAL_DOCUMENT", "PAYMENT_UPDATE", "PAYMENT_REVIEW", "CUSTOMER_RESPONSE", "ORDER_CREATED"].includes(item.type)) return `/${role}/applications/${encodeURIComponent(item.relatedEntity)}`;
   return null;
 }
@@ -29,7 +29,7 @@ export function NotificationCenter({ role }: { role: "admin" | "client" }) {
     if (notices.ok) { const data = await notices.json(); setItems(data.notifications); setUnread(data.unreadCount); }
     if (settings.ok) { const data = await settings.json(); setPreferences({ ...defaults, ...data.preferences }); }
   }, [root, filter]);
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => { queueMicrotask(() => { void load(); }); }, [load]);
   async function mark(path: string, read = true) {
     const response = await fetch(`${root}/notifications/${path}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ read }) });
     if (response.ok) await load(); else setMessage("Could not update notifications.");

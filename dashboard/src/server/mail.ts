@@ -15,7 +15,7 @@ export function emailHtml(title: string, paragraphs: string[], link?: { label: s
 }
 
 export async function queueEmail(tx: Prisma.TransactionClient, eventKey: string, toEmail: string, subject: string, html: string) {
-  await tx.emailOutbox.create({ data: { eventKey, toEmail, subject, html } });
+  return tx.emailOutbox.create({ data: { eventKey, toEmail, subject, html } });
 }
 
 export async function queueNotification(tx: Prisma.TransactionClient, eventKey: string, userId: string, type: string, title: string, message: string, relatedEntity?: string) {

@@ -8,6 +8,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "prestart": "node scripts/check-registration-readiness.mjs",
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
@@ -15,6 +16,7 @@
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
     "db:seed": "tsx prisma/seed.ts",
+    "email:check": "node scripts/check-registration-readiness.mjs",
     "owner:bootstrap": "tsx scripts/bootstrap-owner.ts",
     "test:integration": "node --test -r ./tests/test-env.cjs tests/integration.test.cjs"
   },

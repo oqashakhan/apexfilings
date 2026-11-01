@@ -4,13 +4,20 @@ import type { Prisma } from "@prisma/client";
 import { ApiError } from "@/server/http";
 import { emailHtml, mailConfigured, queueEmail } from "@/server/mail";
 
-const maxAgeMs = 10 * 60_000;
+const maxAgeMs = 5 * 60_000;
 const encryptedPrefix = "apex-otp:v1:";
+let otpConfigurationLogged = false;
 
 function secret() {
   const encoded = process.env.EMAIL_OTP_SECRET;
   const value = encoded ? Buffer.from(encoded, "base64url") : Buffer.alloc(0);
-  if (value.length !== 32) throw new ApiError(503, "Email verification is not configured");
+  if (value.length !== 32) {
+    if (!otpConfigurationLogged) {
+      console.error(encoded ? "EMAIL_OTP_SECRET must decode to exactly 32 bytes." : "EMAIL_OTP_SECRET is missing.");
+      otpConfigurationLogged = true;
+    }
+    throw new ApiError(503, "Email verification is not configured");
+  }
   return value;
 }
 
@@ -56,7 +63,7 @@ export async function issueEmailOtp(tx: Prisma.TransactionClient, userId: string
   const code = generateEmailOtp();
   const id = randomUUID();
   const record = await tx.emailVerification.create({ data: { id, userId, tokenHash: hashEmailOtp(userId, id, code), method: "OTP", expiresAt: new Date(Date.now() + maxAgeMs) } });
-  const html = emailHtml("Verify Your Email", ["Enter this six-digit code to verify your Apex Filings account:", code, "This code expires in 10 minutes. If you did not create this account, you can ignore this message."]);
-  await queueEmail(tx, `verify-otp:${record.id}`, toEmail, "Your Apex Filings verification code", encryptOtpEmail(html));
-  return record;
+  const html = emailHtml("Verify Your Email", ["Enter this six-digit code to verify your Apex Filings account:", code, "This code expires in 5 minutes. If you did not create this account, you can ignore this message."]);
+  const mail = await queueEmail(tx, `verify-otp:${record.id}`, toEmail, "Your Apex Filings verification code", encryptOtpEmail(html));
+  return { ...record, outboxId: mail.id };
 }

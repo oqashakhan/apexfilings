@@ -1,9 +1,8 @@
 import { NextRequest } from "next/server";
 import { timingSafeEqual } from "node:crypto";
-import { Resend } from "resend";
 import { db } from "@/server/db";
 import { json } from "@/server/http";
-import { decryptOtpEmail } from "@/server/email-otp";
+import { dispatchEmail } from "@/server/email-dispatch";
 
 export const runtime = "nodejs";
 
@@ -21,25 +20,14 @@ export async function POST(request: NextRequest) {
   const apiKey = process.env.RESEND_API_KEY;
   const from = process.env.EMAIL_FROM;
   if (!apiKey || !from) return json({ error: "Email delivery is not configured" }, 503);
-  const resend = new Resend(apiKey);
   const now = new Date();
-  const pending = await db.emailOutbox.findMany({ where: { OR: [{ status: "QUEUED", nextAttemptAt: { lte: now } }, { status: "SENDING", leaseUntil: { lt: now } }] }, orderBy: { createdAt: "asc" }, take: 20 });
+  const pending = await db.emailOutbox.findMany({ where: { OR: [{ status: "QUEUED", nextAttemptAt: { lte: now } }, { status: "SENDING", leaseUntil: { lt: now } }] }, orderBy: { createdAt: "asc" }, take: 5 });
   let sent = 0;
   let failed = 0;
   for (const item of pending) {
-    const lease = new Date(Date.now() + 2 * 60_000);
-    const claimed = await db.emailOutbox.updateMany({ where: { id: item.id, status: item.status, attempts: item.attempts }, data: { status: "SENDING", attempts: { increment: 1 }, leaseUntil: lease } });
-    if (!claimed.count) continue;
-    try {
-      const { data, error } = await resend.emails.send({ from: `Apex Filings <${from}>`, to: [item.toEmail], subject: item.subject, html: decryptOtpEmail(item.html) }, { idempotencyKey: item.eventKey });
-      if (error || !data?.id) throw new Error(error?.name ?? "Delivery request failed");
-      await db.emailOutbox.update({ where: { id: item.id }, data: { status: "SENT", providerId: data.id, sentAt: new Date(), leaseUntil: null, lastError: null } });
-      sent++;
-    } catch (error) {
-      const attempts = item.attempts + 1;
-      await db.emailOutbox.update({ where: { id: item.id }, data: { status: attempts >= 8 ? "FAILED" : "QUEUED", nextAttemptAt: new Date(Date.now() + Math.min(60, 2 ** attempts) * 60_000), leaseUntil: null, lastError: error instanceof Error ? error.message.slice(0, 300) : "Delivery failed" } });
-      failed++;
-    }
+    const result = await dispatchEmail(item.id);
+    if (result === "accepted") sent++;
+    else if (result === "pending" || result === "expired") failed++;
   }
   return json({ processed: sent + failed, sent, failed });
 }

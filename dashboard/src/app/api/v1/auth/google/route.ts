@@ -112,7 +112,7 @@ export async function GET(request: NextRequest) {
       const session = await makeSession(user.id, user.role as "OWNER" | "CLIENT");
       const authCookie = session.cookies.get(process.env.NODE_ENV === "production" ? "__Host-apex_session" : "apex_session");
       if (authCookie) response.cookies.set(authCookie);
-      const device = await recordLogin(user.id, request.cookies.get(deviceCookieName)?.value);
+      const device = await recordLogin(user.id, request.cookies.get(deviceCookieName)?.value, request);
       response.cookies.set(deviceCookieName, device, { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", path: "/", maxAge: 60 * 60 * 24 * 365 });
     }
     response.cookies.set(stateCookie, "", { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", path: "/", maxAge: 0 });

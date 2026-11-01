@@ -8,6 +8,8 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { emailHtml, mailConfigured, queueEmail, queueNotification } from "@/server/mail";
 import { issueEmailOtp, matchesEmailOtp, otpDeliveryAvailable } from "@/server/email-otp";
+import { dispatchEmail } from "@/server/email-dispatch";
+import { limitVerificationRequest } from "@/server/email-rate-limit";
 
 export const runtime = "nodejs";
 const email = z.email().max(254);
@@ -46,9 +48,10 @@ export async function GET(request: NextRequest, context: { params: Promise<{ act
     const user = await actor(request);
     const verification = await db.user.findUniqueOrThrow({ where: { id: user.id }, select: { emailVerifiedAt: true, verificationRequired: true } });
     const emailVerified = !verification.verificationRequired || Boolean(verification.emailVerifiedAt);
-    const latestOtp = !emailVerified ? await db.emailVerification.findFirst({ where: { userId: user.id, method: "OTP" }, orderBy: { createdAt: "desc" }, select: { createdAt: true } }) : null;
+    const latestOtp = !emailVerified ? await db.emailVerification.findFirst({ where: { userId: user.id, method: "OTP" }, orderBy: { createdAt: "desc" }, select: { id: true, createdAt: true } }) : null;
+    const delivery = latestOtp ? await db.emailOutbox.findUnique({ where: { eventKey: `verify-otp:${latestOtp.id}` }, select: { status: true } }) : null;
     const verificationRetryAfterSeconds = latestOtp ? Math.max(0, Math.ceil((latestOtp.createdAt.getTime() + 60_000 - Date.now()) / 1000)) : 0;
-    return json({ user: { id: user.id, fullName: user.fullName, email: user.email, role: user.role, status: user.status, emailVerified, canEnrollVerification: user.role === "CLIENT" && !verification.verificationRequired && !verification.emailVerifiedAt }, verificationRetryAfterSeconds });
+    return json({ user: { id: user.id, fullName: user.fullName, email: user.email, role: user.role, status: user.status, emailVerified, canEnrollVerification: user.role === "CLIENT" && !verification.verificationRequired && !verification.emailVerifiedAt }, verificationRetryAfterSeconds, verificationDeliveryStatus: delivery?.status ?? null });
   } catch (error) { return handleError(error); }
 }
 
@@ -58,7 +61,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ ac
     const { action } = await context.params;
     if (action === "register") {
       const input = registration.parse(await body(request));
-      return registerClientSession(input);
+      return await registerClientSession(input, request);
     }
     if (action === "verify-email") {
       const input = z.object({ token: z.string().min(40).max(200) }).parse(await body(request));
@@ -113,6 +116,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ ac
       const user = await actor(request);
       if (user.role !== "CLIENT") throw new ApiError(403, "Not authorized");
       otpDeliveryAvailable();
+      await limitVerificationRequest(request, user.id, user.email);
       const result = await db.$transaction(async (tx) => {
         await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${user.id} FOR UPDATE`;
         const account = await tx.user.findUniqueOrThrow({ where: { id: user.id } });
@@ -125,10 +129,15 @@ export async function POST(request: NextRequest, context: { params: Promise<{ ac
         const daily = await tx.emailVerification.count({ where: { userId: user.id, method: "OTP", createdAt: { gt: new Date(Date.now() - 24 * 60 * 60_000) } } });
         if (hourly >= 5 || daily >= 10) return "limited";
         await tx.emailVerification.updateMany({ where: { userId: user.id, method: "OTP", usedAt: null }, data: { usedAt: new Date() } });
-        await issueEmailOtp(tx, user.id, account.email);
-        return "queued";
+        await tx.emailOutbox.updateMany({ where: { eventKey: { startsWith: "verify-otp:" }, toEmail: account.email, status: "QUEUED" }, data: { status: "FAILED", lastError: "Code replaced" } });
+        const issued = await issueEmailOtp(tx, user.id, account.email);
+        return issued.outboxId;
       });
-      if (result === "queued") return json({ ok: true, message: "A new code has been queued for delivery." });
+      if (result !== "verified" && result !== "cooldown" && result !== "limited") {
+        let accepted = false;
+        try { accepted = (await dispatchEmail(result)) === "accepted"; } catch { /* Keep the outbox item for the worker. */ }
+        return json({ ok: true, emailDeliveryStatus: accepted ? "accepted" : "unconfirmed", message: accepted ? "A new code was accepted for delivery." : "We could not confirm email delivery. Please retry after the cooldown." }, accepted ? 200 : 202);
+      }
       if (result === "verified") return json({ ok: true, message: "Email already verified" });
       if (result === "cooldown") throw new ApiError(429, "Please wait one minute before requesting another code.");
       throw new ApiError(429, "Too many requests. Please try again later.");
@@ -137,6 +146,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ ac
       const user = await actor(request);
       if (user.role !== "CLIENT") throw new ApiError(403, "Not authorized");
       otpDeliveryAvailable();
+      await limitVerificationRequest(request, user.id, user.email);
       const result = await db.$transaction(async (tx) => {
         await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${user.id} FOR UPDATE`;
         const account = await tx.user.findUniqueOrThrow({ where: { id: user.id } });
@@ -144,11 +154,15 @@ export async function POST(request: NextRequest, context: { params: Promise<{ ac
         const recent = await tx.emailVerification.count({ where: { userId: user.id, method: "OTP", createdAt: { gt: new Date(Date.now() - 60 * 60_000) } } });
         if (recent >= 5) return "limited";
         await tx.user.update({ where: { id: user.id }, data: { verificationRequired: true } });
-        await issueEmailOtp(tx, user.id, account.email);
+        const issued = await issueEmailOtp(tx, user.id, account.email);
         await tx.auditLog.create({ data: { actorUserId: user.id, action: "EMAIL_VERIFICATION_ENROLLED", resourceType: "User", resourceId: user.id } });
-        return "queued";
+        return issued.outboxId;
       });
-      if (result === "queued") return json({ ok: true, message: "A verification code has been queued." });
+      if (result !== "already-enrolled" && result !== "limited") {
+        let accepted = false;
+        try { accepted = (await dispatchEmail(result)) === "accepted"; } catch { /* The outbox will retry. */ }
+        return json({ ok: true, emailDeliveryStatus: accepted ? "accepted" : "unconfirmed", message: accepted ? "A verification code was accepted for delivery." : "We could not confirm email delivery. Please retry after the cooldown." }, accepted ? 200 : 202);
+      }
       if (result === "already-enrolled") return json({ ok: true, message: "Email verification is already active." });
       throw new ApiError(429, "Too many requests. Please try again later.");
     }
@@ -215,7 +229,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ ac
       await db.authThrottle.deleteMany({ where: { key } });
       if (user.role !== "OWNER" && user.role !== "CLIENT") throw new ApiError(403, "This account cannot access the current dashboard");
       const response = await makeSession(user.id, user.role, user.role === "CLIENT" && user.verificationRequired && !user.emailVerifiedAt);
-      const device = await recordLogin(user.id, request.cookies.get(deviceCookieName)?.value);
+      const device = await recordLogin(user.id, request.cookies.get(deviceCookieName)?.value, request);
       response.cookies.set(deviceCookieName, device, { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", path: "/", maxAge: 60 * 60 * 24 * 365 });
       return response;
     }
