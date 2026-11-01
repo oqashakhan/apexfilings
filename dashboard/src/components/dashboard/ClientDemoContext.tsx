@@ -4,11 +4,13 @@ import { createContext, useCallback, useContext, useEffect, useState } from "rea
 
 export type ClientRecord = {
   id: string; companyId: string; company: { id: string; name: string; state: string; owners: { id: string; fullName: string }[] };
-  packageName: string; status: string; statusCode: string; updatedAt: string;
+  packageName: string; status: string; statusCode: string; updatedAt: string; submittedAt: string | null;
   history: { id: string; status: string; reason: string | null; date: string }[];
   responses: { id: string; requestEventId: string; body: string; createdAt: string }[];
-  documents: { id: string; documentType: string; reviewStatus: string; originalFilename: string; createdAt: string; ownerId: string | null }[];
-  order: { id: string; paymentStatus: string; serviceFeeCents: number; governmentFeeCents: number | null; thirdPartyFeeCents: number | null; additionalFeeCents: number | null; discountCents: number | null; totalCents: number | null } | null;
+  requiredDocuments: { id: string; documentType: string }[];
+  documents: { id: string; documentType: string; reviewStatus: string; reviewReason: string | null; replacesDocumentId: string | null; originalFilename: string; createdAt: string; ownerId: string | null }[];
+  nextAction: { kind: "action" | "waiting" | "complete"; title: string; description: string; ctaLabel: string; href: string; documentRequests: { id: string; documentType: string; ownerId: string | null; reason: string | null; replacesDocumentId: string | null }[] };
+  order: { id: string; paymentStatus: string; serviceFeeCents: number; governmentFeeCents: number | null; thirdPartyFeeCents: number | null; additionalFeeCents: number | null; discountCents: number | null; totalCents: number | null; invoice: { number: string; issuedAt: string | null } | null } | null;
 };
 export type ClientService = { id: string; name: string; description: string; slug: string };
 export type ClientPackage = { id: string; name: string; slug: string; serviceFeeCents: number; currency: string };
@@ -49,6 +51,12 @@ export function ClientDemoProvider({ children }: { children: React.ReactNode }) 
     finally { setLoading(false); }
   }, []);
   useEffect(() => { const frame = requestAnimationFrame(() => { void refresh(); }); return () => cancelAnimationFrame(frame); }, [refresh]);
+  useEffect(() => {
+    const sync = () => { if (document.visibilityState === "visible") void refresh(); };
+    const timer = window.setInterval(sync, 30000);
+    document.addEventListener("visibilitychange", sync);
+    return () => { window.clearInterval(timer); document.removeEventListener("visibilitychange", sync); };
+  }, [refresh]);
   return <Context.Provider value={{ companyId, setCompanyId, applications, services, packages, notifications, paymentInstructions, user, loading, error, refresh }}>{children}</Context.Provider>;
 }
 

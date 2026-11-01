@@ -13,7 +13,7 @@ export type AdminApplication = {
   owners: AdminOwner[]; additionalServices: string[]; status: ApplicationStatus;
   submittedAt: string | null; customerConfirmed: boolean;
 };
-export type AdminDocument = { id: string; applicationId: string; name: string; type: string; relatedOwner: string | null; status: "Required" | "Not Provided" | "Under Review" | "Accepted" | "Replacement Required" | "Completed Company Document"; uploadedAt: string | null; reviewedBy: string | null; sampleFileName?: string };
+export type AdminDocument = { id: string; applicationId: string; name: string; type: string; relatedOwner: string | null; status: "Required" | "Not Provided" | "Under Review" | "Accepted" | "Replacement Required" | "Completed Company Document"; uploadedAt: string | null; reviewedBy: string | null; uploadedBy: "Admin" | "Client"; clientVisible: boolean; sampleFileName?: string };
 export type AdminOrder = { id: string; applicationId: string; date: string; serviceFee: number; governmentFee: number | null; additionalFee: number | null; thirdPartyFee: number | null; discount: number | null; paymentStatus: PaymentStatus; status: "Open" | "Fulfilled" | "Cancelled" };
 export type AdminPayment = { id: string; orderId: string; amount: number | null; method: string; date: string | null; status: PaymentStatus; reference: string | null; supportingInformation: string };
 export type AdminRefund = { id: string; orderId: string; amount: number | null; reason: string; requestedAt: string; status: "Requested" | "Under Review" | "Approved" | "Declined" | "Completed" | "Approved · demo" | "Declined · demo" };

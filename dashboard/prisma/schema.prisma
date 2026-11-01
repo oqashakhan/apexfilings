@@ -427,6 +427,11 @@ model Document {
   mimeType          String
   fileSize          Int
   reviewStatus      DocumentStatus @default(UNDER_REVIEW)
+  clientVisible     Boolean        @default(false)
+  replacesDocumentId String?       @unique
+  reviewReason      String?
+  replacesDocument Document?       @relation("DocumentReplacement", fields: [replacesDocumentId], references: [id], onDelete: SetNull)
+  replacement      Document?       @relation("DocumentReplacement")
   reviewedById      String?
   reviewedAt        DateTime?
   createdAt         DateTime       @default(now())

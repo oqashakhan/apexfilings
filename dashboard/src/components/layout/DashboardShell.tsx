@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
@@ -14,6 +14,7 @@ import type { LucideIcon } from "lucide-react";
 import type { PreviewRole } from "@/lib/permissions";
 import { useClientDemo } from "@/components/dashboard/ClientDemoContext";
 import { noticeHref } from "@/components/dashboard/NotificationCenter";
+import { NotificationDropdown } from "@/components/dashboard/NotificationDropdown";
 
 type NavItem = { label: string; slug: string; icon: LucideIcon };
 
@@ -55,7 +56,9 @@ export function DashboardShell({ role, title, children }: { role: PreviewRole; t
   const pathname = usePathname();
   const router = useRouter();
   const [profile, setProfile] = useState<{ fullName: string; email: string; emailVerified?: boolean } | null>(null);
-  const [notifications, setNotifications] = useState<{ id: string; type: string; title: string; message: string; relatedEntity: string | null; readAt: string | null }[]>([]);
+  const [notifications, setNotifications] = useState<{ id: string; type: string; title: string; message: string; relatedEntity: string | null; readAt: string | null; createdAt: string }[]>([]);
+  const [toasts, setToasts] = useState<{ id: string; type: string; title: string; message: string; relatedEntity: string | null }[]>([]);
+  const initialNoticesLoaded = useRef(false);
   const [collapsed, setCollapsed] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -66,12 +69,28 @@ export function DashboardShell({ role, title, children }: { role: PreviewRole; t
   useEffect(() => {
     let active = true;
     void fetch("/api/v1/auth/current", { cache: "no-store" }).then((response) => response.json()).then((result) => { if (active) setProfile(result.user ?? null); }).catch(() => {});
-    const refreshNotices = () => { if (document.visibilityState === "visible") void fetch(`/api/v1/${role === "admin" ? "admin" : "client"}/notifications`, { cache: "no-store" }).then((response) => response.json()).then((result) => { if (active) setNotifications(result.notifications ?? []); }).catch(() => {}); };
+    const refreshNotices = () => { if (document.visibilityState === "visible") void fetch(`/api/v1/${role === "admin" ? "admin" : "client"}/notifications`, { cache: "no-store" }).then((response) => { if (!response.ok) throw new Error("Session unavailable"); return response.json(); }).then((result) => {
+      if (!active) return;
+      const incoming = (result.notifications ?? []) as typeof notifications;
+      setNotifications(incoming);
+      const storageKey = `apex-notice-seen-${role}`;
+      const seen = new Set<string>(JSON.parse(sessionStorage.getItem(storageKey) ?? "[]"));
+      if (initialNoticesLoaded.current) setToasts((current) => [...incoming.filter((item) => !item.readAt && !seen.has(item.id)).slice(0, 2), ...current].slice(0, 2));
+      incoming.forEach((item) => seen.add(item.id));
+      sessionStorage.setItem(storageKey, JSON.stringify([...seen].slice(0, 200)));
+      initialNoticesLoaded.current = true;
+    }).catch(() => {}); };
     refreshNotices();
     const interval = window.setInterval(refreshNotices, 30_000);
     document.addEventListener("visibilitychange", refreshNotices);
     return () => { active = false; window.clearInterval(interval); document.removeEventListener("visibilitychange", refreshNotices); };
   }, [role]);
+
+  useEffect(() => {
+    if (!toasts.length) return;
+    const timer = window.setTimeout(() => setToasts((current) => current.slice(0, -1)), 7000);
+    return () => window.clearTimeout(timer);
+  }, [toasts]);
 
   async function logout() {
     await fetch("/api/v1/auth/logout", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
@@ -180,8 +199,8 @@ export function DashboardShell({ role, title, children }: { role: PreviewRole; t
             </div>
             <button className="icon-button theme-toggle" onClick={toggleTheme} aria-label="Toggle color theme" title="Toggle color theme"><Sun className="theme-sun" size={19} /><Moon className="theme-moon" size={19} /></button>
             <div className="menu-anchor">
-              <button className="icon-button notification-button" aria-label={`Notifications, ${notifications.filter((item) => !item.readAt).length} unread`} aria-expanded={openMenu === "notifications"} onClick={() => setOpenMenu(openMenu === "notifications" ? null : "notifications")}><Bell size={19} />{notifications.some((item) => !item.readAt) && <span className="notification-dot" />}</button>
-              {openMenu === "notifications" && <div className="topbar-popover"><strong>Notifications · {notifications.filter((item) => !item.readAt).length} unread</strong>{notifications.length ? notifications.slice(0, 3).map((item) => { const href = noticeHref(role, item); return href ? <Link key={item.id} href={href} onClick={() => setOpenMenu(null)}><strong>{item.title}</strong><br />{item.message}</Link> : <p key={item.id}><strong>{item.title}</strong><br />{item.message}</p>; }) : <p>No notifications yet.</p>}<Link href={`/${role}/notifications`} onClick={() => setOpenMenu(null)}>View all <ChevronRight size={15} /></Link></div>}
+              <button className="icon-button notification-button" aria-label={`Notifications, ${notifications.filter((item) => !item.readAt).length} unread`} aria-expanded={openMenu === "notifications"} onClick={() => setOpenMenu(openMenu === "notifications" ? null : "notifications")}><Bell size={19} />{notifications.some((item) => !item.readAt) && <span className="dashboard-notice-count">{Math.min(99, notifications.filter((item) => !item.readAt).length)}</span>}</button>
+              {openMenu === "notifications" && <NotificationDropdown role={role} items={notifications} onClose={() => setOpenMenu(null)} onRead={(id) => { void fetch(`/api/v1/${role}/notifications/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ read: true }) }).then((response) => { if (response.ok) setNotifications((current) => current.map((item) => item.id === id ? { ...item, readAt: new Date().toISOString() } : item)); }); }} />}
             </div>
             <div className="menu-anchor">
               <button className="profile-trigger" aria-label="Open profile menu" aria-expanded={openMenu === "profile"} onClick={() => setOpenMenu(openMenu === "profile" ? null : "profile")}><span className="avatar">{profile?.fullName?.charAt(0).toUpperCase() ?? "A"}</span><span className="profile-label"><strong>{profile?.fullName ?? "Account"}</strong><small>{role === "admin" ? "Owner / Admin" : "Client"}</small></span><ChevronDown size={15} /></button>
@@ -191,6 +210,7 @@ export function DashboardShell({ role, title, children }: { role: PreviewRole; t
         </header>
         {profile?.emailVerified === false && <div className="preview-strip" role="status">Verify your email before submitting an application. <button className="table-link" onClick={() => void resendVerification()}>Resend verification email</button></div>}
         <main className="page-content">{children}</main>
+        <div className="dashboard-toast-stack" aria-live="polite">{toasts.map((item) => <div className="dashboard-toast" key={item.id}><Bell size={18} /><div><strong>{item.title}</strong><p>{item.message}</p>{noticeHref(role, item) && <Link href={noticeHref(role, item)!} onClick={() => setToasts((current) => current.filter((toast) => toast.id !== item.id))}>View details</Link>}</div><button aria-label="Dismiss notification" onClick={() => setToasts((current) => current.filter((toast) => toast.id !== item.id))}><X size={16} /></button></div>)}</div>
       </div>
     </div>
   );

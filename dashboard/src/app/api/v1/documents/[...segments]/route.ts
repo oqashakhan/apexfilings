@@ -31,23 +31,36 @@ export async function POST(request: NextRequest, context: Params) {
     const file = data.get("file");
     const applicationId = String(data.get("applicationId") ?? "");
     const ownerId = String(data.get("ownerId") ?? "") || null;
+    const replacesDocumentId = String(data.get("replacesDocumentId") ?? "") || null;
+    const requirementId = String(data.get("requirementId") ?? "") || null;
     const documentType = String(data.get("documentType") ?? "").trim();
     const finalDocument = data.get("finalDocument") === "true";
+    const shareWithClient = data.get("shareWithClient") !== "false";
     if (!(file instanceof File) || file.size > maxDocumentBytes || !applicationId || !/^[A-Z_]{3,60}$/.test(documentType)) throw new ApiError(400, "Invalid document request");
     const application = await db.application.findUnique({ where: { id: applicationId }, include: { company: { include: { owners: true } } } });
     if (!application) throw new ApiError(404, "Application not found");
     if (user.role !== "OWNER" && (user.role !== "CLIENT" || application.customerId !== user.id)) throw new ApiError(403, "Not authorized");
     if (finalDocument && user.role !== "OWNER") throw new ApiError(403, "Not authorized");
-    if (!finalDocument && user.role === "CLIENT" && !["DRAFT", "INFORMATION_REQUIRED", "ADDITIONAL_ACTION_REQUIRED"].includes(application.status)) throw new ApiError(409, "Document upload is not available at this stage");
+    if (!finalDocument && user.role === "CLIENT" && !["DRAFT", "INFORMATION_REQUIRED", "ADDITIONAL_ACTION_REQUIRED"].includes(application.status) && !(replacesDocumentId && !["COMPLETED", "CANCELLED", "REFUNDED", "REFUND_REQUESTED"].includes(application.status))) throw new ApiError(409, "Document upload is not available at this stage");
+    if (replacesDocumentId && user.role !== "CLIENT") throw new ApiError(400, "Only the client can replace a requested document");
+    if (requirementId && replacesDocumentId) throw new ApiError(400, "Choose one document request");
+    if (requirementId) {
+      const requirement = await db.serviceDocumentRequirement.findFirst({ where: { id: requirementId, serviceId: application.serviceId, documentType, required: true, OR: [{ stateCode: null }, { stateCode: application.company.formationState }] } });
+      if (!requirement || user.role !== "CLIENT") throw new ApiError(409, "Document requirement is no longer available");
+    }
+    if (replacesDocumentId) {
+      const request = await db.document.findFirst({ where: { id: replacesDocumentId, applicationId, reviewStatus: "REPLACEMENT_REQUIRED", replacement: null } });
+      if (!request || request.documentType !== documentType || request.ownerId !== ownerId) throw new ApiError(409, "Document replacement request is no longer available");
+    }
     if (ownerId && !application.company.owners.some((owner) => owner.id === ownerId)) throw new ApiError(400, "Owner does not belong to this application");
     if (documentType === "OWNER_ID" && !ownerId) throw new ApiError(400, "Select an owner for identification");
     const buffer = Buffer.from(await file.arrayBuffer());
     const identified = validateDocument(buffer, file.type);
     storageKey = await storeDocument(buffer, identified.ext);
     const created = await db.$transaction(async (tx) => {
-      const document = await tx.document.create({ data: { applicationId, companyId: application.companyId, ownerId, uploadedById: user.id, documentType, originalFilename: safeFilename(file.name), privateStorageKey: storageKey!, mimeType: identified.mime, fileSize: buffer.length, reviewStatus: finalDocument ? "COMPLETED_COMPANY_DOCUMENT" : "UNDER_REVIEW" } });
+      const document = await tx.document.create({ data: { applicationId, companyId: application.companyId, ownerId, uploadedById: user.id, documentType, replacesDocumentId, originalFilename: safeFilename(file.name), privateStorageKey: storageKey!, mimeType: identified.mime, fileSize: buffer.length, clientVisible: user.role === "CLIENT" || (finalDocument && shareWithClient), reviewStatus: finalDocument ? "COMPLETED_COMPANY_DOCUMENT" : "UNDER_REVIEW" } });
       await tx.auditLog.create({ data: { actorUserId: user.id, action: "DOCUMENT_UPLOADED", resourceType: "Document", resourceId: document.id, safeMetadata: { documentType, fileSize: buffer.length } } });
-      if (finalDocument) {
+      if (finalDocument && shareWithClient) {
         await queueNotification(tx, `document-final:${document.id}`, application.customerId, "FINAL_DOCUMENT", "Company document available", "A completed company document is available in your dashboard.", applicationId);
         const customer = await tx.user.findUniqueOrThrow({ where: { id: application.customerId }, select: { email: true, notificationPreference: true } });
         if (customer.notificationPreference?.documentEmail !== false) await queueEmail(tx, `document-final:${document.id}`, customer.email, "Your company document is available — Apex Filings", emailHtml("Company document available", ["A completed company document is ready in your secure dashboard. Sign in to download it."], { label: "View documents", href: `${process.env.APP_ORIGIN ?? "http://localhost:3001"}/client/documents` }));
@@ -58,7 +71,7 @@ export async function POST(request: NextRequest, context: Params) {
       }
       return document;
     });
-    return json({ document: { id: created.id, applicationId, documentType, ownerId, reviewStatus: created.reviewStatus, originalFilename: created.originalFilename, fileSize: created.fileSize } }, 201);
+    return json({ document: { id: created.id, applicationId, documentType, ownerId, replacesDocumentId: created.replacesDocumentId, reviewStatus: created.reviewStatus, clientVisible: created.clientVisible, originalFilename: created.originalFilename, fileSize: created.fileSize } }, 201);
   } catch (error) {
     if (storageKey) await removeDocument(storageKey);
     return handleError(error);
@@ -70,10 +83,10 @@ export async function GET(request: NextRequest, context: Params) {
     const user = await actor(request);
     assertVerifiedClient(user);
     const [id] = (await context.params).segments;
-    const document = await db.document.findUnique({ where: { id }, select: { id: true, applicationId: true, originalFilename: true, privateStorageKey: true, mimeType: true, reviewStatus: true, application: { select: { customerId: true } } } });
+    const document = await db.document.findUnique({ where: { id }, select: { id: true, applicationId: true, originalFilename: true, privateStorageKey: true, mimeType: true, reviewStatus: true, clientVisible: true, application: { select: { customerId: true } } } });
     if (!document) throw new ApiError(404, "Document not found");
     if (user.role !== "OWNER" && (user.role !== "CLIENT" || document.application.customerId !== user.id)) throw new ApiError(403, "Not authorized");
-    if (user.role === "CLIENT" && !["ACCEPTED", "COMPLETED_COMPANY_DOCUMENT"].includes(document.reviewStatus)) throw new ApiError(403, "Document is not available for download");
+    if (user.role === "CLIENT" && (!document.clientVisible || !["ACCEPTED", "COMPLETED_COMPANY_DOCUMENT"].includes(document.reviewStatus))) throw new ApiError(403, "Document is not available for download");
     const bytes = await loadDocument(document.privateStorageKey);
     await db.auditLog.create({ data: { actorUserId: user.id, action: "DOCUMENT_DOWNLOADED", resourceType: "Document", resourceId: id } });
     return new Response(new Uint8Array(bytes), { headers: { "Content-Type": "application/octet-stream", "Content-Disposition": `attachment; filename="${safeFilename(document.originalFilename)}"`, "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" } });

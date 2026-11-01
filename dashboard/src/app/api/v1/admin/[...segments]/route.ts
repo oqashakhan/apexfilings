@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { ApplicationStatus, Prisma } from "@prisma/client";
+import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { db } from "@/server/db";
 import { ApiError, body, checkOrigin, handleError, json, requireRole } from "@/server/http";
@@ -33,12 +34,12 @@ async function statusChange(id: string, userId: string, next: ApplicationStatus,
   if (!canTransition(existing.status, next)) throw new ApiError(409, "Status transition is not allowed");
   if (next === "PAYMENT_RECEIVED") throw new ApiError(409, "Payment status changes only after verified payment");
   if (next === "APPROVED_FOR_FILING" && !(await approvalReady(id))) throw new ApiError(409, "Review, documents, confirmation, and verified payment are required");
-  if (next === "COMPLETED" && !existing.documents.some((doc) => doc.reviewStatus === "COMPLETED_COMPANY_DOCUMENT")) throw new ApiError(409, "Upload completed company documents first");
+  if (next === "COMPLETED" && !existing.documents.some((doc) => doc.reviewStatus === "COMPLETED_COMPANY_DOCUMENT" && doc.clientVisible)) throw new ApiError(409, "Share completed company documents with the client first");
   await db.$transaction(async (tx) => {
     const changed = await tx.application.updateMany({ where: { id, status: existing.status }, data: { status: next, ...(next === "APPROVED_FOR_FILING" ? { approvedForFilingAt: new Date(), internalReviewStatus: "APPROVED" } : {}), ...(next === "SUBMITTED_TO_AUTHORITY" ? { authorityFilingStatus: "SUBMITTED" } : {}), ...(next === "COMPLETED" ? { completedAt: new Date(), authorityFilingStatus: "COMPLETED" } : {}) } });
     if (changed.count !== 1) throw new ApiError(409, "Application changed; refresh and try again");
     const event = await tx.applicationStatusHistory.create({ data: { applicationId: id, previousStatus: existing.status, newStatus: next, changedById: userId, reason } });
-    await queueNotification(tx, `status:${event.id}`, existing.customerId, "STATUS_UPDATED", "Application status updated", `Your application is now ${statusNames[next]}.`, id);
+    await queueNotification(tx, `status:${event.id}`, existing.customerId, "STATUS_UPDATED", "Application status updated", `Your ${existing.company.preferredName} application is now ${statusNames[next]}.`, id);
     const otherOwners = await tx.user.findMany({ where: { role: "OWNER", status: "ACTIVE", id: { not: userId } }, select: { id: true } });
     for (const owner of otherOwners) await queueNotification(tx, `status:${event.id}:owner:${owner.id}`, owner.id, "STATUS_UPDATED", "Application status changed", `${existing.company.preferredName} is now ${statusNames[next]}.`, id);
     const preference = await tx.notificationPreference.findUnique({ where: { userId: existing.customerId } });
@@ -78,7 +79,7 @@ export async function GET(request: NextRequest, context: Params) {
     }
     if (resource === "clients") {
       if (id) {
-        const client = await db.user.findFirst({ where: { id, role: "CLIENT" }, select: { id: true, fullName: true, email: true, phone: true, status: true, createdAt: true, companies: { select: { id: true, preferredName: true, formationState: true } }, applications: { select: { id: true, status: true, companyId: true } } } });
+        const client = await db.user.findFirst({ where: { id, role: "CLIENT" }, select: { id: true, fullName: true, email: true, phone: true, status: true, emailVerifiedAt: true, verificationRequired: true, createdAt: true, companies: { select: { id: true, preferredName: true, formationState: true } }, applications: { select: { id: true, status: true, companyId: true } }, supportTickets: { select: { id: true, subject: true, status: true, createdAt: true }, orderBy: { createdAt: "desc" }, take: 25 } } });
         if (!client) throw new ApiError(404, "Client not found");
         return json({ client });
       }
@@ -178,7 +179,7 @@ export async function POST(request: NextRequest, context: Params) {
       if (!found) throw new ApiError(404, "Document not found");
       if (found.reviewStatus !== "UNDER_REVIEW") throw new ApiError(409, "Document is not awaiting review");
       await db.$transaction(async (tx) => {
-        const claim = await tx.document.updateMany({ where: { id, reviewStatus: "UNDER_REVIEW" }, data: { reviewStatus: input.status, reviewedById: user.id, reviewedAt: new Date() } });
+        const claim = await tx.document.updateMany({ where: { id, reviewStatus: "UNDER_REVIEW" }, data: { reviewStatus: input.status, reviewReason: input.status === "REPLACEMENT_REQUIRED" ? input.reason ?? null : null, reviewedById: user.id, reviewedAt: new Date() } });
         if (!claim.count) throw new ApiError(409, "Document already reviewed");
         await queueNotification(tx, `document-review:${id}`, found.application.customerId, "DOCUMENT_REVIEW", input.status === "REPLACEMENT_REQUIRED" ? "Document replacement requested" : "Document approved", input.status === "REPLACEMENT_REQUIRED" ? "Please review the document request in your dashboard." : "A submitted document was approved for internal review.", found.applicationId);
         if (found.application.customer.notificationPreference?.documentEmail !== false) await queueEmail(tx, `document-review:${id}`, found.application.customer.email, input.status === "REPLACEMENT_REQUIRED" ? "Document replacement requested — Apex Filings" : "Document reviewed — Apex Filings", emailHtml(input.status === "REPLACEMENT_REQUIRED" ? "Document replacement requested" : "Document approved", [input.status === "REPLACEMENT_REQUIRED" ? "Please sign in to review the replacement request." : "A document was approved for internal review. This is not government approval."], { label: "Open documents", href: `${process.env.APP_ORIGIN ?? "http://localhost:3001"}/client/documents` }));
@@ -269,6 +270,24 @@ export async function PATCH(request: NextRequest, context: Params) {
     checkOrigin(request);
     const user = await requireRole(request, "OWNER");
     const [resource, id] = (await context.params).segments;
+    if (resource === "documents" && id) {
+      const input = z.object({ clientVisible: z.boolean() }).parse(await body(request));
+      const document = await db.document.findUnique({ where: { id }, include: { uploadedBy: { select: { role: true } }, application: { select: { customerId: true, company: { select: { preferredName: true } }, customer: { select: { email: true, notificationPreference: true } } } } } });
+      if (!document) throw new ApiError(404, "Document not found");
+      if (document.uploadedBy.role !== "OWNER" || document.reviewStatus !== "COMPLETED_COMPANY_DOCUMENT") throw new ApiError(409, "Only completed Admin documents can change visibility");
+      if (document.clientVisible === input.clientVisible) return json({ document: { id, clientVisible: document.clientVisible } });
+      await db.$transaction(async (tx) => {
+        const changed = await tx.document.updateMany({ where: { id, clientVisible: !input.clientVisible }, data: { clientVisible: input.clientVisible } });
+        if (!changed.count) throw new ApiError(409, "Document visibility changed; refresh and try again");
+        await tx.auditLog.create({ data: { actorUserId: user.id, action: "DOCUMENT_VISIBILITY_CHANGED", resourceType: "Document", resourceId: id, safeMetadata: { clientVisible: input.clientVisible } } });
+        if (input.clientVisible) {
+          const eventKey = `document-share:${id}:${randomUUID()}`;
+          await queueNotification(tx, eventKey, document.application.customerId, "FINAL_DOCUMENT", "Company document available", `A document for ${document.application.company.preferredName} is available in your dashboard.`, document.applicationId);
+          if (document.application.customer.notificationPreference?.documentEmail !== false) await queueEmail(tx, eventKey, document.application.customer.email, "Your company document is available — Apex Filings", emailHtml("Company document available", ["A company document is ready in your secure dashboard. Sign in to download it."], { label: "View documents", href: `${process.env.APP_ORIGIN ?? "http://localhost:3001"}/client/documents` }));
+        }
+      });
+      return json({ document: { id, clientVisible: input.clientVisible } });
+    }
     if (resource === "payment-instructions" && !id) {
       const input = z.object({ body: z.string().trim().max(3000) }).parse(await body(request));
       const result = await db.$transaction(async (tx) => {

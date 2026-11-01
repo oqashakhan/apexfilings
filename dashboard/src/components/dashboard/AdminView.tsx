@@ -5,13 +5,14 @@ import { PageHeader } from "@/components/ui/DashboardUI";
 import { AdminOverview } from "@/components/dashboard/AdminOverview";
 import { AdminApplications } from "@/components/dashboard/AdminApplications";
 import { AdminApplicationDetail } from "@/components/dashboard/AdminApplicationDetail";
-import { AdminClients, AdminClientDetail, AdminOrders, AdminOrderDetail, AdminDocuments, AdminPayments } from "@/components/dashboard/AdminOperations";
+import { AdminClients, AdminOrders, AdminOrderDetail, AdminDocuments, AdminPayments } from "@/components/dashboard/AdminOperations";
 import { AdminServices, AdminWebsiteContent, AdminSettings } from "@/components/dashboard/AdminManagement";
 import { NotificationCenter } from "@/components/dashboard/NotificationCenter";
 import { AccountSecurity } from "@/components/dashboard/AccountSecurity";
 import { GoogleOAuthAlert } from "@/components/forms/GoogleOAuthAlert";
 import { EmailDeliveryView } from "@/components/dashboard/EmailDeliveryView";
 import { SupportCenter } from "@/components/dashboard/SupportCenter";
+import { AdminClientWorkspace } from "@/components/dashboard/AdminClientWorkspace";
 
 const titles: Record<string, string> = {
   dashboard: "Dashboard", applications: "Applications", clients: "Clients", orders: "Orders",
@@ -22,7 +23,7 @@ const titles: Record<string, string> = {
 export function AdminView({ section, detailId, oauthError }: { section: string; detailId?: string; oauthError?: string }) {
   let content: React.ReactNode;
   if (detailId && section === "applications") content = <AdminApplicationDetail id={detailId} />;
-  else if (detailId && section === "clients") content = <AdminClientDetail id={detailId} />;
+  else if (detailId && section === "clients") content = <AdminClientWorkspace id={detailId} />;
   else if (detailId && section === "orders") content = <AdminOrderDetail id={detailId} />;
   else switch (section) {
     case "dashboard": content = <AdminOverview />; break;
