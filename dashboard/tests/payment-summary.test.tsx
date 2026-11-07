@@ -9,19 +9,19 @@ const catalog: PricingCatalog = {
  services: [{id:'mail',slug:'mail',name:'Mail forwarding',description:'Separate service',available:true,priceCents:null,priceApproved:false,currency:'USD'}],
  states: [{code:'FL',state:'Florida',filingFeeCents:null,referenceFilingFeeCents:12500,active:false,verifiedAt:null,sourceReference:'Client reference',recurringFeeDescription:null,recurringFeePeriod:null,processingTime:null}],
 };
-test('summary renders Florida reference, $324 subtotal, zero discount and explicit approval block', () => {
+test('summary keeps unapproved Florida nonpayable with a concise notice', () => {
  const html=renderToStaticMarkup(<PricingSummary quote={quotePricing(catalog,'basic','Florida',['ein'])} />);
- for(const text of ['Florida','$125.00','$324.00','Discounts','$0.00','approval pending','Payment is unavailable']) assert.ok(html.includes(text),text);
+ for(const text of ['Florida','Discount','$0.00','Being confirmed','Final pricing is being confirmed']) assert.ok(html.includes(text),text);
  assert.equal(html.includes('To Be Confirmed'),false);
 });
 test('missing optional price is identified without hiding known prices', () => {
  const html=renderToStaticMarkup(<PricingSummary quote={quotePricing(catalog,'basic','Florida',['mail'])} />);
- for(const text of ['$199.00','$125.00','Mail forwarding','Service price missing','Discounts']) assert.ok(html.includes(text),text);
+ for(const text of ['$199.00','Mail forwarding','Being confirmed','Discount']) assert.ok(html.includes(text),text);
  assert.equal(html.includes('$324.00'),false,'no complete subtotal when an optional price is unknown');
 });
 test('quote error replaces loading and cannot display a stale payable total', () => {
  const html=renderToStaticMarkup(<PricingSummary quote={null} error="Pricing service unavailable" />);
- assert.ok(html.includes('role="alert"')); assert.ok(html.includes('Pricing service unavailable')); assert.equal(html.includes('Calculating'),false);
+ assert.ok(html.includes('role="alert"')); assert.ok(html.includes('temporarily unavailable')); assert.equal(html.includes('Calculating'),false);
 });
 test('approved optional service has its own price and disappears when deselected', () => {
  const approved=structuredClone(catalog);

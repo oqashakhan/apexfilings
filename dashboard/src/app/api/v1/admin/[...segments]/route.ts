@@ -1,3 +1,4 @@
+import { isIdentityDocument, ownerHasIdentity } from "@/lib/identity-documents";
 import { NextRequest } from "next/server";
 import { ApplicationStatus, Prisma } from "@prisma/client";
 import { randomUUID } from "node:crypto";
@@ -40,7 +41,7 @@ async function approvalReady(id: string) {
   const item = await application(id);
   const checks = new Set(item.reviews.map((review) => review.checkKey));
   const requiredDocuments = await db.serviceDocumentRequirement.findMany({ where: { serviceId: item.serviceId, required: true, OR: [{ stateCode: null }, { stateCode: item.company.formationState }] } });
-  const docsReady = requiredDocuments.every((requirement) => requirement.documentType === "OWNER_ID"
+  const docsReady = item.company.owners.length > 0 && item.company.owners.every(owner => ownerHasIdentity(item.documents, owner.id, true)) && requiredDocuments.filter(requirement => !isIdentityDocument(requirement.documentType)).every((requirement) => requirement.documentType === "OWNER_ID"
     ? item.company.owners.every((owner) => item.documents.some((doc) => doc.documentType === requirement.documentType && doc.ownerId === owner.id && doc.reviewStatus === "ACCEPTED"))
     : item.documents.some((doc) => doc.documentType === requirement.documentType && doc.reviewStatus === "ACCEPTED"));
   return item.customerConfirmedAt != null && item.order?.paymentStatus === "VERIFIED" && docsReady && await requestedDocumentsReady(id) && approvalChecks.every((check) => checks.has(check));

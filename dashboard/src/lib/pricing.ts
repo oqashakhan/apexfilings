@@ -1,5 +1,5 @@
 export type PricePackage = { id: string; slug: string; name: string; serviceFeeCents: number; currency: string; available: boolean; includedServices: string[]; includedServiceSlugs: string[] };
-export type PriceService = { id: string; slug: string; name: string; description: string; available: boolean; priceCents: number | null; currency: string; priceApproved: boolean };
+export type PriceService = { id: string; slug: string; name: string; description: string; available: boolean; priceCents: number | null; currency: string; priceApproved: boolean; availableStateCodes?: string[]; category?: string; displayOrder?: number };
 export type PriceState = { code: string; state: string; filingFeeCents: number | null; referenceFilingFeeCents?: number | null; active: boolean; verifiedAt: string | Date | null; sourceReference: string | null; recurringFeeDescription: string | null; recurringFeePeriod: string | null; processingTime: string | null };
 export type PricingCatalog = { packages: PricePackage[]; services: PriceService[]; states: PriceState[] };
 export type QuoteSnapshot = ReturnType<typeof quotePricing>;
@@ -31,6 +31,10 @@ export function quotePricing(catalog: PricingCatalog, slug: string, stateName: s
     if (service && pack?.includedServiceSlugs.includes(service.slug)) continue;
     if (service && charged.has(service.slug)) continue;
     if (service) charged.add(service.slug);
+    if (service?.availableStateCodes?.length && (!state || !service.availableStateCodes.includes(state.code))) {
+      pendingItems.push({ description: service.name, referenceAmountCents: null, reason: 'Not available in the selected state' });
+      issues.push(`${service.name}: not available in ${state?.state ?? stateName}.`); continue;
+    }
     if (!service?.available || !service.priceApproved || service.priceCents === null || !Number.isSafeInteger(service.priceCents) || service.priceCents < 0 || service.currency !== 'USD') {
       const description = service?.name ?? slug;
       const reason = !service ? 'Service record missing' : !service.available ? 'Service unavailable' : service.priceCents === null ? 'Service price missing' : !service.priceApproved ? 'Service price requires approval' : 'Service price or currency invalid';

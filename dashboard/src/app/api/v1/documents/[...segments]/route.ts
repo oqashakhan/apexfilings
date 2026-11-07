@@ -1,3 +1,4 @@
+import { isIdentityDocument } from "@/lib/identity-documents";
 import { NextRequest } from "next/server";
 import { db } from "@/server/db";
 import { actor, assertVerifiedClient, ApiError, checkOrigin, handleError, json } from "@/server/http";
@@ -58,7 +59,7 @@ export async function POST(request: NextRequest, context: Params) {
       if (!request || request.documentType !== documentType || request.ownerId !== ownerId) throw new ApiError(409, "Document replacement request is no longer available");
     }
     if (ownerId && !application.company.owners.some((owner) => owner.id === ownerId)) throw new ApiError(400, "Owner does not belong to this application");
-    if (documentType === "OWNER_ID" && !ownerId) throw new ApiError(400, "Select an owner for identification");
+    if (isIdentityDocument(documentType) && !ownerId) throw new ApiError(400, "Select an owner for identification");
     const buffer = Buffer.from(await file.arrayBuffer());
     const identified = validateDocument(buffer, file.type);
     storageKey = await storeDocument(buffer, identified.ext);

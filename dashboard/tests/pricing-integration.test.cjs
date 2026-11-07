@@ -67,5 +67,11 @@ test('owner publishing, customer quote, draft restoration and immutable submitte
  assert.equal(frozenQuote.data.totalCents,order.totalCents,'finalized quote ignores changed catalog and browser selections');
  assert.equal((await api(`/api/v1/admin/orders/${order.id}`,'PATCH',{governmentFeeCents:1,thirdPartyFeeCents:0,additionalFeeCents:0,discountCents:0},owner.token)).status,409);
  const publicCatalog=await api('/api/v1/pricing'); assert.equal(publicCatalog.data.states.find(s=>s.code==='AK').filingFeeCents,26000);
+ const availability={...serviceData,availableStateCodes:['FL'],category:'Formation support',displayOrder:12};
+ assert.equal((await api('/api/v1/admin/pricing','PATCH',{kind:'service',id:extra.id,data:{...availability,availableStateCodes:['ZZ']}},owner.token)).status,400);
+ assert.equal((await api('/api/v1/admin/pricing','PATCH',{kind:'service',id:extra.id,data:availability},owner.token)).status,200);
+ const restricted=await api('/api/v1/pricing/quote','POST',{packageSlug:'basic',state:'Wyoming',services:[extra.slug]},client.token);
+ assert.equal(restricted.data.totalCents,null);assert.match(restricted.data.issues.join(),/not available/);
+ const updated=await db.service.findUniqueOrThrow({where:{id:extra.id}});assert.equal(updated.displayOrder,12);assert.equal(updated.category,'Formation support');
  } finally { for(const original of [...stateBackups,...(state?[state]:[])]) { const {code,...data}=original; await db.stateFilingFee.update({where:{code},data}); } await db.$disconnect(); }
 });

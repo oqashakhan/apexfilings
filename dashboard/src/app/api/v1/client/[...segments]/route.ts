@@ -1,3 +1,4 @@
+import { isIdentityDocument, ownerHasIdentity } from "@/lib/identity-documents";
 import { NextRequest } from "next/server";
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
@@ -218,10 +219,10 @@ export async function POST(request: NextRequest, context: Params) {
       const form = applicationDraftInput.parse({ preferredName: current.company.preferredName, firstAlternativeName: current.company.alternativeName1, secondAlternativeName: current.company.alternativeName2 ?? "", formationState: current.company.formationState, businessActivity: current.company.businessActivity, description: current.company.businessDescription, addressRequirement: current.company.addressRequirements, membership: current.company.ownershipType, management: current.company.managementStructure, packageSlug: current.package.slug, additionalServices: current.additionalServices, owners: current.company.owners.map((owner) => ({ fullName: owner.fullLegalName, email: owner.email, phone: owner.phone, nationality: owner.nationality, residence: owner.countryOfResidence, address: owner.residentialAddress, ownership: owner.ownershipBasisPoints / 100 })) });
       validateOwners(form);
       const required = await db.serviceDocumentRequirement.findMany({ where: { serviceId: current.serviceId, required: true, OR: [{ stateCode: null }, { stateCode: current.company.formationState }] } });
-      for (const requirement of required) {
+      if (current.company.owners.some(owner => !ownerHasIdentity(current.documents, owner.id))) throw new ApiError(409, "Please upload your CNIC or Passport to continue.");
+      for (const requirement of required.filter(item => !isIdentityDocument(item.documentType))) {
         const matching = current.documents.filter((document) => document.documentType === requirement.documentType && document.reviewStatus !== "REPLACEMENT_REQUIRED");
-        if (requirement.documentType === "OWNER_ID" && current.company.owners.some((owner) => !matching.some((document) => document.ownerId === owner.id))) throw new ApiError(409, "Upload identification for each owner before submitting");
-        if (requirement.documentType !== "OWNER_ID" && !matching.length) throw new ApiError(409, `Required document missing: ${requirement.documentType}`);
+        if (!matching.length) throw new ApiError(409, `Required document missing: ${requirement.documentType}`);
       }
       const result = await db.$transaction(async (tx) => {
         const claim = await tx.application.updateMany({ where: { id, customerId: user.id, status: "DRAFT" }, data: { status: "AWAITING_PAYMENT", customerConfirmedAt: new Date(), submittedAt: new Date() } });

@@ -4,7 +4,7 @@ import { quotePricing, type PricingCatalog } from '@/lib/pricing';
 export async function pricingCatalog(client: Pick<typeof db, 'package' | 'service' | 'stateFilingFee'> = db): Promise<PricingCatalog> {
   const [packages, services, states] = await Promise.all([
     client.package.findMany({ orderBy: { serviceFeeCents: 'asc' } }),
-    client.service.findMany({ orderBy: { name: 'asc' } }),
+    client.service.findMany({ orderBy: [{ displayOrder: 'asc' }, { name: 'asc' }] }),
     client.stateFilingFee.findMany({ orderBy: { state: 'asc' } }),
   ]);
   return { packages, services, states };

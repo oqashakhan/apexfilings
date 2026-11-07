@@ -1,4 +1,5 @@
 "use client";
+import { isIdentityDocument } from '@/lib/identity-documents';
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import type { AdminActivity, AdminApplication, AdminClient, AdminCompany, AdminContentItem, AdminDocument, AdminNotification, AdminOrder, AdminPackage, AdminPayment, AdminRefund, AdminService, AdminStateFee, AdminStatusEvent } from "@/lib/admin-models";
@@ -67,7 +68,7 @@ export function AdminDemoProvider({ children }: { children: React.ReactNode }) {
       const application = snapshot.applications.find((item) => item.id === id);
       const order = snapshot.orders.find((item) => item.applicationId === id);
       const files = snapshot.documents.filter((item) => item.applicationId === id && item.status !== "Completed Company Document");
-      return Boolean(application?.customerConfirmed && !application.pendingDocumentRequests && order?.paymentStatus === "Paid" && files.length > 0 && files.every((item) => item.status === "Accepted") && reviewChecks.every((check) => snapshot.checks[id]?.includes(check)));
+      return Boolean(application?.customerConfirmed && !application.pendingDocumentRequests && order?.paymentStatus === "Paid" && application.identityReady && files.filter(item => !isIdentityDocument(item.type)).every((item) => item.status === "Accepted") && reviewChecks.every((check) => snapshot.checks[id]?.includes(check)));
     },
     changeStatus: async (id, status, reason) => { try { await act(`applications/${id}/status`, "POST", { status: statusCodes[status], reason }); return true; } catch { return false; } },
     reviewDocument: async (id, status, reason) => { await act(`documents/${id}/review`, "POST", { status: status === "Accepted" ? "ACCEPTED" : "REPLACEMENT_REQUIRED", reason }); },

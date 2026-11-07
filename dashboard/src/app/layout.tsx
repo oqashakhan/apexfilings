@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import "./dashboard-polish.css";
+import "./llc-wizard.css";
 
 export const metadata: Metadata = {
   title: "Apex Filings Dashboard Preview",
