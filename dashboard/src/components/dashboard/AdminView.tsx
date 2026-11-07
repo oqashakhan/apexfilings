@@ -1,4 +1,6 @@
 "use client";
+import {InvoiceCenter} from "./InvoiceCenter";
+import {InvoiceSettings} from "./InvoiceSettings";
 
 import { DashboardShell } from "@/components/layout/DashboardShell";
 import { PageHeader } from "@/components/ui/DashboardUI";
@@ -15,14 +17,15 @@ import { SupportCenter } from "@/components/dashboard/SupportCenter";
 import { AdminClientWorkspace } from "@/components/dashboard/AdminClientWorkspace";
 
 const titles: Record<string, string> = {
-  dashboard: "Dashboard", applications: "Applications", clients: "Clients", orders: "Orders",
+  invoices:"Invoices", dashboard: "Dashboard", applications: "Applications", clients: "Clients", orders: "Orders",
   documents: "Documents", payments: "Payments", services: "Services & Pricing",
   "website-content": "Website Content", notifications: "Notifications", "email-delivery": "Email Delivery", support: "Support", settings: "Settings",
 };
 
 export function AdminView({ section, detailId, oauthError }: { section: string; detailId?: string; oauthError?: string }) {
   let content: React.ReactNode;
-  if (detailId && section === "applications") content = <AdminApplicationDetail id={detailId} />;
+  if(section === "invoices") content = <InvoiceCenter role="admin" id={detailId}/>;
+  else if (detailId && section === "applications") content = <AdminApplicationDetail id={detailId} />;
   else if (detailId && section === "clients") content = <AdminClientWorkspace id={detailId} />;
   else if (detailId && section === "orders") content = <AdminOrderDetail id={detailId} />;
   else switch (section) {
@@ -37,7 +40,7 @@ export function AdminView({ section, detailId, oauthError }: { section: string; 
     case "notifications": content = <NotificationCenter role="admin" />; break;
     case "email-delivery": content = <EmailDeliveryView />; break;
     case "support": content = <SupportCenter role="admin" />; break;
-    case "settings": content = <><GoogleOAuthAlert code={oauthError} context="settings" /><AdminSettings /><AccountSecurity /></>; break;
+    case "settings": content = <><GoogleOAuthAlert code={oauthError} context="settings" /><AdminSettings /><InvoiceSettings/><AccountSecurity /></>; break;
     default: content = <PageHeader title="Page not found" description="Choose a page from the dashboard navigation." />;
   }
   return <DashboardShell role="admin" title={titles[section] ?? "Not Found"}>{content}</DashboardShell>;

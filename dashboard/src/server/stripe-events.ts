@@ -1,3 +1,4 @@
+import { attachStripeInvoice, syncInvoice } from "@/server/invoices";
 import "server-only";
 import Stripe from "stripe";
 import { db } from "@/server/db";
@@ -39,11 +40,13 @@ async function paidSession(sessionId: string, eventId: string) {
       await tx.applicationStatusHistory.create({ data: { applicationId: checkout.order.applicationId, previousStatus: "AWAITING_PAYMENT", newStatus: "PAYMENT_RECEIVED", reason: "Stripe payment verified" } });
     }
     if (invoice?.status === "paid") {
-      await tx.invoice.upsert({ where: { orderId: checkout.orderId }, create: { orderId: checkout.orderId, number: invoice.number ?? `AF-${checkout.orderId}`, issuedAt: invoice.status_transitions.paid_at ? new Date(invoice.status_transitions.paid_at * 1000) : paidAt, stripeInvoiceId: invoice.id, hostedInvoiceUrl: invoice.hosted_invoice_url, invoicePdfUrl: invoice.invoice_pdf }, update: { number: invoice.number ?? checkout.order.invoice?.number ?? `AF-${checkout.orderId}`, stripeInvoiceId: invoice.id, hostedInvoiceUrl: invoice.hosted_invoice_url, invoicePdfUrl: invoice.invoice_pdf } });
+      await attachStripeInvoice(tx,checkout.orderId,invoice,invoice.status_transitions.paid_at ? new Date(invoice.status_transitions.paid_at*1000):paidAt);
     }
+    await syncInvoice(tx,checkout.orderId,{kind:"payment",id:payment.id});
+    const canonicalInvoice=await tx.invoice.findUnique({where:{orderId:checkout.orderId}});
     const customer = checkout.order.application.customer;
     await queueNotification(tx, `stripe-paid:${intentId}:client`, customer.id, "PAYMENT_UPDATE", "Payment confirmed", `Stripe confirmed payment for order ${checkout.orderId}.`, checkout.order.applicationId);
-    if (customer.notificationPreference?.paymentEmail !== false) await queueEmail(tx, `stripe-paid:${intentId}:client`, customer.email, "Payment confirmed — Apex Filings", emailHtml("Payment confirmed", [`Order reference: ${checkout.orderId}`, `Amount: ${(checkout.amountCents / 100).toFixed(2)} ${checkout.currency}`, "Your application is ready for the next internal review stage."], { label: "Track application", href: `${origin}/client/applications/${checkout.order.applicationId}` }));
+    if (customer.notificationPreference?.paymentEmail !== false && canonicalInvoice?.lifecycle!=="ISSUED") await queueEmail(tx, `stripe-paid:${intentId}:client`, customer.email, "Payment confirmed — Apex Filings", emailHtml("Payment confirmed", [`Order reference: ${checkout.orderId}`, `Amount: ${(checkout.amountCents / 100).toFixed(2)} ${checkout.currency}`, "Your application is ready for the next internal review stage."], { label: "Track application", href: `${origin}/client/applications/${checkout.order.applicationId}` }));
     const owners = await tx.user.findMany({ where: { role: "OWNER", status: "ACTIVE" }, select: { id: true } });
     for (const owner of owners) await queueNotification(tx, `stripe-paid:${intentId}:owner:${owner.id}`, owner.id, "PAYMENT_UPDATE", "New payment received", `Stripe confirmed order ${checkout.orderId}.`, checkout.order.applicationId);
     if (process.env.ADMIN_NOTIFICATION_EMAIL) await queueEmail(tx, `stripe-paid:${intentId}:admin`, process.env.ADMIN_NOTIFICATION_EMAIL, "New payment received — Apex Filings", emailHtml("New payment received", [`Order reference: ${checkout.orderId}`, `Amount: ${(checkout.amountCents / 100).toFixed(2)} ${checkout.currency}`, "Review the application in the secure dashboard."], { label: "Review payment", href: `${origin}/admin/orders/${checkout.orderId}` }));
@@ -69,17 +72,23 @@ async function failedSession(sessionId: string, type: string) {
 async function refundEvent(refund: Stripe.Refund) {
   const request = await db.refundRequest.findFirst({ where: { OR: [{ stripeRefundId: refund.id }, { id: refund.metadata?.refundRequestId ?? "" }] }, include: { order: { include: { application: { include: { customer: { include: { notificationPreference: true } } } } } } } });
   if (!request) return;
+  if (request.status === "COMPLETED" && request.stripeStatus === "succeeded") return;
   if (request.stripeRefundId && request.stripeRefundId !== refund.id) throw new ApiError(409, "Refund reference changed");
   if (request.stripeStatus === refund.status && (refund.status !== "succeeded" || request.status === "COMPLETED")) return;
   if (stripeId(refund.payment_intent) !== (await db.payment.findFirst({ where: { orderId: request.orderId, method: "STRIPE", status: "VERIFIED" }, select: { stripePaymentIntentId: true } }))?.stripePaymentIntentId || refund.amount !== request.amountCents) throw new ApiError(409, "Stripe refund and order do not match");
   await db.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT id FROM "Order" WHERE id=${request.orderId} FOR UPDATE`;
+    const latest=await tx.refundRequest.findUniqueOrThrow({where:{id:request.id}});
+    if(latest.stripeRefundId&&latest.stripeRefundId!==refund.id)throw new ApiError(409,'Refund reference changed');
+    if(latest.status==='COMPLETED'&&latest.stripeStatus==='succeeded')return;
     const updated = await tx.refundRequest.update({ where: { id: request.id }, data: { stripeRefundId: refund.id, stripeStatus: refund.status, ...(refund.status === "succeeded" ? { status: "COMPLETED" } : {}) } });
     if (refund.status === "succeeded") {
       const completed = await tx.refundRequest.aggregate({ where: { orderId: request.orderId, stripeStatus: "succeeded" }, _sum: { amountCents: true } });
       if (completed._sum.amountCents === request.order.totalCents) await tx.order.update({ where: { id: request.orderId }, data: { paymentStatus: "REFUNDED" } });
+      await syncInvoice(tx,request.orderId,{kind:"refund",id:request.id});
       await queueNotification(tx, `stripe-refund:${refund.id}:succeeded`, request.order.application.customerId, "PAYMENT_UPDATE", "Refund completed", `Stripe confirmed a refund for order ${request.orderId}.`, request.order.applicationId);
       const customer = request.order.application.customer;
-      if (customer.notificationPreference?.paymentEmail !== false) await queueEmail(tx, `stripe-refund:${refund.id}:succeeded`, customer.email, "Refund completed — Apex Filings", emailHtml("Refund completed", [`Order reference: ${request.orderId}`, `Amount: ${(refund.amount / 100).toFixed(2)} ${request.order.currency}`], { label: "View order", href: `${stripeAppOrigin()}/client/orders/${request.orderId}` }));
+      if (customer.notificationPreference?.paymentEmail !== false && (await tx.invoice.findUnique({where:{orderId:request.orderId}}))?.lifecycle!=="ISSUED") await queueEmail(tx, `stripe-refund:${refund.id}:succeeded`, customer.email, "Refund completed — Apex Filings", emailHtml("Refund completed", [`Order reference: ${request.orderId}`, `Amount: ${(refund.amount / 100).toFixed(2)} ${request.order.currency}`], { label: "View order", href: `${stripeAppOrigin()}/client/orders/${request.orderId}` }));
     } else if (refund.status === "failed") {
       await queueNotification(tx, `stripe-refund:${refund.id}:failed`, request.order.application.customerId, "PAYMENT_UPDATE", "Refund needs attention", `The refund for order ${request.orderId} could not be completed. Our team will review it.`, request.order.applicationId);
       const owners = await tx.user.findMany({ where: { role: "OWNER", status: "ACTIVE" }, select: { id: true } });
@@ -94,11 +103,11 @@ async function paidInvoice(invoiceId: string) {
   const invoice = await stripe.invoices.retrieve(invoiceId);
   const orderId = invoice.metadata?.orderId;
   if (!orderId) return;
-  const order = await db.order.findUnique({ where: { id: orderId }, include: { application: { include: { customer: { include: { notificationPreference: true } } } } } });
-  if (!order || invoice.livemode !== (mode === "live") || invoice.status !== "paid" || invoice.amount_paid !== order.totalCents || invoice.currency.toUpperCase() !== order.currency || order.paymentStatus !== "VERIFIED") throw new ApiError(409, "Stripe invoice does not match a verified order");
+  const order = await db.order.findUnique({ where: { id: orderId }, include: { payments:true, application: { include: { customer: { include: { notificationPreference: true } } } } } });
+  if (!order || invoice.livemode !== (mode === "live") || invoice.status !== "paid" || invoice.amount_paid !== order.totalCents || invoice.currency.toUpperCase() !== order.currency || !order.payments.some(p=>p.method==="STRIPE"&&p.verifiedAt&&p.amountCents===invoice.amount_paid&&["VERIFIED","DISPUTED","REFUNDED"].includes(p.status))) throw new ApiError(409, "Stripe invoice does not match a verified order");
   await db.$transaction(async (tx) => {
-    await tx.invoice.upsert({ where: { orderId }, create: { orderId, number: invoice.number ?? `AF-${orderId}`, stripeInvoiceId: invoice.id, hostedInvoiceUrl: invoice.hosted_invoice_url, invoicePdfUrl: invoice.invoice_pdf, issuedAt: new Date() }, update: { number: invoice.number ?? `AF-${orderId}`, stripeInvoiceId: invoice.id, hostedInvoiceUrl: invoice.hosted_invoice_url, invoicePdfUrl: invoice.invoice_pdf } });
-    if (!await tx.notification.findUnique({ where: { eventKey: `stripe-invoice:${invoice.id}` } })) {
+    await attachStripeInvoice(tx,orderId,invoice,new Date());
+    if ((await tx.invoice.findUnique({where:{orderId}}))?.lifecycle!=="ISSUED" && !await tx.notification.findUnique({ where: { eventKey: `stripe-invoice:${invoice.id}` } })) {
       await queueNotification(tx, `stripe-invoice:${invoice.id}`, order.application.customerId, "PAYMENT_UPDATE", "Paid invoice available", `Your paid invoice for order ${orderId} is available.`, order.applicationId);
       if (order.application.customer.notificationPreference?.paymentEmail !== false) await queueEmail(tx, `stripe-invoice:${invoice.id}`, order.application.customer.email, "Your paid invoice is available — Apex Filings", emailHtml("Paid invoice available", [`Order reference: ${orderId}`, "Sign in to view or download your paid invoice."], { label: "View order", href: `${stripeAppOrigin()}/client/orders/${orderId}` }));
     }

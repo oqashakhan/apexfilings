@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  serverExternalPackages: ['pdfkit'],
+  outputFileTracingIncludes: {'/api/v1/invoices/**/*': ['./assets/fonts/**/*']},
   async headers() {
     return [{ source: "/:path*", headers: [
       { key: "X-Content-Type-Options", value: "nosniff" },

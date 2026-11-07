@@ -1,3 +1,4 @@
+import { ensureInvoice, syncInvoice } from "@/server/invoices";
 import { isIdentityDocument, ownerHasIdentity } from "@/lib/identity-documents";
 import { NextRequest } from "next/server";
 import { ApplicationStatus, Prisma } from "@prisma/client";
@@ -238,7 +239,7 @@ export async function POST(request: NextRequest, context: Params) {
     if (resource === "payments" && !id) {
       const input = z.object({ orderId: z.string().min(1), amountCents: z.number().int().positive(), reference: z.string().trim().min(2).max(200), supportingInfo: z.string().trim().max(1000).optional() }).parse(await body(request));
       const order = await db.order.findUnique({ where: { id: input.orderId } });
-      if (!order || order.paymentStatus === "VERIFIED" || order.totalCents === null) throw new ApiError(409, "Confirm all order fees before recording a payment");
+      if (!order || order.status !== "OPEN" || order.paymentStatus === "VERIFIED" || order.totalCents === null) throw new ApiError(409, "Confirm all order fees before recording a payment");
       if (await db.stripeCheckout.findUnique({ where: { orderId: order.id } })) throw new ApiError(409, "A Stripe checkout exists for this order");
       if (input.amountCents !== order.totalCents) throw new ApiError(400, "Payment amount must match the confirmed order total");
       const result = await db.$transaction(async (tx) => {
@@ -271,9 +272,10 @@ export async function POST(request: NextRequest, context: Params) {
           await tx.application.update({ where: { id: payment.order.applicationId }, data: { status: "PAYMENT_RECEIVED" } });
           await tx.applicationStatusHistory.create({ data: { applicationId: payment.order.applicationId, previousStatus: oldStatus, newStatus: "PAYMENT_RECEIVED", changedById: user.id, reason: "Manual payment verified by owner" } });
         }
+        await syncInvoice(tx,payment.orderId,{kind:"payment",id});
         await queueNotification(tx, `payment-verified:${id}`, payment.order.application.customerId, "PAYMENT_UPDATE", "Payment verified", "The recorded payment was verified by Apex Filings.", payment.order.applicationId);
         const customer = await tx.user.findUniqueOrThrow({ where: { id: payment.order.application.customerId }, select: { email: true, notificationPreference: true } });
-        if (customer.notificationPreference?.paymentEmail !== false) await queueEmail(tx, `payment-verified:${id}`, customer.email, "Your payment was verified — Apex Filings", emailHtml("Payment verified", [`Order reference: ${payment.orderId}`, "Your manual payment has been verified by Apex Filings."], { label: "View order", href: `${process.env.APP_ORIGIN ?? "http://localhost:3001"}/client/orders/${payment.orderId}` }));
+        if (customer.notificationPreference?.paymentEmail !== false && (await tx.invoice.findUnique({where:{orderId:payment.orderId}}))?.lifecycle!=="ISSUED") await queueEmail(tx, `payment-verified:${id}`, customer.email, "Your payment was verified — Apex Filings", emailHtml("Payment verified", [`Order reference: ${payment.orderId}`, "Your manual payment has been verified by Apex Filings."], { label: "View order", href: `${process.env.APP_ORIGIN ?? "http://localhost:3001"}/client/orders/${payment.orderId}` }));
         await tx.auditLog.create({ data: { actorUserId: user.id, action: "MANUAL_PAYMENT_VERIFIED", resourceType: "Payment", resourceId: id } });
       });
       return json({ ok: true });
@@ -383,12 +385,8 @@ export async function PATCH(request: NextRequest, context: Params) {
         }
         const claim = await tx.order.updateMany({ where: { id, paymentStatus: "UNPAID" }, data: { ...input, serviceFeeCents: confirmedServiceFeeCents, totalCents } });
         if (!claim.count) throw new ApiError(409, "Order changed during fee confirmation");
-        const invoice = await tx.invoice.upsert({ where: { orderId: id }, create: { orderId: id, number: `AF-${id}`, issuedAt: new Date() }, update: {} });
+        await ensureInvoice(tx,id,{actorId:user.id});
         const related = await tx.order.findUniqueOrThrow({ where: { id }, include: { application: { include: { customer: { include: { notificationPreference: true } } } } } });
-        if (!(await tx.notification.findUnique({ where: { eventKey: `invoice:${invoice.id}` } }))) {
-          await queueNotification(tx, `invoice:${invoice.id}`, related.application.customerId, "PAYMENT_UPDATE", "Invoice available", "Your confirmed order total and invoice reference are available in your dashboard.", related.applicationId);
-          if (related.application.customer.notificationPreference?.paymentEmail !== false) await queueEmail(tx, `invoice:${invoice.id}`, related.application.customer.email, "Your Apex Filings invoice is available", emailHtml("Invoice available", [`Invoice reference: ${invoice.number}`, `Order reference: ${id}`, "Sign in to review the confirmed amount. This is not a payment receipt."], { label: "View order", href: `${process.env.APP_ORIGIN ?? "http://localhost:3001"}/client/orders/${id}` }));
-        }
         const instructions = await tx.paymentInstructions.findUnique({ where: { id: "default" } });
         if (instructions?.body.trim() && !(await tx.notification.findUnique({ where: { eventKey: `payment-instructions:${id}` } }))) {
           await queueNotification(tx, `payment-instructions:${id}`, related.application.customerId, "PAYMENT_UPDATE", "Payment instructions available", "Your order total and payment instructions are available in the dashboard.", related.applicationId);

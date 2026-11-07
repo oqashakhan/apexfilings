@@ -397,7 +397,7 @@ test("authenticated dashboard workflow and ownership", async () => {
     await db.stateFilingFee.update({ where: { code: testState.code }, data: { filingFeeCents: testState.filingFeeCents, sourceReference: testState.sourceReference, verifiedAt: testState.verifiedAt, active: testState.active } });
     const invoice = await db.invoice.findUnique({ where: { orderId } });
     assert.ok(invoice, "fee confirmation creates invoice reference");
-    assert.equal(await db.emailOutbox.count({ where: { eventKey: `invoice:${invoice.id}` } }), 1, "invoice availability email queued once");
+    assert.equal(await db.emailOutbox.count({ where: { eventKey: `invoice:${invoice.id}` } }), invoice.lifecycle === "ISSUED" ? 1 : 0, "only issued invoices queue an issuance email");
     let payment = await call("/api/v1/admin/payments", "POST", { orderId, amountCents: 29900, reference: `TEST-${suffix}` }, admin.cookie);
     expect(payment, 201, "record manual payment");
     assert.equal(await db.emailOutbox.count({ where: { eventKey: `payment-review:${payment.data.payment.id}:admin` } }), 1, "payment review queues owner email");

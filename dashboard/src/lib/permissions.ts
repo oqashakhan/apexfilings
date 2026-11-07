@@ -3,8 +3,8 @@ export type FutureRole = "staff" | "partner";
 
 // UI navigation only. A future backend must enforce permissions server-side.
 export const previewPermissions: Record<PreviewRole, readonly string[]> = {
-  admin: ["dashboard", "applications", "clients", "orders", "documents", "payments", "services", "website-content", "notifications", "settings"],
-  client: ["dashboard", "companies", "applications", "orders", "documents", "payments", "services", "support", "profile", "settings"],
+  admin: ["dashboard", "applications", "clients", "orders", "invoices", "documents", "payments", "services", "website-content", "notifications", "settings"],
+  client: ["dashboard", "companies", "applications", "orders", "invoices", "documents", "payments", "services", "support", "profile", "settings"],
 };
 
 export const futureRoles: FutureRole[] = ["staff", "partner"];

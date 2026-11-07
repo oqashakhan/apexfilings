@@ -526,7 +526,40 @@ model Invoice {
   stripeInvoiceId String? @unique
   hostedInvoiceUrl String?
   invoicePdfUrl String?
+  stripeInvoiceNumber String?
+  lifecycle String @default("DRAFT")
+  snapshot Json?
+  dueAt DateTime?
+  subtotalCents Int?
+  taxCents Int?
+  discountCents Int?
+  totalCents Int?
+  currency String @default("USD")
+  voidReason String?
+  voidedAt DateTime?
+  creditNotes InvoiceCreditNote[]
   order     Order    @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  @@index([lifecycle,dueAt])
+}
+
+model InvoiceSettings {
+  id String @id @default("default")
+  data Json
+  approvedAt DateTime?
+  approvedById String?
+  updatedAt DateTime @updatedAt
+}
+
+model InvoiceCreditNote {
+  id String @id @default(cuid())
+  invoiceId String
+  refundId String @unique
+  number String @unique
+  amountCents Int
+  issuedAt DateTime @default(now())
+  snapshot Json
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+  refund RefundRequest @relation(fields: [refundId], references: [id], onDelete: Restrict)
 }
 
 model PaymentInstructions {
@@ -557,6 +590,7 @@ model Payment {
 }
 
 model RefundRequest {
+  creditNote InvoiceCreditNote?
   id          String       @id @default(cuid())
   orderId     String
   amountCents Int?

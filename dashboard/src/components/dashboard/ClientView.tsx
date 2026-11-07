@@ -1,4 +1,5 @@
 "use client";
+import {InvoiceCenter} from "./InvoiceCenter";
 /* eslint-disable @next/next/no-html-link-for-pages -- Google OAuth requires a full browser redirect. */
 
 import { useState } from "react";
@@ -20,7 +21,7 @@ import { ClientReference } from "@/components/dashboard/ClientReference";
 import { useClientDemo, type ClientRecord } from "@/components/dashboard/ClientDemoContext";
 import { DataTable, EmptyState, PageHeader, Panel, StatCard, StatusBadge, type TableColumn } from "@/components/ui/DashboardUI";
 
-const titles: Record<string, string> = { dashboard: "Dashboard", companies: "My Companies", applications: "My Applications", orders: "Orders", documents: "Documents", payments: "Payments", services: "Additional Services", support: "Support", profile: "Profile", settings: "Settings", notifications: "Notifications" };
+const titles: Record<string, string> = { invoices:"Invoices", dashboard: "Dashboard", companies: "My Companies", applications: "My Applications", orders: "Orders", documents: "Documents", payments: "Payments", services: "Additional Services", support: "Support", profile: "Profile", settings: "Settings", notifications: "Notifications" };
 const date = (value: string) => new Date(value).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
 const usd = (cents: number | null) => cents === null ? "To Be Confirmed" : new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(cents / 100);
 const paymentLabel = (status: string) => ({ UNPAID: "Pending", AWAITING_VERIFICATION: "Awaiting Verification", VERIFIED: "Paid", REJECTED: "Failed", REFUNDED: "Refunded", DISPUTED: "Disputed" })[status as "UNPAID"] ?? status;
@@ -55,6 +56,7 @@ function Content({ section, detailId }: { section: string; detailId?: string }) 
   if (data.loading) return <Panel title="Loading your workspace"><p>Loading account data…</p></Panel>;
   if (data.error) return <Panel title="Could not load your workspace"><p role="alert">{data.error}</p><button className="button button-secondary" onClick={() => void data.refresh()}>Try again</button></Panel>;
 
+  if (section === "invoices") return <InvoiceCenter role="client" id={detailId}/>;
   if (section === "dashboard") return <><ClientReference value={data.user?.clientReference} />
     <PageHeader eyebrow="CLIENT WORKSPACE" title={data.user ? `Welcome back, ${data.user.fullName.split(" ")[0]}` : "Welcome back"} description="Manage your company formation and track your progress." action={{ label: "Start New Application", href: "/client/applications/new" }} />
     <div className="stats-grid client-summary-grid"><StatCard label="My Companies" value={String(companies.length)} hint="Your companies" icon={Building2} /><StatCard label="Active Applications" value={String(selected.filter((item) => !["COMPLETED", "CANCELLED", "REFUNDED"].includes(item.statusCode)).length)} hint={current?.name ?? "No company selected"} icon={ClipboardList} /><StatCard label="Unread Notifications" value={String(data.notifications.filter((item) => !item.readAt).length)} hint="Account updates" icon={Bell} tone="orange" /><StatCard label="Documents" value={String(docs.length)} hint="Uploaded records" icon={FileText} tone="green" /></div>

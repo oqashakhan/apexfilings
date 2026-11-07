@@ -4,6 +4,7 @@ import { db } from "@/server/db";
 import { ApiError, body, checkOrigin, handleError, json, requireRole } from "@/server/http";
 import { checkoutAmounts, stripeAppOrigin, stripeClient } from "@/server/stripe-config";
 import { z } from "zod";
+import {ensureInvoice} from '@/server/invoices';
 
 export const runtime = "nodejs";
 
@@ -37,6 +38,7 @@ export async function POST(request: NextRequest) {
       await tx.$queryRaw`SELECT "id" FROM "Order" WHERE "id" = ${orderId} FOR UPDATE`;
       const current = await tx.order.findUniqueOrThrow({ where: { id: orderId } });
       if (current.paymentStatus !== "UNPAID" || current.totalCents !== order.totalCents || current.updatedAt.getTime() !== order.updatedAt.getTime()) throw new ApiError(409, "Order changed; refresh and retry checkout");
+      await ensureInvoice(tx,orderId);
       return tx.stripeCheckout.upsert({ where: { orderId }, create: { orderId, mode, amountCents: order.totalCents!, currency: order.currency, idempotencyKey: randomUUID() }, update: {} });
     });
     if (checkout.sessionId) {
