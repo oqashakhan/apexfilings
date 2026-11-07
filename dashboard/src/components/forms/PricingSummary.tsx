@@ -8,13 +8,14 @@ export function PricingSummary({ quote, error }: { quote: QuoteSnapshot | null; 
  <div className="fee-row"><span>Selected Package</span><strong>{quote.packageName}</strong></div>
  <div className="fee-row"><span>Package Fee</span><strong>{money(quote.serviceFeeCents)}</strong></div>
  <div className="fee-row"><span>Government Filing Fee — {quote.state}</span><strong>{money(quote.governmentFeeCents)}</strong></div>
+ <div className="fee-row"><span>Third-party Fees</span><strong>{money(quote.thirdPartyFeeCents ?? 0)}</strong></div>
  {extras.map(i=><div className="fee-row llc-extra-row" key={i.serviceSlug}><span>{i.description}</span><strong>{money(i.amountCents)}</strong></div>)}
- {quote.items.filter((i,k)=>k>0&&!i.serviceSlug&&!i.description.startsWith('Government filing fee')&&i.amountCents>=0).map((i,k)=><div className="fee-row" key={`other-${k}`}><span>{i.description}</span><strong>{money(i.amountCents)}</strong></div>)}
+ {quote.items.filter(i=>i.category==='THIRD_PARTY').map((i,k)=><div className="fee-row llc-extra-row" key={`third-${k}`}><span>{i.description}</span><strong>{money(i.amountCents)}</strong></div>)}
  {quote.pendingItems?.filter(i=>!i.description.startsWith('Government filing fee')).map((i,k)=><div className="fee-row llc-extra-row" key={k}><span>{i.description}</span><strong>Being confirmed</strong></div>)}
  <div className="fee-row"><span>Additional Services</span><strong>{money(quote.additionalFeeCents)}</strong></div>
  <div className="fee-row"><span>Discount</span><strong>{money(quote.discountCents)}</strong></div>
  {quote.taxCents>0&&<div className="fee-row"><span>Taxes</span><strong>{money(quote.taxCents)}</strong></div>}
- <div className="fee-row total"><span>Total Payable</span><strong>{money(quote.totalCents)}</strong></div>
+ <div className="fee-row total"><span>{quote.totalCents === null ? 'Known subtotal' : quote.needsOrderConfirmation ? 'Quoted total' : 'Total Payable'}</span><strong>{money(quote.totalCents ?? quote.knownSubtotalCents ?? quote.serviceFeeCents)}</strong></div>
  {quote.totalCents===null&&<p className="llc-pricing-notice" role="status">Final pricing is being confirmed. You can continue your application review.</p>}
  {(quote.recurringFeeDescription||quote.processingTime)&&<details className="llc-state-info"><summary>State information</summary>{quote.recurringFeeDescription&&<p>Future state fees: {quote.recurringFeeDescription}. Not included in this order.</p>}{quote.processingTime&&<p>Estimated processing: {quote.processingTime}. Timing is not guaranteed.</p>}</details>}
  </section>;

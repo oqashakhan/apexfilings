@@ -1,0 +1,1 @@
+ALTER TABLE "Service" ADD COLUMN "automaticCharge" BOOLEAN NOT NULL DEFAULT false, ADD COLUMN "requiredCharge" BOOLEAN NOT NULL DEFAULT false;

@@ -13,6 +13,7 @@ test('summary keeps unapproved Florida nonpayable with a concise notice', () => 
  const html=renderToStaticMarkup(<PricingSummary quote={quotePricing(catalog,'basic','Florida',['ein'])} />);
  for(const text of ['Florida','Discount','$0.00','Being confirmed','Final pricing is being confirmed']) assert.ok(html.includes(text),text);
  assert.equal(html.includes('To Be Confirmed'),false);
+ assert.equal(html.includes('Total Payable'),false);assert.ok(html.includes('Known subtotal'));assert.ok(html.includes('Third-party Fees'));
 });
 test('missing optional price is identified without hiding known prices', () => {
  const html=renderToStaticMarkup(<PricingSummary quote={quotePricing(catalog,'basic','Florida',['mail'])} />);

@@ -9,7 +9,8 @@ import { approvalChecks, canTransition, statusNames } from "@/server/workflow";
 import { statusInput } from "@/server/validation";
 import { adminSnapshot } from "@/server/admin-snapshot";
 import { emailHtml, queueEmail, queueNotification } from "@/server/mail";
-import { applicationQuote } from "@/server/pricing";
+import { resolveOrderQuote } from "@/lib/pricing";
+import { applicationQuote, pricingCatalog } from "@/server/pricing";
 
 export const runtime = "nodejs";
 type Params = { params: Promise<{ segments: string[] }> };
@@ -118,9 +119,10 @@ export async function GET(request: NextRequest, context: Params) {
     }
     if (resource === "orders") {
       const where: Prisma.OrderWhereInput = id ? { id } : {};
-      const [items, total] = await Promise.all([db.order.findMany({ where, include: { application: { include: { customer: { select: { id: true, fullName: true } }, company: { select: { preferredName: true } }, package: { select: { name: true } } } }, items: true, payments: true, refunds: true, invoice: true }, orderBy: { createdAt: "desc" }, skip: id ? 0 : (page - 1) * take, take: id ? 1 : take }), db.order.count({ where })]);
+      const [items, total] = await Promise.all([db.order.findMany({ where, include: { application: { include: { customer: { select: { id: true, fullName: true } }, company: { select: { preferredName: true, formationState: true } }, package: { select: { name: true, slug: true } } } }, items: true, payments: true, refunds: true, invoice: true }, orderBy: { createdAt: "desc" }, skip: id ? 0 : (page - 1) * take, take: id ? 1 : take }), db.order.count({ where })]);
       if (id && !items.length) throw new ApiError(404, "Order not found");
-      return json({ items, total, page, pageSize: take });
+      const catalog = await pricingCatalog();
+      return json({ items: items.map(item => ({ ...item, pricingQuote: resolveOrderQuote(catalog, item, item.application) })), total, page, pageSize: take });
     }
     if (resource === "documents") {
       const where: Prisma.DocumentWhereInput = { ...(id ? { id } : {}), ...(url.searchParams.get("status") ? { reviewStatus: url.searchParams.get("status") as Prisma.EnumDocumentStatusFilter["equals"] } : {}) };
@@ -361,22 +363,25 @@ export async function PATCH(request: NextRequest, context: Params) {
       const input = z.object({ governmentFeeCents: z.number().int().nonnegative(), thirdPartyFeeCents: z.number().int().nonnegative(), additionalFeeCents: z.number().int().nonnegative(), discountCents: z.number().int().nonnegative() }).parse(await body(request));
       const existing = await db.order.findUnique({ where: { id } });
       if (!existing) throw new ApiError(404, "Order not found");
-      if (existing.pricingSnapshot && typeof existing.pricingSnapshot === "object" && "totalCents" in existing.pricingSnapshot && existing.pricingSnapshot.totalCents !== null) throw new ApiError(409, "Finalized price snapshots cannot be repriced");
+      if (existing.totalCents !== null) throw new ApiError(409, "Finalized price snapshots cannot be repriced");
       if (existing.paymentStatus !== "UNPAID" || await db.stripeCheckout.findUnique({ where: { orderId: id } })) throw new ApiError(409, "Fees are locked once payment review begins");
-      const totalCents = existing.serviceFeeCents + input.governmentFeeCents + input.thirdPartyFeeCents + input.additionalFeeCents - input.discountCents;
-      if (!Number.isSafeInteger(totalCents) || totalCents <= 0) throw new ApiError(400, "Invalid fee total");
+      let confirmedServiceFeeCents = existing.serviceFeeCents;
+      let totalCents = existing.serviceFeeCents + input.governmentFeeCents + input.thirdPartyFeeCents + input.additionalFeeCents - input.discountCents;
       const order = await db.$transaction(async (tx) => {
         await tx.$queryRaw`SELECT "id" FROM "Order" WHERE "id" = ${id} FOR UPDATE`;
         if (await tx.stripeCheckout.findUnique({ where: { orderId: id } })) throw new ApiError(409, "Fees are locked after Stripe checkout begins");
         const current = await tx.order.findUniqueOrThrow({ where: { id }, include: { application: { include: { package: true, company: true } } } });
-        if (current.pricingSnapshot && current.totalCents !== null) throw new ApiError(409, "Finalized price snapshots cannot be repriced");
-        if (current.pricingSnapshot) {
+        if (current.totalCents !== null) throw new ApiError(409, "Finalized price snapshots cannot be repriced");
+        {
           const quote = await applicationQuote(current.application.package.slug, current.application.company.formationState, current.application.additionalServices, tx);
-          if (quote.totalCents === null || input.governmentFeeCents !== quote.governmentFeeCents || input.additionalFeeCents !== quote.additionalFeeCents) throw new ApiError(409, "Publish approved state and service prices before confirming this quote");
-          const snapshot = { ...quote, serviceFeeCents: current.serviceFeeCents, totalCents, discountCents: input.discountCents, items: [{ description: quote.packageName, amountCents: current.serviceFeeCents }, ...quote.items.slice(1), ...(input.thirdPartyFeeCents ? [{ description: "Confirmed third-party fees", amountCents: input.thirdPartyFeeCents }] : []), ...(input.discountCents ? [{ description: "Owner-authorized discount", amountCents: -input.discountCents }] : [])] };
+          if (quote.totalCents === null || current.currency !== quote.currency || input.governmentFeeCents !== quote.governmentFeeCents || input.additionalFeeCents !== quote.additionalFeeCents || input.thirdPartyFeeCents !== quote.thirdPartyFeeCents) throw new ApiError(409, "Publish approved state and service prices before confirming this quote");
+          confirmedServiceFeeCents = quote.serviceFeeCents!;
+          totalCents = confirmedServiceFeeCents + input.governmentFeeCents + input.thirdPartyFeeCents + input.additionalFeeCents + quote.taxCents - input.discountCents;
+          if (!Number.isSafeInteger(totalCents) || totalCents <= 0) throw new ApiError(400, "Invalid confirmed total");
+          const snapshot = { ...quote, serviceFeeCents: confirmedServiceFeeCents, totalCents, paymentAllowed: true, knownSubtotalCents: totalCents + input.discountCents, discountCents: input.discountCents, items: [{ description: quote.packageName, amountCents: confirmedServiceFeeCents }, ...quote.items.slice(1), ...(input.discountCents ? [{ description: "Owner-authorized discount", amountCents: -input.discountCents }] : [])] };
           await tx.order.update({ where: { id }, data: { pricingSnapshot: snapshot, items: { deleteMany: {}, create: snapshot.items.map(({ description, amountCents }) => ({ description, amountCents })) } } });
         }
-        const claim = await tx.order.updateMany({ where: { id, paymentStatus: "UNPAID" }, data: { ...input, totalCents } });
+        const claim = await tx.order.updateMany({ where: { id, paymentStatus: "UNPAID" }, data: { ...input, serviceFeeCents: confirmedServiceFeeCents, totalCents } });
         if (!claim.count) throw new ApiError(409, "Order changed during fee confirmation");
         const invoice = await tx.invoice.upsert({ where: { orderId: id }, create: { orderId: id, number: `AF-${id}`, issuedAt: new Date() }, update: {} });
         const related = await tx.order.findUniqueOrThrow({ where: { id }, include: { application: { include: { customer: { include: { notificationPreference: true } } } } } });

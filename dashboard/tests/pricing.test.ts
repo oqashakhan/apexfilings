@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { quotePricing, type PricingCatalog } from '../src/lib/pricing';
+import { quotePricing, resolveOrderQuote, type PricingCatalog } from '../src/lib/pricing';
 import { adminPackages } from '../prisma/catalog';
 const catalog = (): PricingCatalog => ({ packages: adminPackages.map(p => ({ ...p, id: p.id, slug: p.id, serviceFeeCents: p.serviceFee * 100, currency: 'USD' })), services: [
   { id: 'bank', slug: 'banking', name: 'Bank guidance', description: 'Guidance', available: true, priceApproved: true, priceCents: 5000, currency: 'USD' },
@@ -48,3 +48,22 @@ test('draft selections restore deterministically; catalog edits never mutate a s
  assert.equal(quotePricing(c,selection.slug,selection.state,selection.services).totalCents,50100); assert.equal(JSON.stringify(snapshot),saved);
 });
 test('currency, negative prices and inactive services are rejected', () => { const c=catalog(); c.services[0].currency='EUR'; assert.equal(quotePricing(c,'basic','Alaska',['banking']).totalCents,null); c.packages[0].serviceFeeCents=-1; assert.equal(quotePricing(c,'basic','Alaska',[]).totalCents,null); });
+test('empty third-party category is exactly zero and all quote lines carry approval metadata',()=>{
+ const q=quotePricing(catalog(),'premium','Florida',[]);assert.equal(q.totalCents,42400);assert.equal(q.thirdPartyFeeCents,0);assert.equal(q.additionalFeeCents,0);assert.equal(q.discountCents,0);assert.equal(q.paymentAllowed,true);
+ assert.ok(q.items.every(i=>i.currency==='USD'&&i.approved));
+});
+test('required automatic charges must be approved; optional unknown charges are not invented',()=>{
+ const c=catalog();c.services.push({id:'charge',slug:'charge',name:'Required processing fee',description:'Configured fee',currency:'USD',available:true,priceApproved:false,priceCents:null,automaticCharge:true,requiredCharge:true});
+ let q=quotePricing(c,'premium','Florida',[]);assert.equal(q.totalCents,null);assert.equal(q.knownSubtotalCents,42400);assert.equal(q.paymentAllowed,false);assert.match(q.issues.join(),/Required processing fee/);
+ Object.assign(c.services[2],{priceCents:500,priceApproved:true});q=quotePricing(c,'premium','Florida',['charge']);assert.equal(q.totalCents,42900);assert.equal(q.thirdPartyFeeCents,500);assert.equal(q.additionalFeeCents,0);
+ Object.assign(c.services[2],{priceCents:null,priceApproved:false,requiredCharge:false});assert.equal(quotePricing(c,'premium','Florida',[]).totalCents,42400);
+ c.services[2].requiredCharge=true;c.services[2].availableStateCodes=['AK'];assert.equal(quotePricing(c,'premium','Florida',[]).thirdPartyFeeCents,0);
+});
+test('pending order reads current approved catalog; finalized order uses its stored snapshot and payment state',()=>{
+ const c=catalog();const app={package:{slug:'basic'},company:{formationState:'Florida'},additionalServices:[]};
+ const order={serviceFeeCents:19900,governmentFeeCents:null,thirdPartyFeeCents:null,additionalFeeCents:null,discountCents:null,totalCents:null,currency:'USD',paymentStatus:'UNPAID'};
+ const pending=resolveOrderQuote(c,order,app);assert.equal(pending.totalCents,32400);assert.equal(pending.thirdPartyFeeCents,0);assert.equal(pending.needsOrderConfirmation,true);assert.equal(pending.paymentAllowed,false);
+ const finalized={...order,governmentFeeCents:12500,thirdPartyFeeCents:0,additionalFeeCents:0,discountCents:0,totalCents:32400,pricingSnapshot:pending};c.packages[0].serviceFeeCents=99900;
+ assert.equal(resolveOrderQuote(c,finalized,app).totalCents,32400);
+ assert.equal(resolveOrderQuote(c,{...finalized,paymentStatus:'VERIFIED'},app).paymentAllowed,false);
+});

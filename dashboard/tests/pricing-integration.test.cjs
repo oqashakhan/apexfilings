@@ -10,6 +10,7 @@ test('owner publishing, customer quote, draft restoration and immutable submitte
  async function actor(role) { const identity=randomUUID(); const user=await db.user.create({data:{fullName:'Fictional pricing test',email:`${role}-${identity}@example.test`,emailNormalized:`${role}-${identity}@example.test`,role,emailVerifiedAt:new Date()}}); const token=randomUUID()+randomUUID(); await db.session.create({data:{userId:user.id,tokenHash:createHash('sha256').update(token).digest('hex'),expiresAt:new Date(Date.now()+3600000)}}); return {user,token}; }
  async function api(path, method='GET', value, token) { const r=await fetch(root+path,{method,headers:{Origin:root,'Content-Type':'application/json',...(token?{Cookie:`__Host-apex_session=${token}`}:{})},body:value===undefined?undefined:JSON.stringify(value)});return {status:r.status,data:await r.json()}; }
  let state;
+ let chargeId;
  const stateBackups = [];
  try {
  const owner=await actor('OWNER'), client=await actor('CLIENT'), stranger=await actor('CLIENT');
@@ -45,7 +46,7 @@ test('owner publishing, customer quote, draft restoration and immutable submitte
  }
  const company=await db.company.create({data:{customerId:client.user.id,preferredName:'Pricing Test LLC '+suffix,alternativeName1:'Backup LLC',formationState:'Alaska',businessActivity:'Software',businessDescription:'Fictional test business description',addressRequirements:'I need guidance',ownershipType:'single',managementStructure:'member-managed',owners:{create:{fullLegalName:'Fictional Owner',email:`test-${suffix}@example.test`,phone:'+15555550123',nationality:'US',countryOfResidence:'US',residentialAddress:'123 Fictional Street',ownershipBasisPoints:10000}}},include:{owners:true}});
  const app=await db.application.create({data:{customerId:client.user.id,companyId:company.id,serviceId:service.id,packageId:pack.id}});
- const pendingApp=await db.application.create({data:{customerId:client.user.id,companyId:company.id,serviceId:service.id,packageId:pack.id,status:'AWAITING_PAYMENT'}});
+ const pendingApp=await db.application.create({data:{customerId:client.user.id,companyId:company.id,serviceId:service.id,packageId:pack.id,status:'AWAITING_PAYMENT',additionalServices:[extra.slug]}});
  const pendingSnapshot={...quote.data,totalCents:null,issues:['Old pending quote']};
  const pendingOrder=await db.order.create({data:{applicationId:pendingApp.id,serviceFeeCents:pack.serviceFeeCents,pricingSnapshot:pendingSnapshot}});
  const pendingInput={...query,applicationId:pendingApp.id};
@@ -73,5 +74,22 @@ test('owner publishing, customer quote, draft restoration and immutable submitte
  const restricted=await api('/api/v1/pricing/quote','POST',{packageSlug:'basic',state:'Wyoming',services:[extra.slug]},client.token);
  assert.equal(restricted.data.totalCents,null);assert.match(restricted.data.issues.join(),/not available/);
  const updated=await db.service.findUniqueOrThrow({where:{id:extra.id}});assert.equal(updated.displayOrder,12);assert.equal(updated.category,'Formation support');
- } finally { for(const original of [...stateBackups,...(state?[state]:[])]) { const {code,...data}=original; await db.stateFilingFee.update({where:{code},data}); } await db.$disconnect(); }
+ // Test zero, unknown and approved third-party charges and all order pricing surfaces.
+ await db.service.update({where:{id:extra.id},data:{availableStateCodes:[]}});
+ const chargeData={name:'Fictional third-party fee',description:'Test-only required fee',priceCents:null,currency:'USD',priceApproved:false,available:true,requiredCharge:true,category:'Third-party fees',availableStateCodes:[],displayOrder:0};
+ assert.equal((await api('/api/v1/admin/pricing','POST',chargeData,client.token)).status,403);
+ const created=await api('/api/v1/admin/pricing','POST',chargeData,owner.token);assert.equal(created.status,201);chargeId=created.data.id;
+ const unresolved=await api('/api/v1/pricing/quote','POST',pendingInput,client.token);assert.equal(unresolved.data.totalCents,null);assert.match(unresolved.data.issues.join(),/Fictional third-party fee/);
+ assert.equal((await api('/api/v1/admin/pricing','PATCH',{kind:'service',id:chargeId,data:{...chargeData,priceCents:500,priceApproved:true}},owner.token)).status,200);
+ const exact=await api('/api/v1/pricing/quote','POST',pendingInput,client.token);assert.equal(exact.data.totalCents,pack.serviceFeeCents+26000+2500+500);assert.equal(exact.data.thirdPartyFeeCents,500);
+ const clientOrder=await api(`/api/v1/client/orders/${pendingOrder.id}`,'GET',undefined,client.token);
+ const adminOrder=await api(`/api/v1/admin/orders/${pendingOrder.id}`,'GET',undefined,owner.token);
+ const adminSnapshot=await api('/api/v1/admin/snapshot','GET',undefined,owner.token);
+ const clientDashboard=await api('/api/v1/client/dashboard','GET',undefined,client.token);
+ for(const result of [clientOrder.data.orders[0].pricingQuote,adminOrder.data.items[0].pricingQuote,adminSnapshot.data.orders.find(o=>o.id===pendingOrder.id).pricingQuote,clientDashboard.data.applications.find(a=>a.id===pendingApp.id).order.pricingQuote])assert.deepEqual(result,exact.data);
+ assert.equal((await api(`/api/v1/admin/orders/${pendingOrder.id}`,'PATCH',{governmentFeeCents:26000,thirdPartyFeeCents:500,additionalFeeCents:2500,discountCents:exact.data.totalCents+1},owner.token)).status,400,'discount cannot exceed confirmed prices');
+ const confirm=await api(`/api/v1/admin/orders/${pendingOrder.id}`,'PATCH',{governmentFeeCents:26000,thirdPartyFeeCents:500,additionalFeeCents:2500,discountCents:0},owner.token);assert.equal(confirm.status,200,JSON.stringify(confirm.data));
+ const confirmed=await db.order.findUniqueOrThrow({where:{id:pendingOrder.id}});assert.equal(confirmed.totalCents,exact.data.totalCents);assert.equal(confirmed.paymentStatus,'UNPAID');assert.equal(await db.payment.count({where:{orderId:confirmed.id}}),0);
+ assert.equal((await api('/api/v1/pricing/quote','POST',{...pendingInput,applicationId:app.id},client.token)).data.totalCents,order.totalCents);
+ } finally { if(chargeId)await db.service.update({where:{id:chargeId},data:{available:false}});for(const original of [...stateBackups,...(state?[state]:[])]) { const {code,...data}=original; await db.stateFilingFee.update({where:{code},data}); } await db.$disconnect(); }
 });

@@ -283,6 +283,8 @@ model CompanyOwner {
 }
 
 model Service {
+  automaticCharge Boolean @default(false)
+  requiredCharge Boolean @default(false)
   availableStateCodes String[] @default([])
   displayOrder Int @default(0)
   priceCents Int?
