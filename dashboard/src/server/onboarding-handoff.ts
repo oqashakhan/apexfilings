@@ -12,6 +12,7 @@ const detailsSchema = z.object({
   country: z.string().regex(/^[A-Z]{2}$/),
   formationState: z.string().refine((value) => formationStates.some((state) => state === value)),
   preferredName: z.string().trim().min(2).max(150),
+  packageSlug: z.enum(["basic", "premium"]).optional(),
 });
 const sealedSchema = detailsSchema.extend({ version: z.literal(1), expiresAt: z.number().int() });
 export type OnboardingDetails = z.infer<typeof detailsSchema>;

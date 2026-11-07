@@ -33,6 +33,7 @@ export async function POST(request: NextRequest, context: Params) {
     const ownerId = String(data.get("ownerId") ?? "") || null;
     const replacesDocumentId = String(data.get("replacesDocumentId") ?? "") || null;
     const requirementId = String(data.get("requirementId") ?? "") || null;
+    const requestId = String(data.get("requestId") ?? "") || null;
     const documentType = String(data.get("documentType") ?? "").trim();
     const finalDocument = data.get("finalDocument") === "true";
     const shareWithClient = data.get("shareWithClient") !== "false";
@@ -41,9 +42,13 @@ export async function POST(request: NextRequest, context: Params) {
     if (!application) throw new ApiError(404, "Application not found");
     if (user.role !== "OWNER" && (user.role !== "CLIENT" || application.customerId !== user.id)) throw new ApiError(403, "Not authorized");
     if (finalDocument && user.role !== "OWNER") throw new ApiError(403, "Not authorized");
-    if (!finalDocument && user.role === "CLIENT" && !["DRAFT", "INFORMATION_REQUIRED", "ADDITIONAL_ACTION_REQUIRED"].includes(application.status) && !(replacesDocumentId && !["COMPLETED", "CANCELLED", "REFUNDED", "REFUND_REQUESTED"].includes(application.status))) throw new ApiError(409, "Document upload is not available at this stage");
+    if (!finalDocument && user.role === "CLIENT" && !["DRAFT", "INFORMATION_REQUIRED", "ADDITIONAL_ACTION_REQUIRED"].includes(application.status) && !((replacesDocumentId || requestId) && !["COMPLETED", "CANCELLED", "REFUNDED", "REFUND_REQUESTED"].includes(application.status))) throw new ApiError(409, "Document upload is not available at this stage");
     if (replacesDocumentId && user.role !== "CLIENT") throw new ApiError(400, "Only the client can replace a requested document");
-    if (requirementId && replacesDocumentId) throw new ApiError(400, "Choose one document request");
+    if ([requirementId, requestId, replacesDocumentId].filter(Boolean).length > 1) throw new ApiError(400, "Choose one document request");
+    if (requestId) {
+      const requested = await db.documentRequest.findFirst({ where: { id: requestId, applicationId, documentType, ownerId, documents: { none: {} } } });
+      if (!requested || user.role !== "CLIENT") throw new ApiError(409, "Document request is no longer available");
+    }
     if (requirementId) {
       const requirement = await db.serviceDocumentRequirement.findFirst({ where: { id: requirementId, serviceId: application.serviceId, documentType, required: true, OR: [{ stateCode: null }, { stateCode: application.company.formationState }] } });
       if (!requirement || user.role !== "CLIENT") throw new ApiError(409, "Document requirement is no longer available");
@@ -58,7 +63,7 @@ export async function POST(request: NextRequest, context: Params) {
     const identified = validateDocument(buffer, file.type);
     storageKey = await storeDocument(buffer, identified.ext);
     const created = await db.$transaction(async (tx) => {
-      const document = await tx.document.create({ data: { applicationId, companyId: application.companyId, ownerId, uploadedById: user.id, documentType, replacesDocumentId, originalFilename: safeFilename(file.name), privateStorageKey: storageKey!, mimeType: identified.mime, fileSize: buffer.length, clientVisible: user.role === "CLIENT" || (finalDocument && shareWithClient), reviewStatus: finalDocument ? "COMPLETED_COMPANY_DOCUMENT" : "UNDER_REVIEW" } });
+      const document = await tx.document.create({ data: { applicationId, companyId: application.companyId, ownerId, uploadedById: user.id, documentType, replacesDocumentId, requestId, originalFilename: safeFilename(file.name), privateStorageKey: storageKey!, mimeType: identified.mime, fileSize: buffer.length, clientVisible: user.role === "CLIENT" || (finalDocument && shareWithClient), reviewStatus: finalDocument ? "COMPLETED_COMPANY_DOCUMENT" : "UNDER_REVIEW" } });
       await tx.auditLog.create({ data: { actorUserId: user.id, action: "DOCUMENT_UPLOADED", resourceType: "Document", resourceId: document.id, safeMetadata: { documentType, fileSize: buffer.length } } });
       if (finalDocument && shareWithClient) {
         await queueNotification(tx, `document-final:${document.id}`, application.customerId, "FINAL_DOCUMENT", "Company document available", "A completed company document is available in your dashboard.", applicationId);

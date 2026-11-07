@@ -24,7 +24,7 @@ export type ClientOrder = {
   date: string; serviceFee: number; governmentFee: number | null;
   additionalFee: number | null; discount: number | null; paymentStatus: PaymentStatus;
 };
-export type PaymentStatus = "Pending" | "Awaiting Verification" | "Paid" | "Failed" | "Refunded";
+export type PaymentStatus = "Pending" | "Awaiting Verification" | "Paid" | "Failed" | "Refunded" | "Disputed";
 export type ClientPayment = { id: string; orderId: string; status: PaymentStatus; date: string };
 export type SupportTicket = { id: string; companyId: string; applicationId?: string; subject: string; status: string; updatedAt: string; messages: { date: string; text: string }[] };
 export type ClientNotification = { id: string; companyId: string; text: string; date: string; read: boolean };

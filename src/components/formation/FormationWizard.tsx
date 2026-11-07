@@ -1,7 +1,8 @@
+import { usePricingCatalog } from '../../lib/usePricingCatalog';
 import { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, BadgeCheck, BriefcaseBusiness, Building2, Check, CircleHelp, Eye, EyeOff, FileCheck2, Globe2, LockKeyhole, MapPin, Search, ShieldCheck, Sparkles, Users, Wallet } from 'lucide-react';
-import { PRICING_DISCLAIMER, PRICING_PLANS } from '../../data/pricing';
-import { estimatedInitialTotal, STATE_DATA_NOTICE, US_STATES } from '../../data/usStates';
+import { PRICING_DISCLAIMER } from '../../data/pricing';
+import { STATE_DATA_NOTICE, US_STATES } from '../../data/usStates';
 import { StateFeeDetails } from '../StateFeeDetails';
 import { registerApplicant } from '../../lib/registerApplicant';
 import './FormationWizard.css';
@@ -39,6 +40,7 @@ function findState(value: string | null) {
 }
 
 export function FormationWizard() {
+  const { plans: PRICING_PLANS, states: approvedStates } = usePricingCatalog();
   const [entry] = useState(() => {
     const query = new URLSearchParams(window.location.search);
     const requestedState = query.get('state');
@@ -46,7 +48,7 @@ export function FormationWizard() {
       source: query.get('source') || 'direct',
       requestedState,
       initialState: findState(requestedState)?.code || '',
-      plan: PRICING_PLANS.some(plan => plan.id === query.get('plan')) ? query.get('plan')! : '',
+      plan: ['basic', 'advanced'].includes(query.get('plan') ?? '') ? query.get('plan')! : '',
       residency: query.get('residency') === 'non-us' ? 'non-us' as const : 'us' as const,
       service: 'llc-formation',
     };
@@ -69,7 +71,8 @@ export function FormationWizard() {
   const selectedPlan = PRICING_PLANS.find(plan => plan.id === planId);
   const basicFeatureCount = PRICING_PLANS.find(plan => plan.id === 'basic')?.features.length ?? 0;
   const servicePrice = selectedPlan ? residency === 'us' ? selectedPlan.priceUsResident : selectedPlan.priceNonUsResident : null;
-  const initialTotal = servicePrice == null ? null : estimatedInitialTotal(servicePrice, selectedState);
+  const fee = approvedStates.find(s => s.code === selectedState?.code && s.active && s.verifiedAt)?.filingFeeCents;
+  const initialTotal = servicePrice == null || fee == null ? null : servicePrice + fee / 100;
   const filteredStates = US_STATES.filter(state => state.availableForFormation && `${state.name} ${state.code}`.toLowerCase().includes(search.trim().toLowerCase()));
   const change = <K extends keyof FormValues>(key: K, value: FormValues[K]) => { setValues(previous => ({ ...previous, [key]: value })); setError(''); };
   const move = (next: number) => {

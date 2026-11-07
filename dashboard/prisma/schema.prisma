@@ -49,6 +49,7 @@ enum PaymentStatus {
   UNPAID
   AWAITING_VERIFICATION
   VERIFIED
+  DISPUTED
   REJECTED
   REFUNDED
 }
@@ -95,6 +96,7 @@ model User {
   notes           InternalNote[]
   customerResponses CustomerResponse[]
   verifiedPayments Payment[]   @relation("VerifiedPayments")
+  stripeCustomers StripeCustomer[]
   reviewedDocuments Document[] @relation("ReviewedDocuments")
   assignedApplications Application[] @relation("AssignedApplications")
   partnerClients  PartnerClient[] @relation("Partner")
@@ -281,6 +283,9 @@ model CompanyOwner {
 }
 
 model Service {
+  priceCents Int?
+  currency String @default("USD")
+  priceApproved Boolean @default(false)
   id          String   @id @default(cuid())
   slug        String   @unique
   name        String
@@ -295,6 +300,7 @@ model Service {
 }
 
 model Package {
+  includedServiceSlugs String[] @default([])
   id              String   @id @default(cuid())
   slug            String   @unique
   name            String
@@ -317,6 +323,12 @@ model PackageService {
 }
 
 model StateFilingFee {
+  referenceFilingFeeCents Int?
+  recurringFeeDescription String?
+  recurringFeePeriod String?
+  processingTime String?
+  sourceReference String?
+  active Boolean @default(false)
   code               String   @id
   state              String   @unique
   filingFeeCents     Int?
@@ -362,6 +374,7 @@ model Application {
   notes                 InternalNote[]
   customerResponses     CustomerResponse[]
   documents             Document[]
+  documentRequests      DocumentRequest[]
   order                 Order?
   @@index([customerId, status])
   @@index([status, submittedAt])
@@ -373,11 +386,11 @@ model ApplicationStatusHistory {
   applicationId  String
   previousStatus ApplicationStatus?
   newStatus      ApplicationStatus
-  changedById    String
+  changedById    String?
   reason         String
   createdAt      DateTime          @default(now())
   application    Application       @relation(fields: [applicationId], references: [id], onDelete: Cascade)
-  changedBy      User              @relation(fields: [changedById], references: [id], onDelete: Restrict)
+  changedBy      User?             @relation(fields: [changedById], references: [id], onDelete: SetNull)
   @@index([applicationId, createdAt])
 }
 
@@ -429,9 +442,11 @@ model Document {
   reviewStatus      DocumentStatus @default(UNDER_REVIEW)
   clientVisible     Boolean        @default(false)
   replacesDocumentId String?       @unique
+  requestId         String?        @unique
   reviewReason      String?
   replacesDocument Document?       @relation("DocumentReplacement", fields: [replacesDocumentId], references: [id], onDelete: SetNull)
   replacement      Document?       @relation("DocumentReplacement")
+  request          DocumentRequest? @relation(fields: [requestId], references: [id], onDelete: SetNull)
   reviewedById      String?
   reviewedAt        DateTime?
   createdAt         DateTime       @default(now())
@@ -443,7 +458,22 @@ model Document {
   @@index([applicationId, reviewStatus])
 }
 
+model DocumentRequest {
+  id            String      @id @default(cuid())
+  requestKey    String      @unique
+  applicationId String
+  documentType  String
+  ownerId       String?
+  reason        String
+  createdById   String
+  createdAt     DateTime    @default(now())
+  application   Application @relation(fields: [applicationId], references: [id], onDelete: Restrict)
+  documents     Document[]
+  @@index([applicationId, createdAt])
+}
+
 model Order {
+  pricingSnapshot Json?
   id                 String        @id @default(cuid())
   applicationId      String        @unique
   status             String        @default("OPEN")
@@ -462,6 +492,7 @@ model Order {
   invoice            Invoice?
   payments           Payment[]
   refunds            RefundRequest[]
+  stripeCheckout     StripeCheckout?
 }
 
 model OrderItem {
@@ -478,6 +509,9 @@ model Invoice {
   number    String   @unique
   issuedAt  DateTime?
   createdAt DateTime @default(now())
+  stripeInvoiceId String? @unique
+  hostedInvoiceUrl String?
+  invoicePdfUrl String?
   order     Order    @relation(fields: [orderId], references: [id], onDelete: Restrict)
 }
 
@@ -499,6 +533,10 @@ model Payment {
   verifiedById     String?
   verifiedAt       DateTime?
   createdAt        DateTime      @default(now())
+  stripePaymentIntentId String? @unique
+  stripeCheckoutSessionId String? @unique
+  stripeReceiptUrl String?
+  stripeDisputeStatus String?
   order            Order         @relation(fields: [orderId], references: [id], onDelete: Restrict)
   verifiedBy       User?         @relation("VerifiedPayments", fields: [verifiedById], references: [id], onDelete: SetNull)
   @@index([orderId, status])
@@ -512,8 +550,43 @@ model RefundRequest {
   status      RefundStatus @default(REQUESTED)
   createdAt   DateTime     @default(now())
   reviewedAt  DateTime?
+  reviewedById String?
+  stripeRefundId String? @unique
+  stripeStatus String?
+  initiatedById String?
   order       Order        @relation(fields: [orderId], references: [id], onDelete: Restrict)
   @@index([orderId, status])
+}
+
+model StripeCustomer {
+  userId String
+  mode String
+  stripeCustomerId String @unique
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+  @@id([userId, mode])
+}
+
+model StripeCheckout {
+  id String @id @default(cuid())
+  orderId String @unique
+  sessionId String? @unique
+  idempotencyKey String @unique
+  amountCents Int
+  currency String
+  mode String
+  status String @default("CREATING")
+  expiresAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  order Order @relation(fields: [orderId], references: [id], onDelete: Restrict)
+}
+
+model StripeWebhookEvent {
+  id String @id
+  type String
+  livemode Boolean
+  processedAt DateTime?
+  createdAt DateTime @default(now())
 }
 
 model Notification {

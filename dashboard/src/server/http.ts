@@ -2,7 +2,7 @@ import "server-only";
 import { NextRequest, NextResponse } from "next/server";
 import { randomBytes } from "node:crypto";
 import { ZodError } from "zod";
-import { Role, type User } from "@prisma/client";
+import { Prisma, Role, type User } from "@prisma/client";
 import { db } from "@/server/db";
 import { hashToken } from "@/server/security";
 
@@ -18,6 +18,7 @@ export const fail = (message: string, status: number) => json({ error: message }
 export function handleError(error: unknown) {
   if (error instanceof ApiError || (error instanceof Error && (error as ApiError)[apiErrorBrand] === true && Number.isInteger((error as ApiError).status))) return fail(error.message, (error as ApiError).status);
   if (error instanceof ZodError) return json({ error: "Invalid request", issues: error.issues.map((item) => ({ path: item.path, message: item.message })) }, 400);
+  if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") return fail("This request has already been completed", 409);
   // Never return database, filesystem, token, or customer details in an error response.
   const errorId = randomBytes(6).toString("hex");
   const errorName = error instanceof Error ? error.name : "unknown";

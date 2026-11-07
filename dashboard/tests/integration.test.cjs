@@ -72,9 +72,13 @@ async function latestOtp(userId) {
 
 test("public onboarding handoff uses the dashboard session and protects its origin", async () => {
   const origin = "http://localhost:3000";
-  const details = { businessType: "LLC", country: "PK", formationState: "Wyoming", preferredName: `Example Ventures ${suffix}` };
+  const details = { businessType: "LLC", country: "PK", formationState: "Wyoming", preferredName: `Example Ventures ${suffix}`, packageSlug: "premium" };
   const headers = { Origin: origin, "Sec-Fetch-Site": "same-site", "Content-Type": "application/json", "X-Real-IP": testIp };
   const endpoint = `${root}/api/v1/onboarding`;
+  const anonymousSession = await fetch(`${endpoint}/session`, { headers: { Origin: origin } });
+  assert.equal(anonymousSession.status, 200);
+  assert.equal((await anonymousSession.json()).clientAuthenticated, false);
+  assert.equal((await fetch(`${endpoint}/session`, { headers: { Origin: "https://untrusted.example" } })).status, 403);
   const preflight = await fetch(`${endpoint}/register`, { method: "OPTIONS", headers: { Origin: origin, "Sec-Fetch-Site": "same-site", "Access-Control-Request-Method": "POST", "Access-Control-Request-Headers": "content-type" } });
   assert.equal(preflight.status, 204);
   assert.equal(preflight.headers.get("access-control-allow-origin"), origin);
@@ -92,6 +96,8 @@ test("public onboarding handoff uses the dashboard session and protects its orig
   assert.equal(current.status, 403, "unverified client cannot read protected onboarding data");
   const account = await fetch(`${root}/api/v1/auth/current`, { headers: { Cookie: cookies } });
   assert.equal((await account.json()).user.role, "CLIENT");
+  const existingSession = await fetch(`${endpoint}/session`, { headers: { Origin: origin, Cookie: cookies } });
+  assert.equal((await existingSession.json()).clientAuthenticated, true, "existing client can skip account creation");
   const clientPage = await fetch(`${root}/client/applications/new?handoff=1`, { headers: { Cookie: cookies }, redirect: "manual" });
   assert.equal(clientPage.status, 307, "unverified client is sent to verification");
   assert.equal(new URL(clientPage.headers.get("location"), root).pathname, "/verify-email");
@@ -303,6 +309,24 @@ test("authenticated dashboard workflow and ownership", async () => {
     await db.user.create({ data: { fullName: "Apex Test Admin", email: ownerEmail, emailNormalized: ownerEmail, passwordHash: await argon2.hash(ownerPassword, { type: argon2.argon2id }), role: "OWNER" } });
     const admin = await call("/api/v1/auth/login", "POST", { email: ownerEmail, password: ownerPassword });
     expect(admin, 200, "owner login");
+    const requestPayload = { documentType: "PROOF_OF_ADDRESS", reason: "Please provide a recent proof of address." };
+    expect(await call(`/api/v1/admin/applications/${app.id}/document-requests`, "POST", requestPayload, first.cookie), 403, "client cannot create document request");
+    const missingDocument = await call(`/api/v1/admin/applications/${app.id}/document-requests`, "POST", requestPayload, admin.cookie);
+    expect(missingDocument, 201, "owner requests a missing document");
+    const adminRequests = await call(`/api/v1/admin/applications/${app.id}/document-requests`, "GET", undefined, admin.cookie);
+    assert.equal(adminRequests.data.requests[0].status, "NOT_PROVIDED", "owner sees open request");
+    expect(await call(`/api/v1/admin/applications/${app.id}/document-requests`, "GET", undefined, first.cookie), 403, "client cannot read Admin request list");
+    expect(await call(`/api/v1/admin/applications/${app.id}/document-requests`, "POST", requestPayload, admin.cookie), 409, "duplicate request is blocked");
+    const requestedDocument = await call(`/api/v1/client/applications/${app.id}`, "GET", undefined, first.cookie);
+    assert.equal(requestedDocument.data.application.nextAction.documentRequests[0].requestId, missingDocument.data.request.id, "client action targets the typed request");
+    const requestedFile = new FormData(); requestedFile.set("applicationId", app.id); requestedFile.set("documentType", "PROOF_OF_ADDRESS"); requestedFile.set("requestId", missingDocument.data.request.id); requestedFile.set("file", new Blob(["%PDF-1.4\n1 0 obj\n<<>>\nendobj\n%%EOF"], { type: "application/pdf" }), "address.pdf");
+    expect(await call("/api/v1/documents/upload", "POST", requestedFile, second.cookie), 403, "other client cannot fulfill request");
+    const fulfilled = await call("/api/v1/documents/upload", "POST", requestedFile, first.cookie);
+    expect(fulfilled, 201, "client uploads requested document");
+    expect(await call("/api/v1/documents/upload", "POST", requestedFile, first.cookie), 409, "request cannot be uploaded twice");
+    assert.equal((await call(`/api/v1/client/applications/${app.id}`, "GET", undefined, first.cookie)).data.application.nextAction.documentRequests.some((request) => request.requestId === missingDocument.data.request.id), false, "uploaded request no longer asks for another file");
+    expect(await call(`/api/v1/admin/documents/${fulfilled.data.document.id}/review`, "POST", { status: "ACCEPTED" }, admin.cookie), 200, "owner accepts requested document");
+    assert.equal((await call(`/api/v1/admin/applications/${app.id}/document-requests`, "GET", undefined, admin.cookie)).data.requests[0].status, "ACCEPTED", "owner sees reviewed request");
     expect(await call(`/api/v1/admin/documents/${upload.data.document.id}/review`, "POST", { status: "REPLACEMENT_REQUIRED", reason: "Please upload a clearer scan." }, admin.cookie), 200, "owner requests replacement");
     const requested = await call(`/api/v1/client/applications/${app.id}`, "GET", undefined, first.cookie);
     expect(requested, 200, "client sees replacement request");
@@ -364,7 +388,11 @@ test("authenticated dashboard workflow and ownership", async () => {
     expect(await call(`/api/v1/admin/documents/${replacementUpload.data.document.id}/review`, "POST", { status: "ACCEPTED" }, admin.cookie), 200, "replacement document review");
     expect(await call(`/api/v1/documents/${replacementUpload.data.document.id}`, "GET", undefined, first.cookie), 200, "accepted replacement download");
     expect(await call(`/api/v1/admin/applications/${app.id}/status`, "POST", { status: "COMPLETED", reason: "Invalid skip" }, admin.cookie), 409, "invalid transition");
+    expect(await call(`/api/v1/admin/orders/${orderId}`, "PATCH", { governmentFeeCents: 10000, thirdPartyFeeCents: 0, additionalFeeCents: 0, discountCents: 0 }, admin.cookie), 409, "unapproved government prices cannot be confirmed");
+    const testState = await db.stateFilingFee.findUniqueOrThrow({ where: { state: "Wyoming" } });
+    expect(await call('/api/v1/admin/pricing', 'PATCH', { kind: 'state', id: testState.code, data: { filingFeeCents: 10000, recurringFeeDescription: testState.recurringFeeDescription, recurringFeePeriod: testState.recurringFeePeriod, processingTime: testState.processingTime, sourceReference: 'https://official.example.gov/fictional-test', verifiedAt: new Date().toISOString(), active: true } }, admin.cookie), 200, 'approve fictional test fee in isolated database');
     expect(await call(`/api/v1/admin/orders/${orderId}`, "PATCH", { governmentFeeCents: 10000, thirdPartyFeeCents: 0, additionalFeeCents: 0, discountCents: 0 }, admin.cookie), 200, "confirm fictional test fees");
+    await db.stateFilingFee.update({ where: { code: testState.code }, data: { filingFeeCents: testState.filingFeeCents, sourceReference: testState.sourceReference, verifiedAt: testState.verifiedAt, active: testState.active } });
     const invoice = await db.invoice.findUnique({ where: { orderId } });
     assert.ok(invoice, "fee confirmation creates invoice reference");
     assert.equal(await db.emailOutbox.count({ where: { eventKey: `invoice:${invoice.id}` } }), 1, "invoice availability email queued once");
@@ -408,6 +436,14 @@ test("authenticated dashboard workflow and ownership", async () => {
     for (const check of ["CUSTOMER_INFORMATION", "COMPANY_DETAILS", "OWNER_INFORMATION", "REQUIRED_DOCUMENTS", "CUSTOMER_CONFIRMATION", "PAYMENT_VERIFIED"]) {
       expect(await call(`/api/v1/admin/applications/${app.id}/checks`, "POST", { check, checked: true }, admin.cookie), 200, `review check ${check}`);
     }
+    const finalRequest = await call(`/api/v1/admin/applications/${app.id}/document-requests`, "POST", { documentType: "OTHER_SUPPORTING_DOCUMENT", reason: "Please provide the requested supporting document." }, admin.cookie);
+    expect(finalRequest, 201, "owner requests supporting document during review");
+    expect(await call(`/api/v1/admin/applications/${app.id}/status`, "POST", { status: "APPROVED_FOR_FILING", reason: "Requested document missing" }, admin.cookie), 409, "open request blocks filing approval");
+    const supportingFile = new FormData(); supportingFile.set("applicationId", app.id); supportingFile.set("documentType", "OTHER_SUPPORTING_DOCUMENT"); supportingFile.set("requestId", finalRequest.data.request.id); supportingFile.set("file", new Blob(["%PDF-1.4\n1 0 obj\n<<>>\nendobj\n%%EOF"], { type: "application/pdf" }), "supporting.pdf");
+    const supportingUpload = await call("/api/v1/documents/upload", "POST", supportingFile, first.cookie);
+    expect(supportingUpload, 201, "customer fulfills review request");
+    expect(await call(`/api/v1/admin/applications/${app.id}/status`, "POST", { status: "APPROVED_FOR_FILING", reason: "Document still under review" }, admin.cookie), 409, "unreviewed request blocks filing approval");
+    expect(await call(`/api/v1/admin/documents/${supportingUpload.data.document.id}/review`, "POST", { status: "ACCEPTED" }, admin.cookie), 200, "owner accepts requested supporting document");
     expect(await call(`/api/v1/admin/applications/${app.id}/status`, "POST", { status: "APPROVED_FOR_FILING", reason: "Internal review prerequisites satisfied" }, admin.cookie), 200, "internal filing approval");
     expect(await call(`/api/v1/admin/clients/${otherUser.id}`, "PATCH", { status: "SUSPENDED" }, admin.cookie), 200, "owner suspends client");
     expect(await call("/api/v1/client/dashboard", "GET", undefined, second.cookie), 401, "suspended client session revoked");

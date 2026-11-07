@@ -102,7 +102,7 @@ export default function App() {
   const handleSelectState = (state: TopState) => navigateToFormation({ source: 'state-card', state: state.id, service: 'llc-formation' });
 
   if (routePath === '/start') {
-    return <><Suspense fallback={<div className="theme-route-loading min-h-screen bg-white" role="status">Loading registration…</div>}><StartPage onBackToSite={returnToSite} initialState={new URLSearchParams(window.location.search).get('state') ?? undefined} /></Suspense>{translationNotice && <TranslationNotice />}</>;
+    return <><Suspense fallback={<div className="theme-route-loading min-h-screen bg-white" role="status">Loading registration…</div>}><StartPage onBackToSite={returnToSite} initialState={new URLSearchParams(window.location.search).get('state') ?? undefined} initialPlan={new URLSearchParams(window.location.search).get('plan') ?? undefined} /></Suspense>{translationNotice && <TranslationNotice />}</>;
   }
 
   if (routePath === '/formation/start') {
@@ -179,7 +179,10 @@ export default function App() {
 
 function FormationHandoff() {
   const query = new URLSearchParams(window.location.search);
-  const destination = dashboardApplicationUrl({ state: query.get('state'), plan: query.get('plan') });
+  const service = query.get('service');
+  const destination = service && service !== 'llc-formation'
+    ? `/consultation?service=${encodeURIComponent(service)}`
+    : dashboardApplicationUrl({ state: query.get('state'), plan: query.get('plan') });
   useEffect(() => { window.location.replace(destination); }, [destination]);
   return <main className="flex min-h-screen items-center justify-center bg-white px-6 text-center"><div><p className="text-sm text-slate-600">Continuing to your secure Apex Filings application…</p><a className="mt-4 inline-block font-semibold text-[#F04623] underline" href={destination}>Continue to dashboard</a></div></main>;
 }

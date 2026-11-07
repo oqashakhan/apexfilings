@@ -8,7 +8,7 @@ import { US_STATES } from '../../data/usStates';
 import { COUNTRIES } from '../../data/countries';
 import { SearchSelect } from './SearchSelect';
 import './StartPage.css';
-import { dashboardOnboardingLoginUrl, dashboardOnboardingUrl, dashboardOnboardingVerifyUrl } from '../../lib/dashboardLinks';
+import { dashboardOnboardingApplicationUrl, dashboardOnboardingLoginUrl, dashboardOnboardingUrl, dashboardOnboardingVerifyUrl } from '../../lib/dashboardLinks';
 
 const schema = z.object({
   businessType: z.literal('LLC', { error: 'Select LLC to continue.' }),
@@ -38,7 +38,7 @@ function readDraft(): Partial<Answers> {
   } catch { return {}; }
 }
 
-export function StartPage({ onBackToSite, initialState }: { onBackToSite: () => void; initialState?: string }) {
+export function StartPage({ onBackToSite, initialState, initialPlan }: { onBackToSite: () => void; initialState?: string; initialPlan?: string }) {
   const [step, setStep] = useState(0);
   const [storageUnavailable, setStorageUnavailable] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -66,7 +66,7 @@ export function StartPage({ onBackToSite, initialState }: { onBackToSite: () => 
   }, []);
   useEffect(() => { headingRef.current?.focus({ preventScroll: true }); }, [step]);
   const move = (next: number) => { setStep(next); window.scrollTo({ top: 0, behavior: reduceMotion ? 'instant' : 'smooth' }); };
-  const details = (answers: Answers) => ({ businessType: 'LLC' as const, country: answers.country, formationState: US_STATES.find(state => state.code === answers.formationState)?.name ?? '', preferredName: answers.businessName.trim() });
+  const details = (answers: Answers) => ({ businessType: 'LLC' as const, country: answers.country, formationState: US_STATES.find(state => state.code === answers.formationState)?.name ?? '', preferredName: answers.businessName.trim(), ...(initialPlan === 'basic' || initialPlan === 'premium' ? { packageSlug: initialPlan } : {}) });
   const signIn = async () => {
     if (submittingRef.current || !(await trigger(fields.slice(0, 4).flat(), { shouldFocus: true }))) return;
     submittingRef.current = true; setBusy(true); setServerError('');
@@ -80,7 +80,21 @@ export function StartPage({ onBackToSite, initialState }: { onBackToSite: () => 
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (submittingRef.current || !(await trigger(step === 4 ? undefined : fields[step], { shouldFocus: true }))) return;
-    if (step < 4) { move(step + 1); return; }
+    if (step < 4) {
+      if (step === 3) {
+        try {
+          const session = await fetch(dashboardOnboardingUrl('session'), { credentials: 'include', cache: 'no-store' });
+          if (session.ok && (await session.json()).clientAuthenticated) {
+            submittingRef.current = true; setBusy(true); setServerError('');
+            const prepared = await fetch(dashboardOnboardingUrl('prepare'), { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(details(getValues())) });
+            if (!prepared.ok) throw new Error('Could not save your selections. Please try again.');
+            window.location.assign(dashboardOnboardingApplicationUrl());
+            return;
+          }
+        } catch (error) { setServerError(error instanceof Error ? error.message : 'Could not connect to the dashboard. Please try again.'); submittingRef.current = false; setBusy(false); return; }
+      }
+      move(step + 1); return;
+    }
     submittingRef.current = true; setBusy(true); setServerError('');
     const answers = getValues();
     try {

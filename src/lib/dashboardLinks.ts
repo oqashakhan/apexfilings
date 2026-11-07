@@ -32,7 +32,7 @@ export function dashboardApplicationUrl(options: { state?: string | null; plan?:
   return `${dashboardUrl('/login')}?next=${encodeURIComponent(applicationDestination(options))}`;
 }
 
-export function dashboardOnboardingUrl(action: 'register' | 'prepare'): string {
+export function dashboardOnboardingUrl(action: 'register' | 'prepare' | 'session'): string {
   return `${dashboardOrigin}/api/v1/onboarding/${action}`;
 }
 

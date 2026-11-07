@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { registerClientSession } from "@/server/client-auth";
-import { ApiError, body, checkOrigin, handleError, json, requireRole } from "@/server/http";
+import { actor, ApiError, body, checkOrigin, handleError, json, requireRole } from "@/server/http";
 import { onboardingCookieName, onboardingCookieOptions, openOnboardingDetails, sealOnboardingDetails, validatedOnboardingDetails } from "@/server/onboarding-handoff";
 
 export const runtime = "nodejs";
@@ -69,6 +69,11 @@ export async function POST(request: NextRequest, context: { params: Promise<{ ac
 
 export async function GET(request: NextRequest, context: { params: Promise<{ action: string }> }) {
   try {
+    if ((await context.params).action === "session") {
+      const origin = publicOrigin(request);
+      const user = await actor(request).catch((error) => { if (error instanceof ApiError && error.status === 401) return null; throw error; });
+      return cors(json({ clientAuthenticated: user?.role === "CLIENT" }), origin);
+    }
     if ((await context.params).action !== "current") throw new ApiError(404, "Not found");
     await requireRole(request, "CLIENT");
     return json({ details: openOnboardingDetails(request.cookies.get(onboardingCookieName)?.value) });

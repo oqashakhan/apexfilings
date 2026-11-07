@@ -10,7 +10,7 @@ async function main() {
     await db.service.upsert({ where: { slug: item.id }, update: {}, create: { slug: item.id, name: item.name, category: item.category, description: item.description, available: item.status === "Available" } });
   }
   for (const item of adminPackages) {
-    await db.package.upsert({ where: { slug: item.id }, update: {}, create: { slug: item.id, name: item.name, serviceFeeCents: item.serviceFee * 100, includedServices: item.includedServices, available: item.available } });
+    await db.package.upsert({ where: { slug: item.id }, update: {}, create: { slug: item.id, name: item.name, serviceFeeCents: item.serviceFee * 100, includedServices: item.includedServices, includedServiceSlugs: item.includedServiceSlugs, available: item.available } });
   }
   for (const item of stateFees) {
     // Prior public-site state amounts are estimates without a verified date.

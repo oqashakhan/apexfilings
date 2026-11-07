@@ -1,6 +1,7 @@
+import { usePricingCatalog } from '../../lib/usePricingCatalog';
 import { useLayoutEffect, useRef, useState } from 'react';
 import { ArrowRight, Building2, Check, Flag, Gem, Minus } from 'lucide-react';
-import { PRICING_CATEGORIES, PRICING_DISCLAIMER, PRICING_PLANS, pricingComparisonLabel, type PricingCategory } from '../../data/pricing';
+import { PRICING_CATEGORIES, PRICING_DISCLAIMER, pricingComparisonLabel, type PricingCategory } from '../../data/pricing';
 import { PricingPlan } from '../../types';
 import './PricingSection.css';
 
@@ -9,14 +10,16 @@ interface PricingSectionProps {
   asPage?: boolean;
 }
 
-const basicFeatures = PRICING_PLANS.find((plan) => plan.id === 'basic')?.features ?? [];
-const comparisonFeatures = Array.from(new Set(PRICING_PLANS.flatMap((plan) => plan.features)));
+
 
 function includesFeature(plan: PricingPlan, feature: string) {
   return plan.features.includes(feature);
 }
 
 export function PricingSection({ onSelectPlan, asPage = false }: PricingSectionProps) {
+  const { plans: PRICING_PLANS } = usePricingCatalog();
+  const basicFeatures = PRICING_PLANS.find(p => p.id === 'basic')?.features ?? [];
+  const comparisonFeatures = Array.from(new Set(PRICING_PLANS.flatMap(p => p.features)));
   const Heading = asPage ? 'h1' : 'h2';
   const [category, setCategory] = useState<PricingCategory>('us-llc');
   const contentRef = useRef<HTMLDivElement>(null);
@@ -49,7 +52,7 @@ export function PricingSection({ onSelectPlan, asPage = false }: PricingSectionP
         <div aria-hidden="true" className="pointer-events-none absolute -bottom-32 -left-32 h-64 w-64 rounded-[4rem] border border-[#DEE4EA] rotate-[-22deg]" />
         <div aria-hidden="true" className="pointer-events-none absolute -bottom-40 -right-10 h-[30rem] w-52 rotate-[20deg] rounded-[5rem] border border-[#DEE4EA]" />
 
-        <div className="relative mx-auto max-w-2xl text-center">
+        {!PRICING_PLANS.length && <p role="status">Approved package pricing is temporarily unavailable. Please contact us or retry shortly.</p>}<div className="relative mx-auto max-w-2xl text-center">
           <span className="text-xs font-bold uppercase tracking-[0.18em] text-[#E54723]">Clear pricing, confident choices</span>
           <Heading id="pricing-title" className="mt-4 text-4xl font-bold tracking-tight text-[#191D2A] sm:text-5xl lg:text-[3.5rem]">
             {isUsLlc ? 'Choose Your US LLC Formation Package' : 'Explore UK Ltd Formation'}

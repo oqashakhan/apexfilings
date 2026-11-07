@@ -19,7 +19,7 @@ type ContextValue = Snapshot & {
   loading: boolean; error: string | null; refresh: () => Promise<void>;
   canApprove: (id: string) => boolean;
   changeStatus: (id: string, status: ApplicationStatus, reason: string) => Promise<boolean>;
-  reviewDocument: (id: string, status: AdminDocument["status"]) => Promise<void>;
+  reviewDocument: (id: string, status: AdminDocument["status"], reason?: string) => Promise<void>;
   reviewPayment: (id: string, status: PaymentStatus, reason?: string) => Promise<void>;
   confirmOrderFees: (id: string, fees: { governmentFeeCents: number; thirdPartyFeeCents: number; additionalFeeCents: number; discountCents: number }) => Promise<void>;
   recordManualPayment: (orderId: string, amountCents: number, reference: string, supportingInfo?: string) => Promise<void>;
@@ -67,10 +67,10 @@ export function AdminDemoProvider({ children }: { children: React.ReactNode }) {
       const application = snapshot.applications.find((item) => item.id === id);
       const order = snapshot.orders.find((item) => item.applicationId === id);
       const files = snapshot.documents.filter((item) => item.applicationId === id && item.status !== "Completed Company Document");
-      return Boolean(application?.customerConfirmed && order?.paymentStatus === "Paid" && files.length > 0 && files.every((item) => item.status === "Accepted") && reviewChecks.every((check) => snapshot.checks[id]?.includes(check)));
+      return Boolean(application?.customerConfirmed && !application.pendingDocumentRequests && order?.paymentStatus === "Paid" && files.length > 0 && files.every((item) => item.status === "Accepted") && reviewChecks.every((check) => snapshot.checks[id]?.includes(check)));
     },
     changeStatus: async (id, status, reason) => { try { await act(`applications/${id}/status`, "POST", { status: statusCodes[status], reason }); return true; } catch { return false; } },
-    reviewDocument: async (id, status) => { await act(`documents/${id}/review`, "POST", { status: status === "Accepted" ? "ACCEPTED" : "REPLACEMENT_REQUIRED" }); },
+    reviewDocument: async (id, status, reason) => { await act(`documents/${id}/review`, "POST", { status: status === "Accepted" ? "ACCEPTED" : "REPLACEMENT_REQUIRED", reason }); },
     reviewPayment: async (id, status, reason) => { if (status === "Paid") await act(`payments/${id}/verify`, "POST", {}); else if (status === "Failed" && reason && reason.trim().length >= 3) await act(`payments/${id}/reject`, "POST", { reason: reason.trim() }); else throw new Error("Choose a review decision and provide a reason for rejection"); },
     confirmOrderFees: async (id, fees) => { await act(`orders/${id}`, "PATCH", fees); },
     recordManualPayment: async (orderId, amountCents, reference, supportingInfo) => { await act("payments", "POST", { orderId, amountCents, reference, supportingInfo }); },

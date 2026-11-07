@@ -8,9 +8,10 @@ export type ClientRecord = {
   history: { id: string; status: string; reason: string | null; date: string }[];
   responses: { id: string; requestEventId: string; body: string; createdAt: string }[];
   requiredDocuments: { id: string; documentType: string }[];
-  documents: { id: string; documentType: string; reviewStatus: string; reviewReason: string | null; replacesDocumentId: string | null; originalFilename: string; createdAt: string; ownerId: string | null }[];
-  nextAction: { kind: "action" | "waiting" | "complete"; title: string; description: string; ctaLabel: string; href: string; documentRequests: { id: string; documentType: string; ownerId: string | null; reason: string | null; replacesDocumentId: string | null }[] };
-  order: { id: string; paymentStatus: string; serviceFeeCents: number; governmentFeeCents: number | null; thirdPartyFeeCents: number | null; additionalFeeCents: number | null; discountCents: number | null; totalCents: number | null; invoice: { number: string; issuedAt: string | null } | null } | null;
+  documents: { id: string; documentType: string; reviewStatus: string; reviewReason: string | null; replacesDocumentId: string | null; requestId: string | null; originalFilename: string; createdAt: string; ownerId: string | null }[];
+  documentRequests: { id: string; documentType: string; ownerId: string | null; reason: string }[];
+  nextAction: { kind: "action" | "waiting" | "complete"; title: string; description: string; ctaLabel: string; href: string; documentRequests: { id: string; documentType: string; ownerId: string | null; reason: string | null; replacesDocumentId: string | null; requestId: string | null }[] };
+  order: { id: string; paymentStatus: string; pricingSnapshot: import("@/lib/pricing").QuoteSnapshot | null; serviceFeeCents: number; governmentFeeCents: number | null; thirdPartyFeeCents: number | null; additionalFeeCents: number | null; discountCents: number | null; totalCents: number | null; stripeCheckoutStatus: string | null; invoice: { number: string; issuedAt: string | null } | null } | null;
 };
 export type ClientService = { id: string; name: string; description: string; slug: string };
 export type ClientPackage = { id: string; name: string; slug: string; serviceFeeCents: number; currency: string };

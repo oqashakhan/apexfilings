@@ -1,7 +1,8 @@
+import { usePricingCatalog } from '../../lib/usePricingCatalog';
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowRight, MapPin, Search, X } from 'lucide-react';
-import { PRICING_PLANS } from '../../data/pricing';
-import { estimatedInitialTotal, US_STATES } from '../../data/usStates';
+
+import { US_STATES } from '../../data/usStates';
 import { StateFeeDetails } from '../StateFeeDetails';
 import { useScrollReveal } from '../../hooks/useScrollReveal';
 import '../us-map/USStateMap.css';
@@ -15,6 +16,7 @@ interface USStateMapSectionProps {
 }
 
 export function USStateMapSection({ onStartState }: USStateMapSectionProps) {
+  const { plans: PRICING_PLANS, states: approvedStates } = usePricingCatalog();
   const sectionRef = useRef<HTMLElement>(null);
   const searchRef = useRef<HTMLDivElement>(null);
   const previewRef = useRef<HTMLElement>(null);
@@ -41,8 +43,9 @@ export function USStateMapSection({ onStartState }: USStateMapSectionProps) {
   }, [query]);
   const selectedState = US_STATES.find((state) => state.code === selectedCode);
   const activePlan = PRICING_PLANS.find((plan) => plan.id === planId) ?? PRICING_PLANS[0];
-  const servicePrice = nonUsResident ? activePlan.priceNonUsResident : activePlan.priceUsResident;
-  const initialTotal = estimatedInitialTotal(servicePrice, selectedState);
+  const servicePrice = nonUsResident ? activePlan?.priceNonUsResident : activePlan?.priceUsResident;
+  const fee = approvedStates.find(s => s.code === selectedState?.code && s.active && s.verifiedAt)?.filingFeeCents;
+  const initialTotal = servicePrice == null || fee == null ? null : servicePrice + fee / 100;
 
   const selectState = (state: State) => {
     setSelectedCode(state.code);
@@ -145,7 +148,7 @@ export function USStateMapSection({ onStartState }: USStateMapSectionProps) {
                   {PRICING_PLANS.map((plan) => <button key={plan.id} type="button" aria-pressed={planId === plan.id} onClick={() => setPlanId(plan.id)}>{plan.name}</button>)}
                 </div>
                 <div className="mt-4 flex items-end justify-between gap-3">
-                  <div><span className="text-3xl font-bold tabular-nums text-[#171717]">${servicePrice}</span><span className="ml-1 text-xs font-medium text-slate-500">+ applicable state filing fee</span></div>
+                  <div><span className="text-3xl font-bold tabular-nums text-[#171717]">{servicePrice == null ? 'Pricing unavailable' : `$${servicePrice}`}</span><span className="ml-1 text-xs font-medium text-slate-500">+ applicable state filing fee</span></div>
                   <span className="text-[11px] font-semibold text-slate-500">Package price</span>
                 </div>
                 <p className="mt-2 text-xs font-semibold text-[#171717]">Estimated initial total: {initialTotal == null ? 'Pending fee verification' : `$${initialTotal}`}</p>

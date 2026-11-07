@@ -8,6 +8,7 @@ import { approvalChecks, canTransition, statusNames } from "@/server/workflow";
 import { statusInput } from "@/server/validation";
 import { adminSnapshot } from "@/server/admin-snapshot";
 import { emailHtml, queueEmail, queueNotification } from "@/server/mail";
+import { applicationQuote } from "@/server/pricing";
 
 export const runtime = "nodejs";
 type Params = { params: Promise<{ segments: string[] }> };
@@ -19,6 +20,22 @@ async function application(id: string) {
   return found;
 }
 
+async function requestedDocumentsReady(id: string) {
+  const [requests, documents] = await Promise.all([
+    db.documentRequest.findMany({ where: { applicationId: id }, select: { id: true } }),
+    db.document.findMany({ where: { applicationId: id }, select: { id: true, requestId: true, replacesDocumentId: true, reviewStatus: true } }),
+  ]);
+  return requests.every((request) => {
+    let current = documents.find((document) => document.requestId === request.id);
+    while (current) {
+      const replacement = documents.find((document) => document.replacesDocumentId === current?.id);
+      if (!replacement) break;
+      current = replacement;
+    }
+    return current?.reviewStatus === "ACCEPTED";
+  });
+}
+
 async function approvalReady(id: string) {
   const item = await application(id);
   const checks = new Set(item.reviews.map((review) => review.checkKey));
@@ -26,7 +43,7 @@ async function approvalReady(id: string) {
   const docsReady = requiredDocuments.every((requirement) => requirement.documentType === "OWNER_ID"
     ? item.company.owners.every((owner) => item.documents.some((doc) => doc.documentType === requirement.documentType && doc.ownerId === owner.id && doc.reviewStatus === "ACCEPTED"))
     : item.documents.some((doc) => doc.documentType === requirement.documentType && doc.reviewStatus === "ACCEPTED"));
-  return item.customerConfirmedAt != null && item.order?.paymentStatus === "VERIFIED" && docsReady && approvalChecks.every((check) => checks.has(check));
+  return item.customerConfirmedAt != null && item.order?.paymentStatus === "VERIFIED" && docsReady && await requestedDocumentsReady(id) && approvalChecks.every((check) => checks.has(check));
 }
 
 async function statusChange(id: string, userId: string, next: ApplicationStatus, reason: string) {
@@ -34,6 +51,7 @@ async function statusChange(id: string, userId: string, next: ApplicationStatus,
   if (!canTransition(existing.status, next)) throw new ApiError(409, "Status transition is not allowed");
   if (next === "PAYMENT_RECEIVED") throw new ApiError(409, "Payment status changes only after verified payment");
   if (next === "APPROVED_FOR_FILING" && !(await approvalReady(id))) throw new ApiError(409, "Review, documents, confirmation, and verified payment are required");
+  if (next === "COMPLETED" && !(await requestedDocumentsReady(id))) throw new ApiError(409, "Requested documents must be accepted before completion");
   if (next === "COMPLETED" && !existing.documents.some((doc) => doc.reviewStatus === "COMPLETED_COMPANY_DOCUMENT" && doc.clientVisible)) throw new ApiError(409, "Share completed company documents with the client first");
   await db.$transaction(async (tx) => {
     const changed = await tx.application.updateMany({ where: { id, status: existing.status }, data: { status: next, ...(next === "APPROVED_FOR_FILING" ? { approvedForFilingAt: new Date(), internalReviewStatus: "APPROVED" } : {}), ...(next === "SUBMITTED_TO_AUTHORITY" ? { authorityFilingStatus: "SUBMITTED" } : {}), ...(next === "COMPLETED" ? { completedAt: new Date(), authorityFilingStatus: "COMPLETED" } : {}) } });
@@ -52,11 +70,20 @@ async function statusChange(id: string, userId: string, next: ApplicationStatus,
 export async function GET(request: NextRequest, context: Params) {
   try {
     const owner = await requireRole(request, "OWNER");
-    const [resource, id] = (await context.params).segments;
+    const [resource, id, action] = (await context.params).segments;
     const url = new URL(request.url);
     const page = pageNumber(url.searchParams.get("page"), 1, 10000);
     const take = pageNumber(url.searchParams.get("pageSize"), 20, 100);
     if (resource === "snapshot") return json(await adminSnapshot(owner.id));
+    if (resource === "applications" && id && action === "document-requests") {
+      await application(id);
+      const [requests, files] = await Promise.all([db.documentRequest.findMany({ where: { applicationId: id }, orderBy: { createdAt: "desc" } }), db.document.findMany({ where: { applicationId: id }, select: { id: true, requestId: true, replacesDocumentId: true, reviewStatus: true } })]);
+      return json({ requests: requests.map((item) => {
+        let file = files.find((document) => document.requestId === item.id);
+        while (file && files.some((document) => document.replacesDocumentId === file?.id)) file = files.find((document) => document.replacesDocumentId === file?.id);
+        return { id: item.id, documentType: item.documentType, ownerId: item.ownerId, reason: item.reason, createdAt: item.createdAt, status: file?.reviewStatus ?? "NOT_PROVIDED" };
+      }) });
+    }
     if (resource === "dashboard") {
       const [total, pending, requiringAction, verifiedPayments, recentApplications, audit, documentCount, paymentCount] = await Promise.all([
         db.application.count(), db.application.count({ where: { status: "UNDER_REVIEW" } }),
@@ -158,6 +185,24 @@ export async function POST(request: NextRequest, context: Params) {
       const input = statusInput.parse(await body(request));
       return json({ application: await statusChange(id, user.id, input.status, input.reason) });
     }
+    if (resource === "applications" && id && action === "document-requests") {
+      const input = z.object({ documentType: z.string().regex(/^[A-Z_]{3,60}$/), ownerId: z.string().optional(), reason: z.string().trim().min(5).max(500) }).parse(await body(request));
+      const target = await application(id);
+      if (["DRAFT", "COMPLETED", "CANCELLED", "REFUNDED", "REFUND_REQUESTED"].includes(target.status)) throw new ApiError(409, "Document requests are unavailable at this stage");
+      if (input.ownerId && !target.company.owners.some((owner) => owner.id === input.ownerId)) throw new ApiError(400, "Owner does not belong to this application");
+      if (input.documentType === "OWNER_ID" && !input.ownerId) throw new ApiError(400, "Choose the owner for identification");
+      const customer = await db.user.findUniqueOrThrow({ where: { id: target.customerId }, select: { email: true, notificationPreference: true } });
+      const created = await db.$transaction(async (tx) => {
+        const requestKey = `${id}:${input.documentType}:${input.ownerId ?? "company"}`;
+        if (await tx.documentRequest.findUnique({ where: { requestKey } })) throw new ApiError(409, "A request for this document already exists");
+        const requestItem = await tx.documentRequest.create({ data: { requestKey, applicationId: id, documentType: input.documentType, ownerId: input.ownerId ?? null, reason: input.reason, createdById: user.id } });
+        await queueNotification(tx, `document-request:${requestItem.id}`, target.customerId, "DOCUMENT_REVIEW", "Document requested", "Please review a new document request in your application.", id);
+        if (customer.notificationPreference?.documentEmail !== false) await queueEmail(tx, `document-request:${requestItem.id}`, customer.email, "Document requested — Apex Filings", emailHtml("Document requested", ["Please sign in to review and upload the requested document. Do not reply with private files by email."], { label: "View request", href: `${process.env.APP_ORIGIN ?? "http://localhost:3001"}/client/applications/${id}#document-requests` }));
+        await tx.auditLog.create({ data: { actorUserId: user.id, action: "DOCUMENT_REQUESTED", resourceType: "DocumentRequest", resourceId: requestItem.id, safeMetadata: { applicationId: id, documentType: input.documentType } } });
+        return requestItem;
+      });
+      return json({ request: { id: created.id, documentType: created.documentType, ownerId: created.ownerId, reason: created.reason } }, 201);
+    }
     if (resource === "applications" && id && action === "checks") {
       const input = z.object({ check: z.enum(approvalChecks), checked: z.boolean() }).parse(await body(request));
       await application(id);
@@ -191,8 +236,11 @@ export async function POST(request: NextRequest, context: Params) {
       const input = z.object({ orderId: z.string().min(1), amountCents: z.number().int().positive(), reference: z.string().trim().min(2).max(200), supportingInfo: z.string().trim().max(1000).optional() }).parse(await body(request));
       const order = await db.order.findUnique({ where: { id: input.orderId } });
       if (!order || order.paymentStatus === "VERIFIED" || order.totalCents === null) throw new ApiError(409, "Confirm all order fees before recording a payment");
+      if (await db.stripeCheckout.findUnique({ where: { orderId: order.id } })) throw new ApiError(409, "A Stripe checkout exists for this order");
       if (input.amountCents !== order.totalCents) throw new ApiError(400, "Payment amount must match the confirmed order total");
       const result = await db.$transaction(async (tx) => {
+        await tx.$queryRaw`SELECT "id" FROM "Order" WHERE "id" = ${input.orderId} FOR UPDATE`;
+        if (await tx.stripeCheckout.findUnique({ where: { orderId: input.orderId } })) throw new ApiError(409, "A Stripe checkout exists for this order");
         const claim = await tx.order.updateMany({ where: { id: input.orderId, paymentStatus: "UNPAID", totalCents: input.amountCents }, data: { paymentStatus: "AWAITING_VERIFICATION" } });
         if (!claim.count) throw new ApiError(409, "Payment review has already started for this order");
         const payment = await tx.payment.create({ data: { orderId: input.orderId, amountCents: input.amountCents, reference: input.reference, supportingInfo: input.supportingInfo, status: "AWAITING_VERIFICATION" } });
@@ -252,7 +300,7 @@ export async function POST(request: NextRequest, context: Params) {
       const found = await db.refundRequest.findUnique({ where: { id } });
       if (!found || !["REQUESTED", "UNDER_REVIEW"].includes(found.status) || found.status === input.status) throw new ApiError(409, "Refund request unavailable");
       await db.$transaction(async (tx) => {
-        const claimed = await tx.refundRequest.updateMany({ where: { id, status: found.status }, data: { status: input.status, reviewedAt: new Date() } });
+        const claimed = await tx.refundRequest.updateMany({ where: { id, status: found.status }, data: { status: input.status, reviewedAt: new Date(), reviewedById: user.id } });
         if (!claimed.count) throw new ApiError(409, "Refund status changed; refresh and try again");
         const related = await tx.refundRequest.findUniqueOrThrow({ where: { id }, include: { order: { include: { application: { include: { customer: { include: { notificationPreference: true } } } } } } } });
         await queueNotification(tx, `refund:${id}:${input.status}`, related.order.application.customerId, "PAYMENT_UPDATE", "Refund request updated", `Refund request status: ${input.status.replaceAll("_", " ")}. No funds were moved by this review decision.`, related.order.applicationId);
@@ -312,10 +360,21 @@ export async function PATCH(request: NextRequest, context: Params) {
       const input = z.object({ governmentFeeCents: z.number().int().nonnegative(), thirdPartyFeeCents: z.number().int().nonnegative(), additionalFeeCents: z.number().int().nonnegative(), discountCents: z.number().int().nonnegative() }).parse(await body(request));
       const existing = await db.order.findUnique({ where: { id } });
       if (!existing) throw new ApiError(404, "Order not found");
-      if (existing.paymentStatus !== "UNPAID") throw new ApiError(409, "Fees are locked once payment review begins");
+      if (existing.pricingSnapshot && typeof existing.pricingSnapshot === "object" && "totalCents" in existing.pricingSnapshot && existing.pricingSnapshot.totalCents !== null) throw new ApiError(409, "Finalized price snapshots cannot be repriced");
+      if (existing.paymentStatus !== "UNPAID" || await db.stripeCheckout.findUnique({ where: { orderId: id } })) throw new ApiError(409, "Fees are locked once payment review begins");
       const totalCents = existing.serviceFeeCents + input.governmentFeeCents + input.thirdPartyFeeCents + input.additionalFeeCents - input.discountCents;
       if (!Number.isSafeInteger(totalCents) || totalCents <= 0) throw new ApiError(400, "Invalid fee total");
       const order = await db.$transaction(async (tx) => {
+        await tx.$queryRaw`SELECT "id" FROM "Order" WHERE "id" = ${id} FOR UPDATE`;
+        if (await tx.stripeCheckout.findUnique({ where: { orderId: id } })) throw new ApiError(409, "Fees are locked after Stripe checkout begins");
+        const current = await tx.order.findUniqueOrThrow({ where: { id }, include: { application: { include: { package: true, company: true } } } });
+        if (current.pricingSnapshot && current.totalCents !== null) throw new ApiError(409, "Finalized price snapshots cannot be repriced");
+        if (current.pricingSnapshot) {
+          const quote = await applicationQuote(current.application.package.slug, current.application.company.formationState, current.application.additionalServices, tx);
+          if (quote.totalCents === null || input.governmentFeeCents !== quote.governmentFeeCents || input.additionalFeeCents !== quote.additionalFeeCents) throw new ApiError(409, "Publish approved state and service prices before confirming this quote");
+          const snapshot = { ...quote, serviceFeeCents: current.serviceFeeCents, totalCents, discountCents: input.discountCents, items: [{ description: quote.packageName, amountCents: current.serviceFeeCents }, ...quote.items.slice(1), ...(input.thirdPartyFeeCents ? [{ description: "Confirmed third-party fees", amountCents: input.thirdPartyFeeCents }] : []), ...(input.discountCents ? [{ description: "Owner-authorized discount", amountCents: -input.discountCents }] : [])] };
+          await tx.order.update({ where: { id }, data: { pricingSnapshot: snapshot, items: { deleteMany: {}, create: snapshot.items.map(({ description, amountCents }) => ({ description, amountCents })) } } });
+        }
         const claim = await tx.order.updateMany({ where: { id, paymentStatus: "UNPAID" }, data: { ...input, totalCents } });
         if (!claim.count) throw new ApiError(409, "Order changed during fee confirmation");
         const invoice = await tx.invoice.upsert({ where: { orderId: id }, create: { orderId: id, number: `AF-${id}`, issuedAt: new Date() }, update: {} });

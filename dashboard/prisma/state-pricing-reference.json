@@ -1,0 +1,461 @@
+[
+  {
+    "code": "AL",
+    "state": "Alabama",
+    "referenceFilingFeeCents": null,
+    "recurringFeeDescription": null,
+    "recurringFeePeriod": null,
+    "processingTime": null,
+    "sourceReference": "Client reference: State price online processing time filing fee annual fee.docx; not independently verified"
+  },
+  {
+    "code": "AK",
+    "state": "Alaska",
+    "referenceFilingFeeCents": 25000,
+    "recurringFeeDescription": "$100 / 2 years",
+    "recurringFeePeriod": "biennial",
+    "processingTime": "immediately",
+    "sourceReference": "Client reference: State price online processing time filing fee annual fee.docx; not independently verified"
+  },
+  {
+    "code": "AZ",
+    "state": "Arizona",
+    "referenceFilingFeeCents": 5000,
+    "recurringFeeDescription": "$0",
+    "recurringFeePeriod": null,
+    "processingTime": "14–16 business days",
+    "sourceReference": "Client reference: State price online processing time filing fee annual fee.docx; not independently verified"
+  },
+  {
+    "code": "AR",
+    "state": "Arkansas",
+    "referenceFilingFeeCents": 4500,
+    "recurringFeeDescription": "$150 / year",
+    "recurringFeePeriod": "annual",
+    "processingTime": "3–7 business days",
+    "sourceReference": "Client reference: State price online processing time filing fee annual fee.docx; not independently verified"
+  },
+  {
+    "code": "CA",
+    "state": "California",
+    "referenceFilingFeeCents": 7000,
+    "recurringFeeDescription": "$800 / year + $20 / 2 yrs",
+    "recurringFeePeriod": "biennial",
+    "processingTime": "2–3 business days",
+    "sourceReference": "Client reference: State price online processing time filing fee annual fee.docx; not independently verified"
+  },
+  {
+    "code": "CO",
+    "state": "Colorado",
+    "referenceFilingFeeCents": 5000,
+    "recurringFeeDescription": "$25 / year",
+    "recurringFeePeriod": "annual",
+    "processingTime": "immediately",
+    "sourceReference": "Client reference: State price online processing time filing fee annual fee.docx; not independently verified"
+  },
+  {
+    "code": "CT",
+    "state": "Connecticut",
+    "referenceFilingFeeCents": 12000,
+    "recurringFeeDescription": "$80 / year",
+    "recurringFeePeriod": "annual",
+    "processingTime": "2–3 business days",
+    "sourceReference": "Client reference: State price online processing time filing fee annual fee.docx; not independently verified"
+  },
+  {
+    "code": "DE",
+    "state": "Delaware",
+    "referenceFilingFeeCents": 11000,
+    "recurringFeeDescription": "$300 / year",
+    "recurringFeePeriod": "annual",
+    "processingTime": "10 business days",
+    "sourceReference": "Client reference: State price online processing time filing fee annual fee.docx; not independently verified"
+  },
+  {
+    "code": "DC",
+    "state": "District of Columbia",
+    "referenceFilingFeeCents": 9900,
+    "recurringFeeDescription": "$300 / 2 years",
+    "recurringFeePeriod": "biennial",
+    "processingTime": "5 business days",
+    "sourceReference": "Client reference: State price online processing time filing fee annual fee.docx; not independently verified; combined DC/Washington label requires jurisdiction verification"
+  },
+  {
+    "code": "FL",
+    "state": "Florida",
+    "referenceFilingFeeCents": 12500,
+    "recurringFeeDescription": "$138.75 / year",
+    "recurringFeePeriod": "annual",
+    "processingTime": "5 business days",
+    "sourceReference": "Client reference: State price online processing time filing fee annual fee.docx; not independently verified"
+  },
+  {
+    "code": "GA",
+    "state": "Georgia",
+    "referenceFilingFeeCents": 10000,
+    "recurringFeeDescription": "$50 / year",
+    "recurringFeePeriod": "annual",
+    "processingTime": "7–10 business days",
+    "sourceReference": "Client reference: State price online processing time filing fee annual fee.docx; not independently verified"
+  },
+  {
+    "code": "HI",
+    "state": "Hawaii",
+    "referenceFilingFeeCents": 5000,
+    "recurringFeeDescription": "$15 / year",
+    "recurringFeePeriod": "annual",
+    "processingTime": "10–15 business days",
+    "sourceReference": "Client reference: State price online processing time filing fee annual fee.docx; not independently verified"
+  },
+  {
+    "code": "ID",
+    "state": "Idaho",
+    "referenceFilingFeeCents": 10000,
+    "recurringFeeDescription": "$0 (inforeport required)",
+    "recurringFeePeriod": null,
+    "processingTime": "5–7 business days",
+    "sourceReference": "Client reference: State price online processing time filing fee annual fee.docx; not independently verified"
+  },
+  {
+    "code": "IL",
+    "state": "Illinois",
+    "referenceFilingFeeCents": 15000,
+    "recurringFeeDescription": "$75 / year",
+    "recurringFeePeriod": "annual",
+    "processingTime": "5–10 business days",
+    "sourceReference": "Client reference: State price online processing time filing fee annual fee.docx; not independently verified"
+  },
+  {
+    "code": "IN",
+    "state": "Indiana",
+    "referenceFilingFeeCents": 9500,
+    "recurringFeeDescription": "$31 / 2 years",
+    "recurringFeePeriod": "biennial",
+    "processingTime": "1 business day",
+    "sourceReference": "Client reference: State price online processing time filing fee annual fee.docx; not independently verified"
+  },
+  {
+    "code": "IA",
+    "state": "Iowa",
+    "referenceFilingFeeCents": 5000,
+    "recurringFeeDescription": "$30 / 2 years",
+    "recurringFeePeriod": "biennial",
+    "processingTime": "1 business day",
+    "sourceReference": "Client reference: State price online processing time filing fee annual fee.docx; not independently verified"
+  },
+  {
+    "code": "KS",
+    "state": "Kansas",
+    "referenceFilingFeeCents": 16000,
+    "recurringFeeDescription": "$50 / year",
+    "recurringFeePeriod": "annual",
+    "processingTime": "immediately",
+    "sourceReference": "Client reference: State price online processing time filing fee annual fee.docx; not independently verified"
+  },
+  {
+    "code": "KY",
+    "state": "Kentucky",
+    "referenceFilingFeeCents": 4000,
+    "recurringFeeDescription": "$15 / year",
+    "recurringFeePeriod": "annual",
+    "processingTime": "immediately",
+    "sourceReference": "Client reference: State price online processing time filing fee annual fee.docx; not independently verified"
+  },
+  {
+    "code": "LA",
+    "state": "Louisiana",
+    "referenceFilingFeeCents": 10000,
+    "recurringFeeDescription": "$35 / year",
+    "recurringFeePeriod": "annual",
+    "processingTime": "3–5 business days",
+    "sourceReference": "Client reference: State price online processing time filing fee annual fee.docx; not independently verified"
+  },
+  {
+    "code": "ME",
+    "state": "Maine",
+    "referenceFilingFeeCents": 17500,
+    "recurringFeeDescription": "$85 / year",
+    "recurringFeePeriod": "annual",
+    "processingTime": "– (no online)",
+    "sourceReference": "Client reference: State price online processing time filing fee annual fee.docx; not independently verified"
+  },
+  {
+    "code": "MD",
+    "state": "Maryland",
+    "referenceFilingFeeCents": 10000,
+    "recurringFeeDescription": "$300 / year",
+    "recurringFeePeriod": "annual",
+    "processingTime": "~2 weeks",
+    "sourceReference": "Client reference: State price online processing time filing fee annual fee.docx; not independently verified"
+  },
+  {
+    "code": "MA",
+    "state": "Massachusetts",
+    "referenceFilingFeeCents": 50000,
+    "recurringFeeDescription": "$500 / year",
+    "recurringFeePeriod": "annual",
+    "processingTime": "1–2 business days",
+    "sourceReference": "Client reference: State price online processing time filing fee annual fee.docx; not independently verified"
+  },
+  {
+    "code": "MI",
+    "state": "Michigan",
+    "referenceFilingFeeCents": 5000,
+    "recurringFeeDescription": "$25 / year",
+    "recurringFeePeriod": "annual",
+    "processingTime": "7–10 business days",
+    "sourceReference": "Client reference: State price online processing time filing fee annual fee.docx; not independently verified"
+  },
+  {
+    "code": "MN",
+    "state": "Minnesota",
+    "referenceFilingFeeCents": 15500,
+    "recurringFeeDescription": "$0 (inforeport required)",
+    "recurringFeePeriod": null,
+    "processingTime": "immediately",
+    "sourceReference": "Client reference: State price online processing time filing fee annual fee.docx; not independently verified"
+  },
+  {
+    "code": "MS",
+    "state": "Mississippi",
+    "referenceFilingFeeCents": 5000,
+    "recurringFeeDescription": "$0 (inforeport required)",
+    "recurringFeePeriod": null,
+    "processingTime": "1–2 business days",
+    "sourceReference": "Client reference: State price online processing time filing fee annual fee.docx; not independently verified"
+  },
+  {
+    "code": "MO",
+    "state": "Missouri",
+    "referenceFilingFeeCents": 5000,
+    "recurringFeeDescription": "$0",
+    "recurringFeePeriod": null,
+    "processingTime": "immediately",
+    "sourceReference": "Client reference: State price online processing time filing fee annual fee.docx; not independently verified"
+  },
+  {
+    "code": "MT",
+    "state": "Montana",
+    "referenceFilingFeeCents": 3500,
+    "recurringFeeDescription": "$20 / year",
+    "recurringFeePeriod": "annual",
+    "processingTime": "5–6 business days",
+    "sourceReference": "Client reference: State price online processing time filing fee annual fee.docx; not independently verified"
+  },
+  {
+    "code": "NE",
+    "state": "Nebraska",
+    "referenceFilingFeeCents": 10000,
+    "recurringFeeDescription": "$13 / 2 years",
+    "recurringFeePeriod": "biennial",
+    "processingTime": "2–3 business days",
+    "sourceReference": "Client reference: State price online processing time filing fee annual fee.docx; not independently verified"
+  },
+  {
+    "code": "NV",
+    "state": "Nevada",
+    "referenceFilingFeeCents": 42500,
+    "recurringFeeDescription": "$350 / year",
+    "recurringFeePeriod": "annual",
+    "processingTime": "1 business day",
+    "sourceReference": "Client reference: State price online processing time filing fee annual fee.docx; not independently verified"
+  },
+  {
+    "code": "NH",
+    "state": "New Hampshire",
+    "referenceFilingFeeCents": 10000,
+    "recurringFeeDescription": "$100 / year",
+    "recurringFeePeriod": "annual",
+    "processingTime": "7–10 business days",
+    "sourceReference": "Client reference: State price online processing time filing fee annual fee.docx; not independently verified"
+  },
+  {
+    "code": "NJ",
+    "state": "New Jersey",
+    "referenceFilingFeeCents": 12500,
+    "recurringFeeDescription": "$75 / year",
+    "recurringFeePeriod": "annual",
+    "processingTime": "1 business day",
+    "sourceReference": "Client reference: State price online processing time filing fee annual fee.docx; not independently verified"
+  },
+  {
+    "code": "NM",
+    "state": "New Mexico",
+    "referenceFilingFeeCents": 5000,
+    "recurringFeeDescription": "$0",
+    "recurringFeePeriod": null,
+    "processingTime": "1–3 business days",
+    "sourceReference": "Client reference: State price online processing time filing fee annual fee.docx; not independently verified"
+  },
+  {
+    "code": "NY",
+    "state": "New York",
+    "referenceFilingFeeCents": 20000,
+    "recurringFeeDescription": "$9 / 2 years",
+    "recurringFeePeriod": "biennial",
+    "processingTime": "immediately",
+    "sourceReference": "Client reference: State price online processing time filing fee annual fee.docx; not independently verified"
+  },
+  {
+    "code": "NC",
+    "state": "North Carolina",
+    "referenceFilingFeeCents": 12500,
+    "recurringFeeDescription": "$200 / year",
+    "recurringFeePeriod": "annual",
+    "processingTime": "2–5 business days",
+    "sourceReference": "Client reference: State price online processing time filing fee annual fee.docx; not independently verified"
+  },
+  {
+    "code": "ND",
+    "state": "North Dakota",
+    "referenceFilingFeeCents": 13500,
+    "recurringFeeDescription": "$50 / year",
+    "recurringFeePeriod": "annual",
+    "processingTime": "5 business days",
+    "sourceReference": "Client reference: State price online processing time filing fee annual fee.docx; not independently verified"
+  },
+  {
+    "code": "OH",
+    "state": "Ohio",
+    "referenceFilingFeeCents": 9900,
+    "recurringFeeDescription": "$0",
+    "recurringFeePeriod": null,
+    "processingTime": "immediately",
+    "sourceReference": "Client reference: State price online processing time filing fee annual fee.docx; not independently verified"
+  },
+  {
+    "code": "OK",
+    "state": "Oklahoma",
+    "referenceFilingFeeCents": 10000,
+    "recurringFeeDescription": "$25 / year",
+    "recurringFeePeriod": "annual",
+    "processingTime": "2–3 business days",
+    "sourceReference": "Client reference: State price online processing time filing fee annual fee.docx; not independently verified"
+  },
+  {
+    "code": "OR",
+    "state": "Oregon",
+    "referenceFilingFeeCents": 10000,
+    "recurringFeeDescription": "$100 / year",
+    "recurringFeePeriod": "annual",
+    "processingTime": "2–3 business days",
+    "sourceReference": "Client reference: State price online processing time filing fee annual fee.docx; not independently verified"
+  },
+  {
+    "code": "PA",
+    "state": "Pennsylvania",
+    "referenceFilingFeeCents": 12500,
+    "recurringFeeDescription": "$7 / year",
+    "recurringFeePeriod": "annual",
+    "processingTime": "5–7 business days",
+    "sourceReference": "Client reference: State price online processing time filing fee annual fee.docx; not independently verified"
+  },
+  {
+    "code": "RI",
+    "state": "Rhode Island",
+    "referenceFilingFeeCents": 15000,
+    "recurringFeeDescription": "$50 / year",
+    "recurringFeePeriod": "annual",
+    "processingTime": "3–4 business days",
+    "sourceReference": "Client reference: State price online processing time filing fee annual fee.docx; not independently verified"
+  },
+  {
+    "code": "SC",
+    "state": "South Carolina",
+    "referenceFilingFeeCents": 11000,
+    "recurringFeeDescription": "$0",
+    "recurringFeePeriod": null,
+    "processingTime": "immediately",
+    "sourceReference": "Client reference: State price online processing time filing fee annual fee.docx; not independently verified"
+  },
+  {
+    "code": "SD",
+    "state": "South Dakota",
+    "referenceFilingFeeCents": 15000,
+    "recurringFeeDescription": "$55 / year",
+    "recurringFeePeriod": "annual",
+    "processingTime": "immediately",
+    "sourceReference": "Client reference: State price online processing time filing fee annual fee.docx; not independently verified"
+  },
+  {
+    "code": "TN",
+    "state": "Tennessee",
+    "referenceFilingFeeCents": 30000,
+    "recurringFeeDescription": "$300 / year",
+    "recurringFeePeriod": "annual",
+    "processingTime": "immediately",
+    "sourceReference": "Client reference: State price online processing time filing fee annual fee.docx; not independently verified"
+  },
+  {
+    "code": "TX",
+    "state": "Texas",
+    "referenceFilingFeeCents": 30800,
+    "recurringFeeDescription": "$0 (PIR required)",
+    "recurringFeePeriod": null,
+    "processingTime": "13–15 business days",
+    "sourceReference": "Client reference: State price online processing time filing fee annual fee.docx; not independently verified"
+  },
+  {
+    "code": "UT",
+    "state": "Utah",
+    "referenceFilingFeeCents": 5900,
+    "recurringFeeDescription": "$18 / year",
+    "recurringFeePeriod": "annual",
+    "processingTime": "immediately",
+    "sourceReference": "Client reference: State price online processing time filing fee annual fee.docx; not independently verified"
+  },
+  {
+    "code": "VT",
+    "state": "Vermont",
+    "referenceFilingFeeCents": 15500,
+    "recurringFeeDescription": "$45 / year",
+    "recurringFeePeriod": "annual",
+    "processingTime": "1 business day",
+    "sourceReference": "Client reference: State price online processing time filing fee annual fee.docx; not independently verified"
+  },
+  {
+    "code": "VA",
+    "state": "Virginia",
+    "referenceFilingFeeCents": 10000,
+    "recurringFeeDescription": "$50 / year",
+    "recurringFeePeriod": "annual",
+    "processingTime": "2–5 business days",
+    "sourceReference": "Client reference: State price online processing time filing fee annual fee.docx; not independently verified"
+  },
+  {
+    "code": "WA",
+    "state": "Washington",
+    "referenceFilingFeeCents": 20000,
+    "recurringFeeDescription": "$60 / year",
+    "recurringFeePeriod": "annual",
+    "processingTime": "5 business days",
+    "sourceReference": "Client reference: State price online processing time filing fee annual fee.docx; not independently verified"
+  },
+  {
+    "code": "WV",
+    "state": "West Virginia",
+    "referenceFilingFeeCents": 10000,
+    "recurringFeeDescription": "$25 / year",
+    "recurringFeePeriod": "annual",
+    "processingTime": "5–10 business days",
+    "sourceReference": "Client reference: State price online processing time filing fee annual fee.docx; not independently verified"
+  },
+  {
+    "code": "WI",
+    "state": "Wisconsin",
+    "referenceFilingFeeCents": 13000,
+    "recurringFeeDescription": "$25 / year",
+    "recurringFeePeriod": "annual",
+    "processingTime": "immediately",
+    "sourceReference": "Client reference: State price online processing time filing fee annual fee.docx; not independently verified"
+  },
+  {
+    "code": "WY",
+    "state": "Wyoming",
+    "referenceFilingFeeCents": 10000,
+    "recurringFeeDescription": "$60 minimum / year",
+    "recurringFeePeriod": "annual",
+    "processingTime": "immediately",
+    "sourceReference": "Client reference: State price online processing time filing fee annual fee.docx; not independently verified"
+  }
+]

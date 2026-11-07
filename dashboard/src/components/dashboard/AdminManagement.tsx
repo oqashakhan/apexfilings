@@ -2,6 +2,7 @@
 /* eslint-disable @next/next/no-html-link-for-pages -- Google OAuth requires a full browser redirect. */
 
 import { useEffect, useState } from "react";
+import { PricingManager } from "./PricingManager";
 import Link from "next/link";
 import { ArrowRight, Bell, Check, Pencil } from "lucide-react";
 import { useAdminDemo } from "@/components/dashboard/AdminDemoContext";
@@ -12,6 +13,10 @@ import { DataTable, PageHeader, Panel, PreviewNotice, StatusBadge, type TableCol
 import type { AdminContentItem, AdminPackage, AdminService, AdminStateFee } from "@/lib/admin-models";
 
 export function AdminServices() {
+  return <PricingManager />;
+}
+
+export function LegacyCatalogEditor() {
   const { services, packages, stateFees, updateServiceDraft, updatePackageDraft } = useAdminDemo();
   const [tab, setTab] = useState("Services");
   const [edit, setEdit] = useState<AdminService | null>(null);

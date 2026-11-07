@@ -7,6 +7,9 @@ import Link from "next/link";
 import { ArrowLeft, ArrowRight, Check, Plus, Trash2 } from "lucide-react";
 import { DashboardShell } from "@/components/layout/DashboardShell";
 import { PageHeader, Panel } from "@/components/ui/DashboardUI";
+import { serviceSelectionSlug, type PricingCatalog } from "@/lib/pricing";
+import { useApplicationQuote } from "./useApplicationQuote";
+import { PricingSummary } from "./PricingSummary";
 import { formationStates } from "@/lib/formation-states";
 import { useClientDemo, type ClientRecord } from "@/components/dashboard/ClientDemoContext";
 
@@ -41,7 +44,7 @@ const steps = ["Company Information", "Owner Information", "Additional Services"
 const defaultValues: WizardValues = {
   preferredName: "", firstAlternativeName: "", secondAlternativeName: "",
   formationState: "", businessActivity: "", description: "",
-  addressRequirement: "I need guidance", membership: "single", management: "member-managed", packageName: "Basic LLC Formation",
+  addressRequirement: "I need guidance", membership: "single", management: "member-managed", packageName: "basic",
   registeredAgentRequirement: "Please advise", einAssistance: "Please advise",
   bankingAssistance: "Please advise", paymentProcessingAssistance: "Please advise",
   additionalServices: [], owners: [{ fullName: "", email: "", phone: "", nationality: "", residence: "", address: "", ownership: 100 }],
@@ -56,13 +59,37 @@ export function ApplicationWizard() {
   const [busy, setBusy] = useState(false);
   const [uploaded, setUploaded] = useState<Record<string, boolean>>({});
   const { refresh, packages } = useClientDemo();
+  const [catalog, setCatalog] = useState<PricingCatalog | null>(null);
+  useEffect(() => {
+    const load = () => { void fetch('/api/v1/pricing', { cache: 'no-store' }).then(r => { if (!r.ok) throw new Error(); return r.json(); }).then(setCatalog).catch(() => setMessage('Pricing unavailable. Please retry before payment.')); };
+    load(); const timer = setInterval(load, 30000); window.addEventListener('focus', load);
+    return () => { clearInterval(timer); window.removeEventListener('focus', load); };
+  }, []);
   const form = useForm<WizardValues>({ defaultValues, mode: "onBlur" });
   const resetForm = form.reset;
   const setFormValue = form.setValue;
   const handoffApplied = useRef(false);
+  const handoffLoaded = useRef(false);
   const submittingRef = useRef(false);
   const owners = useFieldArray({ control: form.control, name: "owners" });
   const values = useWatch({ control: form.control, defaultValue: defaultValues }) as WizardValues;
+  const selectedPackage = catalog?.packages.find(p => p.slug === values.packageName || p.name === values.packageName);
+  const selectedSlug = selectedPackage?.slug ?? (values.packageName === 'Advanced LLC Formation' || values.packageName === 'Premium All-In' ? 'premium' : 'basic');
+  const { quote, error: quoteError } = useApplicationQuote({ applicationId: draft?.id, packageSlug: selectedSlug, state: values.formationState, services: values.additionalServices }, JSON.stringify(catalog));
+  function changePackage(slug: string) {
+    const pack = catalog?.packages.find(p => p.slug === slug);
+    form.setValue('packageName', slug);
+    form.setValue('additionalServices', values.additionalServices.map(value => serviceSelectionSlug(value, catalog?.services ?? [])).filter(slug => !pack?.includedServiceSlugs.includes(slug)));
+  }
+
+  useEffect(() => {
+    if (!draft?.id || draft.statusCode !== 'DRAFT' || !values.formationState) return;
+    const controller = new AbortController();
+    const timer = setTimeout(() => {
+      void fetch('/api/v1/pricing/selection', { method: 'PATCH', signal: controller.signal, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ applicationId: draft.id, packageSlug: selectedSlug, state: values.formationState, services: values.additionalServices }) }).then(r => { if (!r.ok && r.status !== 409) throw new Error('Could not save pricing selection. Continue to save again.'); }).catch(e => { if (!controller.signal.aborted) setMessage(e.message); });
+    }, 600);
+    return () => { clearTimeout(timer); controller.abort(); };
+  }, [draft?.id, draft?.statusCode, selectedSlug, values.formationState, values.additionalServices]);
 
   useEffect(() => {
     if (handoffApplied.current) return;
@@ -74,34 +101,40 @@ export function ApplicationWizard() {
     if (state && formationStates.some((item) => item === state)) form.setValue("formationState", state);
     if (plan === "basic" || plan === "premium") {
       const selected = packages.find((item) => item.slug === plan);
-      if (selected) form.setValue("packageName", selected.name);
+      if (selected) form.setValue("packageName", selected.slug);
       else { form.setValue("packageName", ""); queueMicrotask(() => setMessage("The selected website package is currently unavailable. Please review the available packages before continuing.")); }
     } else {
       const basic = packages.find((item) => item.slug === "basic");
-      form.setValue("packageName", basic?.name ?? "");
+      form.setValue("packageName", basic?.slug ?? "");
     }
     handoffApplied.current = true;
   }, [form, packages]);
 
   useEffect(() => {
     const query = new URLSearchParams(window.location.search);
-    if (query.has("draft") || query.get("handoff") !== "1") return;
+    if (query.has("draft") || query.get("handoff") !== "1" || !packages.length || handoffLoaded.current) return;
     let active = true;
     void fetch("/api/v1/onboarding/current", { cache: "no-store" })
       .then((response) => response.ok ? response.json() : null)
       .then((result) => {
-        if (!active) return;
+        if (!active || handoffLoaded.current) return;
         if (!result?.details) { setMessage("Your initial details have expired. Please enter them below to continue."); return; }
-        const details = result.details as { businessType: string; country: string; formationState: string; preferredName: string };
+        handoffLoaded.current = true;
+        const details = result.details as { businessType: string; country: string; formationState: string; preferredName: string; packageSlug?: "basic" | "premium" };
         if (details.businessType !== "LLC" || !formationStates.some((item) => item === details.formationState)) return;
         setFormValue("preferredName", details.preferredName);
         setFormValue("formationState", details.formationState);
+        if (details.packageSlug) {
+          const selected = packages.find((item) => item.slug === details.packageSlug);
+          if (selected) setFormValue("packageName", selected.slug);
+          else setMessage("The selected package is unavailable. Please choose an available package before continuing.");
+        }
         const residence = new Intl.DisplayNames(["en"], { type: "region" }).of(details.country);
         if (residence) setFormValue("owners.0.residence", residence);
       })
       .catch(() => { if (active) setMessage("Your initial details could not be loaded. Please enter them before continuing."); });
     return () => { active = false; };
-  }, [setFormValue]);
+  }, [setFormValue, packages]);
 
   useEffect(() => {
     const id = new URLSearchParams(window.location.search).get("draft");
@@ -117,14 +150,14 @@ export function ApplicationWizard() {
       const details = handoff?.details as { country?: string; formationState?: string; preferredName?: string } | undefined;
       const matchesHandoff = !item.company.owners.length && details?.formationState === item.company.state && details.preferredName === item.company.name;
       const residence = matchesHandoff && details.country ? new Intl.DisplayNames(["en"], { type: "region" }).of(details.country) : null;
-      resetForm({ ...defaultValues, preferredName: item.company.name, firstAlternativeName: item.company.alternatives[0] ?? "", secondAlternativeName: item.company.alternatives[1] ?? "", formationState: item.company.state, businessActivity: item.company.businessActivity, description: item.company.description, addressRequirement: item.company.addressRequirement, membership: item.company.membership, management: item.company.management, packageName: item.packageSlug === "premium" ? "Premium All-In" : "Basic LLC Formation", additionalServices: item.additionalServices, owners: item.company.owners.length ? item.company.owners : [{ ...defaultValues.owners[0], residence: residence ?? "" }] });
+      resetForm({ ...defaultValues, preferredName: item.company.name, firstAlternativeName: item.company.alternatives[0] ?? "", secondAlternativeName: item.company.alternatives[1] ?? "", formationState: item.company.state, businessActivity: item.company.businessActivity, description: item.company.description, addressRequirement: item.company.addressRequirement, membership: item.company.membership, management: item.company.management, packageName: item.packageSlug, additionalServices: item.additionalServices, owners: item.company.owners.length ? item.company.owners : [{ ...defaultValues.owners[0], residence: residence ?? "" }] });
     }).catch(() => { if (active) setMessage("Could not load this draft."); });
     return () => { active = false; };
   }, [resetForm]);
 
   async function saveDraft() {
     const validOwners = values.owners.filter((owner) => ownerSchema.safeParse(owner).success);
-    const selectedPackage = packages.find((item) => item.name === values.packageName);
+    const selectedPackage = packages.find((item) => item.name === values.packageName || item.slug === values.packageName);
     if (!selectedPackage || (selectedPackage.slug !== "basic" && selectedPackage.slug !== "premium")) throw new Error("This package is not available in the current dashboard catalog.");
     const payload = { preferredName: values.preferredName, firstAlternativeName: values.firstAlternativeName, secondAlternativeName: values.secondAlternativeName, formationState: values.formationState, businessActivity: values.businessActivity, description: values.description, addressRequirement: values.addressRequirement, membership: values.membership, management: values.management, packageSlug: selectedPackage.slug, additionalServices: values.additionalServices, owners: validOwners };
     const response = await fetch(draft ? `/api/v1/client/applications/${encodeURIComponent(draft.id)}` : "/api/v1/client/applications", { method: draft ? "PATCH" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
@@ -175,6 +208,7 @@ export function ApplicationWizard() {
     try {
       if (step === 0 || step === 1 || step === 2) await saveDraft();
       if (step === 4) {
+        await saveDraft();
         if (!draft) throw new Error("Save the application first.");
         const response = await fetch(`/api/v1/client/applications/${encodeURIComponent(draft.id)}/submit`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ confirmed: true }) });
         const result = await response.json();
@@ -210,7 +244,8 @@ export function ApplicationWizard() {
     setStep((current) => Math.max(current - 1, 0));
   }
   function toggleService(service: string) {
-    form.setValue("additionalServices", values.additionalServices.includes(service) ? values.additionalServices.filter((item) => item !== service) : [...values.additionalServices, service]);
+    const selected = values.additionalServices.map(value => serviceSelectionSlug(value, catalog?.services ?? []));
+    form.setValue("additionalServices", selected.includes(service) ? selected.filter(item => item !== service) : [...selected, service]);
   }
 
   return <DashboardShell role="client" title="New Application">
@@ -220,19 +255,17 @@ export function ApplicationWizard() {
       <aside className="wizard-steps" aria-label="Application steps">{steps.map((name, index) => <button key={name} type="button" className={"wizard-step" + (index === step ? " current" : "") + (index < step ? " done" : "")} disabled={index > furthestStep} onClick={() => { setMessage(""); setStep(index); }} aria-current={index === step ? "step" : undefined}><span>{index < step ? <Check size={16} /> : String(index + 1).padStart(2, "0")}</span><div><strong>{name}</strong><small>{index < step ? "Completed" : index === step ? "Current step" : "Upcoming"}</small></div></button>)}</aside>
       <div className="wizard-content"><Panel className="wizard-panel"><div className="wizard-heading"><span className="eyebrow accent">STEP {step + 1} OF {steps.length}</span><h2>{steps[step]}</h2><p>{step === 3 ? "Upload an identification document for each owner. PDF, JPEG, or PNG; maximum 8 MB." : "Your progress is saved as a draft as you continue."}</p></div>
         {step === 0 && Object.keys(form.formState.errors).length > 0 && <div className="wizard-inline-errors" role="alert">{Object.entries(form.formState.errors).filter(([fieldName]) => fieldName !== "owners").map(([fieldName, error]) => <span key={fieldName}>{fieldName.replace(/([A-Z])/g, " $1")}: {error?.message as string}</span>)}</div>}
-        {step === 0 && <><div className="form-grid"><label>Preferred LLC name <span>*</span><input {...form.register("preferredName")} placeholder="e.g. Northstar Studio LLC" /></label><label>First alternative company name <span>*</span><input {...form.register("firstAlternativeName")} placeholder="A backup LLC name" /></label><label>Second alternative company name<input {...form.register("secondAlternativeName")} placeholder="Optional second backup" /></label><label>Formation state <span>*</span><select {...form.register("formationState")}><option value="">Select a state</option>{formationStates.map((state) => <option key={state}>{state}</option>)}</select></label><label>Business activity <span>*</span><input {...form.register("businessActivity")} placeholder="e.g. Online consulting" /></label><label className="full-field">Business description <span>*</span><textarea {...form.register("description")} placeholder="A short description of what the company will do" /></label><label>Business address requirement<select {...form.register("addressRequirement")}><option>I need guidance</option><option>I have a US business address</option><option>I need a US business address</option></select></label><label>Membership<select value={values.membership} onChange={(event) => { form.setValue("membership", event.target.value); if (event.target.value === "single" && owners.fields.length > 1) owners.remove(Array.from({ length: owners.fields.length - 1 }, (_, i) => i + 1)); }}><option value="single">Single-member LLC</option><option value="multi">Multi-member LLC</option></select></label><label>Management structure<select {...form.register("management")}><option value="member-managed">Member-managed</option><option value="manager-managed">Manager-managed</option></select></label><label>Formation package<select {...form.register("packageName")}>{packages.length ? packages.map((item) => <option key={item.id} value={item.name}>{item.name}</option>) : <><option>Basic LLC Formation</option><option>Premium All-In</option></>}</select></label></div><p className="wizard-help">A first alternative name helps if the preferred name is unavailable. A multi-member LLC needs at least two owners and percentages totaling 100%. Management structure describes whether members or appointed managers run the company.</p></>}
+        {step === 0 && <><div className="form-grid"><label>Preferred LLC name <span>*</span><input {...form.register("preferredName")} placeholder="e.g. Northstar Studio LLC" /></label><label>First alternative company name <span>*</span><input {...form.register("firstAlternativeName")} placeholder="A backup LLC name" /></label><label>Second alternative company name<input {...form.register("secondAlternativeName")} placeholder="Optional second backup" /></label><label>Formation state <span>*</span><select {...form.register("formationState")}><option value="">Select a state</option>{formationStates.map((state) => <option key={state}>{state}</option>)}</select></label><label>Business activity <span>*</span><input {...form.register("businessActivity")} placeholder="e.g. Online consulting" /></label><label className="full-field">Business description <span>*</span><textarea {...form.register("description")} placeholder="A short description of what the company will do" /></label><label>Business address requirement<select {...form.register("addressRequirement")}><option>I need guidance</option><option>I have a US business address</option><option>I need a US business address</option></select></label><label>Membership<select value={values.membership} onChange={(event) => { form.setValue("membership", event.target.value); if (event.target.value === "single" && owners.fields.length > 1) owners.remove(Array.from({ length: owners.fields.length - 1 }, (_, i) => i + 1)); }}><option value="single">Single-member LLC</option><option value="multi">Multi-member LLC</option></select></label><label>Management structure<select {...form.register("management")}><option value="member-managed">Member-managed</option><option value="manager-managed">Manager-managed</option></select></label><label>Formation package<select value={selectedSlug} onChange={event => changePackage(event.target.value)} disabled={!!draft?.order}>{catalog?.packages.filter(p => p.available).map(item => <option key={item.id} value={item.slug}>{item.name} — ${(item.serviceFeeCents / 100).toFixed(2)}</option>)}</select></label><div className="full-field"><h3>Included in your package</h3><ul>{selectedPackage?.includedServices.map(feature => <li key={feature}>{feature}</li>)}</ul></div></div><p className="wizard-help">A first alternative name helps if the preferred name is unavailable. A multi-member LLC needs at least two owners and percentages totaling 100%. Management structure describes whether members or appointed managers run the company.</p></>}
         {step === 1 && <div className="owner-list">{owners.fields.map((field, index) => <div className="owner-card" key={field.id}><div className="owner-heading"><h3>Owner {index + 1}</h3>{index > 0 && <button className="icon-button" type="button" aria-label={"Remove owner " + (index + 1)} onClick={() => owners.remove(index)}><Trash2 size={17} /></button>}</div><div className="form-grid"><label>Full legal name <span>*</span><input {...form.register(`owners.${index}.fullName`)} /></label><label>Email <span>*</span><input type="email" {...form.register(`owners.${index}.email`)} /></label><label>Phone <span>*</span><input type="tel" {...form.register(`owners.${index}.phone`)} /></label><label>Ownership percentage <span>*</span><input type="number" min="1" max="100" {...form.register(`owners.${index}.ownership`, { valueAsNumber: true })} /></label><label>Nationality <span>*</span><input {...form.register(`owners.${index}.nationality`)} /></label><label>Country of residence <span>*</span><input {...form.register(`owners.${index}.residence`)} /></label><label className="full-field">Residential address <span>*</span><textarea {...form.register(`owners.${index}.address`)} /></label></div>{form.formState.errors.owners?.[index] && <div className="wizard-inline-errors" role="alert">{Object.entries(form.formState.errors.owners[index] ?? {}).map(([fieldName, error]) => <span key={fieldName}>{fieldName}: {String((error as { message?: string })?.message ?? "")}</span>)}</div>}</div>)}{values.membership === "multi" && <button type="button" className="button button-secondary" onClick={() => owners.append({ fullName: "", email: "", phone: "", nationality: "", residence: "", address: "", ownership: 0 })}><Plus size={16} /> Add another owner</button>}</div>}
-        {step === 2 && <><p className="wizard-help">Tell us which approved services interest you. Availability and any separate fees will be confirmed before a real order.</p><div className="option-list">{[
-          ["Registered Agent Service", "State-required agent support"],
-          ["EIN Application Assistance", "Help preparing an EIN request"],
-          ["US Address & Mail Forwarding", "Explore a US business address"],
-          ["US Business Bank Account Support", "Banking application guidance"],
-          ["Payment Processing Assistance", "Discuss payment provider options"],
-        ].map(([service, detail]) => <label className="option-row" key={service}><span><strong>{service}</strong><small>{detail} · availability and fees to be confirmed</small></span><input type="checkbox" checked={values.additionalServices.includes(service)} onChange={() => toggleService(service)} /></label>)}</div><p className="wizard-help">Selections are interests only. Additional fees require separate confirmation.</p></>}
+        {step === 2 && <><p className="wizard-help">Included services carry no extra charge. Select priced services individually. Unpriced services require a quotation.</p><div className="option-list">{catalog?.services.filter(service => service.slug !== 'llc' && (service.available || ['address', 'banking', 'payment-processing'].includes(service.slug))).map(service => {
+          const included = selectedPackage?.includedServiceSlugs.includes(service.slug);
+          const priced = service.available && service.priceApproved && service.priceCents !== null;
+          return <label className="option-row" key={service.id}><span><strong>{service.name}</strong><small>{service.description}</small><small>{included ? 'Included in your package' : priced ? `$${(service.priceCents! / 100).toFixed(2)} USD` : 'Price to be confirmed'}</small></span><input type="checkbox" disabled={included || !priced || !!draft?.order} checked={!!included || values.additionalServices.some(value => serviceSelectionSlug(value, catalog?.services ?? []) === service.slug)} onChange={() => toggleService(service.slug)} /></label>;
+        })}</div></>}
         {step === 3 && <><div className="wizard-document-list">{draft?.company.owners.map((owner) => <div key={owner.id}><strong>{owner.fullName} · government-issued identification</strong><span>{draft.documents.some((document) => document.documentType === "OWNER_ID" && document.ownerId === owner.id) || uploaded[owner.id] ? "Uploaded" : "Required"}</span><label className="button button-secondary">Choose file<input type="file" accept="application/pdf,image/jpeg,image/png" onChange={(event) => void upload(owner.id, event.target.files?.[0])} disabled={busy} /></label></div>)}</div><p className="wizard-help">Files are stored privately and reviewed by the Apex Filings team. An uploaded document does not mean it has been accepted.</p></>}
-        {step === 4 && <><div className="wizard-review-section"><div className="wizard-review-heading"><h3>Company information</h3><button className="text-action" onClick={() => setStep(0)}>Edit</button></div><div className="review-grid"><div><span>Preferred LLC name</span><strong>{values.preferredName || "Not entered"}</strong></div><div><span>Alternative names</span><strong>{values.firstAlternativeName}{values.secondAlternativeName ? ` · ${values.secondAlternativeName}` : ""}</strong></div><div><span>Formation state</span><strong>{values.formationState}</strong></div><div><span>Business activity</span><strong>{values.businessActivity}</strong></div><div><span>Description</span><strong>{values.description}</strong></div><div><span>Address, membership & management</span><strong>{values.addressRequirement} · {values.membership === "multi" ? "Multi-member" : "Single-member"} · {values.management}</strong></div></div></div><div className="wizard-review-section"><div className="wizard-review-heading"><h3>Owners</h3><button className="text-action" onClick={() => setStep(1)}>Edit</button></div><div className="review-grid">{values.owners.map((owner, index) => <div key={index}><span>Owner {index + 1} · {owner.ownership}%</span><strong>{owner.fullName}</strong><small>{owner.nationality} · {owner.residence}<br />{owner.email} · {owner.phone}</small></div>)}</div></div><div className="wizard-review-section"><div className="wizard-review-heading"><h3>Services, documents & package</h3><button className="text-action" onClick={() => setStep(2)}>Edit services</button></div><div className="review-grid"><div><span>Package</span><strong>{values.packageName}</strong></div><div><span>Service interests</span><strong>{values.additionalServices.length ? values.additionalServices.join(", ") : "None selected"}</strong></div><div><span>Document checklist</span><strong>{values.owners.length} owner ID item(s); secure upload required</strong></div><div><span>Government and additional fees</span><strong>To Be Confirmed</strong></div></div></div><label className="review-confirmation"><input type="checkbox" checked={confirmedReview} onChange={(event) => setConfirmedReview(event.target.checked)} /> I have reviewed the information and authorize submission of this application for Apex Filings review.</label></>}
-        {step === 5 && <div className="payment-preview"><div className="fee-row"><span>Selected package</span><strong>{values.packageName}</strong></div><div className="fee-row"><span>Apex Filings service fee</span><strong>{new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format((packages.find((item) => item.name === values.packageName)?.serviceFeeCents ?? (values.packageName === "Premium All-In" ? 29900 : 19900)) / 100)}</strong></div><div className="fee-row"><span>Government filing fee · {values.formationState}</span><strong>To Be Confirmed</strong></div><div className="fee-row"><span>Additional service fees · {values.additionalServices.length} selected</span><strong>To Be Confirmed</strong></div><div className="fee-row"><span>Discounts</span><strong>To Be Confirmed</strong></div><div className="fee-row total"><span>Total payable</span><strong>To Be Confirmed</strong></div><p>Your application has been submitted. The order is awaiting confirmed fees and manual payment instructions. No payment has been verified and no filing has been made.</p><Link className="text-action wizard-tracker-link" href="/client/applications">View application tracker <ArrowRight size={16} /></Link></div>}
-        {message && <p className="form-error" role="alert">{message}</p>}
+        {step === 4 && <><div className="wizard-review-section"><div className="wizard-review-heading"><h3>Company information</h3><button className="text-action" onClick={() => setStep(0)}>Edit</button></div><div className="review-grid"><div><span>Preferred LLC name</span><strong>{values.preferredName || "Not entered"}</strong></div><div><span>Alternative names</span><strong>{values.firstAlternativeName}{values.secondAlternativeName ? ` · ${values.secondAlternativeName}` : ""}</strong></div><div><span>Formation state</span><strong>{values.formationState}</strong></div><div><span>Business activity</span><strong>{values.businessActivity}</strong></div><div><span>Description</span><strong>{values.description}</strong></div><div><span>Address, membership & management</span><strong>{values.addressRequirement} · {values.membership === "multi" ? "Multi-member" : "Single-member"} · {values.management}</strong></div></div></div><div className="wizard-review-section"><div className="wizard-review-heading"><h3>Owners</h3><button className="text-action" onClick={() => setStep(1)}>Edit</button></div><div className="review-grid">{values.owners.map((owner, index) => <div key={index}><span>Owner {index + 1} · {owner.ownership}%</span><strong>{owner.fullName}</strong><small>{owner.nationality} · {owner.residence}<br />{owner.email} · {owner.phone}</small></div>)}</div></div><div className="wizard-review-section"><div className="wizard-review-heading"><h3>Services, documents & package</h3><button className="text-action" onClick={() => setStep(2)}>Edit services</button></div><div className="review-grid"><div><span>Package</span><strong>{quote?.packageName ?? values.packageName}</strong></div><div><span>Service interests</span><strong>{values.additionalServices.length ? values.additionalServices.join(", ") : "None selected"}</strong></div><div><span>Document checklist</span><strong>{values.owners.length} owner ID item(s); secure upload required</strong></div><div><span>Government and additional fees</span><strong>{quote?.totalCents === null ? "Pending verified quotation" : quote ? `$${(quote.totalCents / 100).toFixed(2)} total` : "Loading pricing"}</strong></div></div></div><label className="review-confirmation"><input type="checkbox" checked={confirmedReview} onChange={(event) => setConfirmedReview(event.target.checked)} /> I have reviewed the information and authorize submission of this application for Apex Filings review.</label></>}
+        {step === 5 && <><PricingSummary quote={quote} error={quoteError} /><p>Your application is submitted for review. No payment or government filing is confirmed.</p><Link className="text-action" href="/client/applications">View application tracker</Link></>}
+        {step < 5 && <PricingSummary quote={quote} error={quoteError} />}{message && <p className="form-error" role="alert">{message}</p>}
         <div className="wizard-footer"><button type="button" className="button button-secondary" onClick={back} disabled={step === 0}><ArrowLeft size={16} /> Back</button>{step < steps.length - 1 && <button type="button" className="button button-primary" onClick={() => void next()} disabled={busy}>{step === 4 ? "Submit application" : "Continue"} <ArrowRight size={16} /></button>}</div>
       </Panel></div>
     </div>
