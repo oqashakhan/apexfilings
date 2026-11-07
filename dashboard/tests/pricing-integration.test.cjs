@@ -8,12 +8,14 @@ const root = 'http://localhost:3002';
 test('owner publishing, customer quote, draft restoration and immutable submitted order', async () => {
  const suffix=randomUUID();
  async function actor(role) { const identity=randomUUID(); const user=await db.user.create({data:{fullName:'Fictional pricing test',email:`${role}-${identity}@example.test`,emailNormalized:`${role}-${identity}@example.test`,role,emailVerifiedAt:new Date()}}); const token=randomUUID()+randomUUID(); await db.session.create({data:{userId:user.id,tokenHash:createHash('sha256').update(token).digest('hex'),expiresAt:new Date(Date.now()+3600000)}}); return {user,token}; }
- async function api(path, method='GET', value, token) { const r=await fetch(root+path,{method,headers:{Origin:root,'Content-Type':'application/json',...(token?{Cookie:`__Host-apex_session=${token}`}:{})},body:value===undefined?undefined:JSON.stringify(value)});return {status:r.status,data:await r.json()}; }
+ async function api(path, method='GET', value, token) { const r=await fetch(root+path,{method,headers:{Origin:root,'Content-Type':'application/json',...(token?{Cookie:`__Host-apex_session=${token}`}:{})},body:value===undefined?undefined:JSON.stringify(value)});return {status:r.status,cache:r.headers.get('cache-control'),data:await r.json()}; }
  let state;
  let chargeId;
  const stateBackups = [];
  try {
  const owner=await actor('OWNER'), client=await actor('CLIENT'), stranger=await actor('CLIENT');
+ const missing=await api('/api/v1/pricing/quote','POST',{packageSlug:'premium',state:'ZZ',services:[]},client.token);
+ assert.equal(missing.status,200);assert.equal(missing.data.totalCents,null);assert.equal(missing.data.pendingItems[0].reason,'State fee record missing');assert.equal(missing.cache,'no-store');
  const catalog=await api('/api/v1/pricing'); assert.equal(catalog.status,200); assert.equal(catalog.data.states.length,51);
  const pack=catalog.data.packages.find(p=>p.slug==='basic'), advanced=catalog.data.packages.find(p=>p.slug==='premium'); assert.equal(pack.includedServices.length,8); assert.equal(advanced.includedServices.length,13);
  state=await db.stateFilingFee.findUniqueOrThrow({where:{code:'AK'}});
@@ -33,16 +35,18 @@ test('owner publishing, customer quote, draft restoration and immutable submitte
    const original=await db.stateFilingFee.findUniqueOrThrow({where:{code}});
    if(code !== 'AK') stateBackups.push(original);
    assert.equal(original.referenceFilingFeeCents,fee,`${code} imported client reference`);
-   if(code === 'FL') {
-     await db.stateFilingFee.update({where:{code},data:{active:false,filingFeeCents:null}});
-     const pending=await api('/api/v1/pricing/quote','POST',{packageSlug:'basic',state:name,services:[]},client.token);
-     assert.equal(pending.data.totalCents,null); assert.equal(pending.data.referenceSubtotalCents,pack.serviceFeeCents+fee); assert.match(pending.data.pendingItems[0].description,/Florida/);
+   await db.stateFilingFee.update({where:{code},data:{active:false,filingFeeCents:null,verifiedAt:null,sourceReference:'Client reference; not verified'}});
+   for(const selectedPackage of [pack,advanced]){
+     const pending=await api('/api/v1/pricing/quote','POST',{packageSlug:selectedPackage.slug,state:name,services:[]},client.token);
+     assert.equal(pending.data.totalCents,null);assert.equal(pending.data.paymentAllowed,false);assert.equal(pending.data.knownSubtotalCents,selectedPackage.serviceFeeCents);
+     assert.equal(pending.data.referenceSubtotalCents,selectedPackage.serviceFeeCents+fee);assert.ok(pending.data.pendingItems[0].description.includes(name));
+     assert.match(pending.data.pendingItems[0].reason,/Owner verification and approval required/);assert.match(pending.data.pendingItems[0].reason,/Payable filing fee not configured/);assert.equal(pending.cache,'no-store');
    }
    assert.equal((await api('/api/v1/admin/pricing','PATCH',{kind:'state',id:code,data:{...stateData,filingFeeCents:fee}},owner.token)).status,200);
    for(const selectedPackage of [pack,advanced]) {
      for(const services of [[],[extra.slug],['agent','ein'],[extra.slug,extra.slug]]) {
        const priced=await api('/api/v1/pricing/quote','POST',{packageSlug:selectedPackage.slug,state:name,services},client.token);
-       assert.equal(priced.status,200); assert.equal(priced.data.totalCents,selectedPackage.serviceFeeCents+fee+(services.includes(extra.slug)?2500:0)); assert.equal(priced.data.discountCents,0);
+       assert.equal(priced.status,200); assert.equal(priced.data.totalCents,selectedPackage.serviceFeeCents+fee+(services.includes(extra.slug)?2500:0)); assert.equal(priced.data.discountCents,0);assert.equal(priced.cache,'no-store');assert.equal(priced.data.governmentFeeCents,fee);assert.deepEqual(priced.data.pendingItems,[]);
      }
    }
  }

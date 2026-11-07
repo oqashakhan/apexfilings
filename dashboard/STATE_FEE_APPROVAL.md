@@ -1,5 +1,47 @@
 # Government filing fee approval fix
 
+## Live follow-up investigation — November 7, 2026
+
+Read-only request to `https://app.apexfilings.com/api/v1/pricing` at 16:20 UTC returned HTTP 200 and `Cache-Control: no-store`. The running production API returned Louisiana as:
+
+```json
+{"code":"LA","state":"Louisiana","referenceFilingFeeCents":10000,"filingFeeCents":null,"active":false,"verifiedAt":null,"sourceReference":"Client reference: State price online processing time filing fee annual fee.docx; not independently verified"}
+```
+
+Advanced's live `serviceFeeCents` is 29900. All 51 live reference fields match `prisma/state-pricing-reference.json` (50 supplied values and unspecified Alabama). No live state record is active. This proves the reference data is present in the running application's database-facing API; it is not evidence of Owner approval. No authenticated production quote, customer record, migration ledger or Coolify configuration was accessed.
+
+### Exact trace and cause
+
+- `src/components/forms/ApplicationWizard.tsx`: the state selector supplies `Louisiana`; `useApplicationQuote.ts` POSTs it with package slug `premium` to `/api/v1/pricing/quote`.
+- `src/app/api/v1/pricing/selection/route.ts`: draft persistence resolves the state name to its database record and stores `Company.formationState`. The quote accepts either trimmed state name or state code `LA`.
+- `src/server/pricing.ts`: reads `StateFilingFee` directly through Prisma on each catalog/quote request. No server pricing cache is present.
+- `prisma/schema.prisma`, model `StateFilingFee`: `referenceFilingFeeCents` is informational. `filingFeeCents` is the charge. There is no separate state `priceApproved` flag: approval is represented by `active`, a configured fee, `verifiedAt` and a valid HTTPS source.
+- `src/lib/pricing.ts`, `quotePricing`: the live Louisiana fields fail these checks; the reference is never substituted as a charge. Reproducing this pending state through the authenticated local API returns `governmentFeeCents: null`, `totalCents: null`, `knownSubtotalCents: 29900`, `referenceSubtotalCents: 39900`, `paymentAllowed: false`. The reference subtotal is explicitly not payable. These quote fields were not obtained using a production customer session.
+- `src/components/forms/PricingSummary.tsx`: renders `Being confirmed` when the server's government fee is null. Changing that text or forcing $100 would conceal the unresolved approval.
+- `src/server/http.ts` sets `Cache-Control: no-store`; catalog and quote fetches also use `no-store`. The wizard reloads its catalog every 30 seconds and on window focus, and requests another quote when the catalog changes. Finalized orders intentionally retain snapshots; pending orders recalculate from the catalog.
+
+`20261107_dynamic_pricing/migration.sql` adds the reference/approval fields and imports Louisiana's reference at 10000 cents. It deliberately does not activate the fee. `20261107_exact_order_pricing/migration.sql` only adds `Service.automaticCharge` and `Service.requiredCharge`; it neither imports nor approves state fees. `prisma/seed.ts` creates unconfigured state records; running the seed is not an approval operation. Re-running an already applied migration will not turn reference values into charges.
+
+### Follow-up code changes
+
+- New `src/lib/state-fee-diagnostics.ts`: shared missing/pending/approved checks and exact blocker codes. Also rejects future verification dates consistently with the approval API.
+- `src/lib/pricing.ts`: uses that shared check and exposes the specific blockers in quote `pendingItems[].reason` and `issues`.
+- `src/components/dashboard/StateFeeApproval.tsx`: uses the same check and displays the actual payment blockers to the Owner.
+- New `scripts/diagnose-state-pricing.ts`, exposed as `npm run pricing:diagnose`: read-only transaction against the environment's configured database; lists pending/failed migrations, schema gaps, reference mismatches and each state's approval blockers. Never prints connection credentials or customer data. Exit 1 indicates migration/import/schema problems; pending approvals are reported separately.
+- `tests/state-fee-approval.test.tsx` and `tests/pricing-integration.test.cjs`: missing, pending, approved, source/date/amount validation and uncached quote refresh coverage. API fixtures restore the prior state records.
+
+### Required production steps — not executed
+
+1. In the **dashboard** Coolify container, after explicitly deploying this diagnostic code through the normal process, run `npm run pricing:diagnose`. It uses that container's `DATABASE_URL`; a local database result does not establish production migration status.
+2. Review its pending/failed migration list. If migrations are pending, take the normal backup and apply them through the existing deployment/startup workflow (`npm run db:deploy`). Repository deployment instructions specify `npm run db:deploy && npm run start -- -p 3000`; the actual live Coolify command was not available to verify. No new migration is introduced by this follow-up. Do not reset or blindly rerun the catalog seed.
+3. Sign in as an existing **OWNER**. Open Admin → Services & Pricing → State fees → Louisiana. Verify the applicable current official initial filing fee; enter the verified amount, source URL and verification date, check the confirmation(s), and click **Verify and approve filing fee**. The owner-only PATCH endpoint enforces this and records `STATE_FEE_APPROVED`. A client cannot approve pricing.
+4. If the genuinely verified amount is $100, the record must contain `filingFeeCents: 10000`, `active: true`, a valid nonfuture `verifiedAt` and its official HTTPS source. A fresh unfinalized Advanced quote then returns `governmentFeeCents: 10000`, `totalCents: 39900`, `paymentAllowed: true` (with no other unresolved items). Repeat verification separately for each supported state. Do not bulk approve reference prices.
+5. Focus/reload the client wizard or allow its 30-second catalog refresh. Confirm the server quote and summary. A code push alone cannot perform the Owner's verification or approval.
+
+The local diagnostic reported 13 pending migrations in `apex_dashboard`; the isolated `apex_dashboard_test` had all 18 applied, matching references and zero approved state fees before tests. Neither result was represented as production migration-ledger evidence. Production's live reference fields are present, but its exact ledger must still be checked inside its container.
+
+Follow-up validation passed: 41 unit/component tests; authenticated pricing integration (missing record plus pending/approved Basic and Advanced quotes for LA, FL, AK, WY, CA, DE and TX, optional services, ownership and frozen orders); both existing onboarding/application integration tests; typecheck; lint; production build. The read-only diagnostic was run against both local database schemas without applying migrations or altering approval records. Only isolated integration tests temporarily changed fictional/test pricing and restored original state rows.
+
 ## Findings
 
 Louisiana is correctly mapped to `LA`, with an imported initial reference fee of 10000 cents. In the migrated local test database its payable fee is null, `active` is false, and `verifiedAt` is null. The backend correctly excludes an unapproved reference amount. The $299 known subtotal is therefore the Advanced package fee, not a complete payable total.

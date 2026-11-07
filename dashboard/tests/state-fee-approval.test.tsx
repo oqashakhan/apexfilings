@@ -5,6 +5,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { quotePricing, type PriceState, type PricingCatalog } from '../src/lib/pricing';
 import { validateStateFeeApproval } from '../src/lib/state-fee-approval';
 import { StateFeeApproval } from '../src/components/dashboard/StateFeeApproval';
+import { diagnoseStateFee } from '../src/lib/state-fee-diagnostics';
 import references from '../prisma/state-pricing-reference.json';
 import { adminPackages } from '../prisma/catalog';
 const packages=adminPackages.map(p=>({...p,id:p.id,slug:p.id,serviceFeeCents:p.serviceFee*100,currency:'USD'}));
@@ -31,4 +32,36 @@ test('Admin approval UI shows reference and requires deliberate verification',()
  const html=renderToStaticMarkup(<StateFeeApproval state={state} onSaved={async()=>{}}/>);
  for(const text of ['$100.00','Not approved for payment','Official source URL','Verification date','Verify and approve filing fee','Save inactive draft','Recurring fees'])assert.ok(html.includes(text),text);
  assert.ok(html.includes('disabled'));
+});
+
+test('all states diagnose missing, pending and approved records without charging references',()=>{
+ for(const reference of states){
+  const pending={...reference,filingFeeCents:null,active:false,verifiedAt:null,sourceReference:'Client reference'};
+  assert.deepEqual(diagnoseStateFee(null).blockers,['STATE_RECORD_MISSING']);
+  const diagnosis=diagnoseStateFee(pending);
+  assert.equal(diagnosis.status,'PENDING');
+  assert.deepEqual(diagnosis.blockers,['OWNER_APPROVAL_PENDING','PAYABLE_FEE_MISSING','VERIFICATION_MISSING','OFFICIAL_SOURCE_MISSING']);
+  const c={packages,services:[],states:[pending]};
+  for(const pack of packages){
+   const q=quotePricing(c,pack.slug,reference.code,[]);
+   assert.equal(q.paymentAllowed,false);assert.equal(q.totalCents,null);
+   assert.equal(q.governmentFeeCents,null);assert.match(q.pendingItems[0].reason,/Payable filing fee not configured/);
+   const approved={...reference,filingFeeCents:reference.referenceFilingFeeCents??0,active:true};
+   assert.equal(diagnoseStateFee(approved).status,'APPROVED');
+   assert.equal(quotePricing({...c,states:[approved]},pack.slug,reference.code,[]).totalCents,pack.serviceFeeCents+approved.filingFeeCents);
+   const missing=quotePricing({...c,states:[]},pack.slug,reference.code,[]);
+   assert.equal(missing.totalCents,null);assert.equal(missing.pendingItems[0].reason,'State fee record missing');
+  }
+ }
+});
+
+test('active alone cannot authorize a fee; invalid and future verification remain blocked',()=>{
+ const approved=states.find(s=>s.code==='LA')!;
+ const now=Date.parse('2026-11-07T12:00:00Z');
+ for(const [change,blocker] of [
+  [{active:false},'OWNER_APPROVAL_PENDING'],[{filingFeeCents:null},'PAYABLE_FEE_MISSING'],
+  [{filingFeeCents:-1},'PAYABLE_FEE_INVALID'],[{verifiedAt:null},'VERIFICATION_MISSING'],
+  [{verifiedAt:'not-a-date'},'VERIFICATION_MISSING'],[{verifiedAt:'2099-01-01'},'VERIFICATION_IN_FUTURE'],
+  [{sourceReference:'Client reference'},'OFFICIAL_SOURCE_MISSING'],
+ ] as const){assert.ok(diagnoseStateFee({...approved,...change},now).blockers.includes(blocker));}
 });
