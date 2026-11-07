@@ -1,3 +1,4 @@
+import { validFeeSource } from './state-fee-approval';
 export type PricePackage = { id: string; slug: string; name: string; serviceFeeCents: number; currency: string; available: boolean; includedServices: string[]; includedServiceSlugs: string[] };
 export type PriceService = { id: string; slug: string; name: string; description: string; available: boolean; priceCents: number | null; currency: string; priceApproved: boolean; availableStateCodes?: string[]; category?: string; displayOrder?: number; automaticCharge?: boolean; requiredCharge?: boolean };
 export type PriceState = { code: string; state: string; filingFeeCents: number | null; referenceFilingFeeCents?: number | null; active: boolean; verifiedAt: string | Date | null; sourceReference: string | null; recurringFeeDescription: string | null; recurringFeePeriod: string | null; processingTime: string | null };
@@ -14,7 +15,7 @@ export function quotePricing(catalog: PricingCatalog, slug: string, stateName: s
   const packageValid = !!pack && pack.currency === 'USD' && Number.isSafeInteger(pack.serviceFeeCents) && pack.serviceFeeCents >= 0;
   if (!packageValid) issues.push('Select an available USD package.');
   else items.push({ description: pack.name, amountCents: pack.serviceFeeCents });
-  const governmentFeeCents = state?.active && state.verifiedAt && state.sourceReference && Number.isSafeInteger(state.filingFeeCents) && state.filingFeeCents! >= 0 ? state.filingFeeCents : null;
+  const governmentFeeCents = state?.active && state.verifiedAt && Number.isFinite(new Date(state.verifiedAt).getTime()) && validFeeSource(state.sourceReference) && Number.isSafeInteger(state.filingFeeCents) && state.filingFeeCents! >= 0 ? state.filingFeeCents : null;
   if (governmentFeeCents === null) {
     const description = `Government filing fee — ${(state?.state ?? stateName) || 'select a state'}`;
     const reason = state ? 'Owner verification and approval required' : 'State fee record missing';

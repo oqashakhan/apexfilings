@@ -17,9 +17,11 @@ test('owner publishing, customer quote, draft restoration and immutable submitte
  const catalog=await api('/api/v1/pricing'); assert.equal(catalog.status,200); assert.equal(catalog.data.states.length,51);
  const pack=catalog.data.packages.find(p=>p.slug==='basic'), advanced=catalog.data.packages.find(p=>p.slug==='premium'); assert.equal(pack.includedServices.length,8); assert.equal(advanced.includedServices.length,13);
  state=await db.stateFilingFee.findUniqueOrThrow({where:{code:'AK'}});
- const stateData={filingFeeCents:25000,recurringFeeDescription:state.recurringFeeDescription,recurringFeePeriod:state.recurringFeePeriod,processingTime:state.processingTime,sourceReference:'https://official.example.gov/test-only',active:true,verifiedAt:new Date().toISOString()};
+ const stateData={filingFeeCents:25000,recurringFeeDescription:state.recurringFeeDescription,recurringFeePeriod:state.recurringFeePeriod,processingTime:state.processingTime,sourceReference:'https://official.example.gov/test-only',verificationConfirmed:true,referenceDifferenceConfirmed:true,active:true,verifiedAt:new Date().toISOString()};
  assert.equal((await api('/api/v1/admin/pricing','PATCH',{kind:'state',id:'AK',data:stateData},client.token)).status,403);
  assert.equal((await api('/api/v1/admin/pricing','PATCH',{kind:'state',id:'AK',data:{...stateData,sourceReference:null}},owner.token)).status,400);
+ assert.equal((await api('/api/v1/admin/pricing','PATCH',{kind:'state',id:'AK',data:{...stateData,verificationConfirmed:false}},owner.token)).status,400,'owner must confirm official verification');
+ assert.equal((await api('/api/v1/admin/pricing','PATCH',{kind:'state',id:'AK',data:{...stateData,filingFeeCents:25001,referenceDifferenceConfirmed:false}},owner.token)).status,400,'reference differences require acknowledgement');
  assert.equal((await api('/api/v1/admin/pricing','PATCH',{kind:'state',id:'AK',data:stateData},owner.token)).status,200);
  const service=await db.service.findUniqueOrThrow({where:{slug:'llc'}});
  const extra=await db.service.create({data:{slug:`extra-${suffix}`,name:'Fictional paid service',description:'Test only',category:'Formation',available:true}});
@@ -27,7 +29,7 @@ test('owner publishing, customer quote, draft restoration and immutable submitte
  assert.equal((await api('/api/v1/admin/pricing','PATCH',{kind:'service',id:extra.id,data:serviceData},owner.token)).status,200);
  const query={packageSlug:'basic',state:'Alaska',services:[extra.slug]};
  const quote=await api('/api/v1/pricing/quote','POST',query,client.token);assert.equal(quote.status,200);assert.equal(quote.data.totalCents,pack.serviceFeeCents+27500);
- for (const [code,name,fee] of [['FL','Florida',12500],['AK','Alaska',25000],['WY','Wyoming',10000]]) {
+ for (const [code,name,fee] of [['FL','Florida',12500],['AK','Alaska',25000],['WY','Wyoming',10000],['LA','Louisiana',10000],['CA','California',7000],['DE','Delaware',11000],['TX','Texas',30800]]) {
    const original=await db.stateFilingFee.findUniqueOrThrow({where:{code}});
    if(code !== 'AK') stateBackups.push(original);
    assert.equal(original.referenceFilingFeeCents,fee,`${code} imported client reference`);

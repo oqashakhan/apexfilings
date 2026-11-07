@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import { randomUUID } from 'node:crypto';
+import { validateStateFeeApproval } from '@/lib/state-fee-approval';
 import { z } from 'zod';
 import { db } from '@/server/db';
 import { pricingCatalog } from '@/server/pricing';
@@ -12,7 +13,7 @@ export async function PATCH(request: NextRequest) {
   try {
     checkOrigin(request); const owner = await requireRole(request, 'OWNER');
     const input = z.discriminatedUnion('kind', [
-      z.object({ kind: z.literal('state'), id: z.string(), data: z.object({ filingFeeCents: cents.nullable(), recurringFeeDescription: z.string().max(500).nullable(), recurringFeePeriod: z.string().max(100).nullable(), processingTime: z.string().max(300).nullable(), sourceReference: z.string().max(1000).nullable(), active: z.boolean(), verifiedAt: z.iso.datetime().nullable() }) }),
+      z.object({ kind: z.literal('state'), id: z.string(), data: z.object({ filingFeeCents: cents.nullable(), recurringFeeDescription: z.string().max(500).nullable(), recurringFeePeriod: z.string().max(100).nullable(), processingTime: z.string().max(300).nullable(), sourceReference: z.string().max(1000).nullable(), active: z.boolean(), verifiedAt: z.iso.datetime().nullable(), verificationConfirmed: z.boolean().optional(), referenceDifferenceConfirmed: z.boolean().optional() }) }),
       z.object({ kind: z.literal('service'), id: z.string(), data: z.object({ name: z.string().min(2).max(160), description: z.string().max(3000), priceCents: cents.nullable(), currency: z.literal('USD'), priceApproved: z.boolean(), available: z.boolean(), category: z.string().trim().min(1).max(100).optional(), availableStateCodes: z.array(z.string().regex(/^[A-Z]{2}$/)).max(51).optional(), displayOrder: z.number().int().min(0).max(10000).optional(), automaticCharge: z.boolean().optional(), requiredCharge: z.boolean().optional() }) }),
       z.object({ kind: z.literal('package'), id: z.string(), data: z.object({ name: z.string().min(2).max(160), serviceFeeCents: cents, available: z.boolean(), includedServices: z.array(z.string().min(1).max(200)).max(40), includedServiceSlugs: z.array(z.string().max(120)).max(40) }) }),
     ]).parse(await body(request));
@@ -23,7 +24,14 @@ export async function PATCH(request: NextRequest) {
         const codes = [...new Set(input.data.availableStateCodes)];
         if (await tx.stateFilingFee.count({ where: { code: { in: codes } } }) !== codes.length) throw new ApiError(400, 'Choose supported formation states');
       }
-      if (input.kind === 'state') await tx.stateFilingFee.update({ where: { code: input.id }, data: { ...input.data, verifiedAt: input.data.verifiedAt ? new Date(input.data.verifiedAt) : null } });
+      if (input.kind === 'state') {
+        const existing = await tx.stateFilingFee.findUnique({where:{code:input.id}});
+        if(!existing) throw new ApiError(404,'State fee record not found');
+        if(input.data.active){const error=validateStateFeeApproval(input.data,existing.referenceFilingFeeCents);if(error)throw new ApiError(400,error);}
+        const {verificationConfirmed,referenceDifferenceConfirmed,...data}=input.data;
+        await tx.stateFilingFee.update({ where: { code: input.id }, data: { ...data, verifiedAt: data.verifiedAt ? new Date(data.verifiedAt) : null } });
+        await tx.auditLog.create({data:{actorUserId:owner.id,action:input.data.active?'STATE_FEE_APPROVED':'STATE_FEE_DRAFT_SAVED',resourceType:'StateFilingFee',resourceId:input.id,safeMetadata:{previousFeeCents:existing.filingFeeCents,approvedFeeCents:data.filingFeeCents,referenceFeeCents:existing.referenceFilingFeeCents,verificationConfirmed:!!verificationConfirmed,referenceDifferenceConfirmed:!!referenceDifferenceConfirmed}}});
+      }
       if (input.kind === 'service') await tx.service.update({ where: { id: input.id }, data: input.data });
       if (input.kind === 'package') await tx.package.update({ where: { id: input.id }, data: input.data });
       await tx.auditLog.create({ data: { actorUserId: owner.id, action: 'PRICING_PUBLISHED', resourceType: input.kind, resourceId: input.id, safeMetadata: { fields: Object.keys(input.data) } } });
