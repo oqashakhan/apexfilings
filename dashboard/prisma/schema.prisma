@@ -64,6 +64,8 @@ enum RefundStatus {
 
 model User {
   id              String        @id @default(cuid())
+  clientReference String?       @unique
+  clientReferenceHistory ClientReferenceHistory?
   fullName        String
   email           String
   emailNormalized String        @unique
@@ -101,6 +103,14 @@ model User {
   assignedApplications Application[] @relation("AssignedApplications")
   partnerClients  PartnerClient[] @relation("Partner")
   linkedPartners  PartnerClient[] @relation("PartnerClient")
+}
+
+model ClientReferenceHistory {
+  userId            String   @id
+  previousReference String
+  clientReference   String   @unique
+  assignedAt        DateTime @default(now())
+  user              User     @relation(fields: [userId], references: [id], onDelete: Restrict)
 }
 
 model PartnerClient {

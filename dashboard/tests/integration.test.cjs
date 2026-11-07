@@ -102,6 +102,7 @@ test("public onboarding handoff uses the dashboard session and protects its orig
   assert.equal(clientPage.status, 307, "unverified client is sent to verification");
   assert.equal(new URL(clientPage.headers.get("location"), root).pathname, "/verify-email");
   const registeredUser = await db.user.findUniqueOrThrow({ where: { emailNormalized: `onboarding-${suffix}@example.test` } });
+  assert.match(registeredUser.clientReference, /^[1-9][0-9]{8}$/, 'public onboarding registration receives a client reference');
   const onboardingOtp = await latestOtp(registeredUser.id);
   expect(await call("/api/v1/client/applications", "POST", {}, cookies), 403, "unverified client cannot create an application");
   expect(await call("/api/v1/auth/verify-otp", "POST", { code: onboardingOtp.code }, cookies), 200, "onboarding email verification");
@@ -185,6 +186,7 @@ test("authenticated dashboard workflow and ownership", async () => {
     const verifyPage = await fetch(root + "/verify-email", { headers: { Cookie: first.cookie } });
     assert.match(await verifyPage.text(), /Verify Your Email/, "six-digit verification screen renders");
     const user = await db.user.findUniqueOrThrow({ where: { emailNormalized: `client-${suffix}@example.test` } });
+    assert.match(user.clientReference, /^[1-9][0-9]{8}$/, 'email registration receives a client reference');
     const firstOtp = await latestOtp(user.id);
     assert.ok(firstOtp.record.expiresAt.getTime() - firstOtp.record.createdAt.getTime() <= 5 * 60_000 + 2000, "OTP expires within five minutes");
     expect(await call("/api/v1/auth/verify-otp", "POST", { code: firstOtp.code }), 401, "anonymous OTP verification blocked");
@@ -461,5 +463,6 @@ test("authenticated dashboard workflow and ownership", async () => {
     const rawToken = expiring.cookie.split("=")[1];
     await db.session.update({ where: { tokenHash: createHash("sha256").update(rawToken).digest("hex") }, data: { expiresAt: new Date(Date.now() - 1000) } });
     expect(await call("/api/v1/client/dashboard", "GET", undefined, expiring.cookie), 401, "expired session");
+    assert.equal((await db.user.findUniqueOrThrow({where:{id:user.id}})).clientReference,user.clientReference,'reference survives account security changes, applications, orders and documents');
   } finally { await db.$disconnect(); }
 });

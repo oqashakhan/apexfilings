@@ -20,7 +20,7 @@ type ClientData = {
   companyId: string; setCompanyId: (id: string) => void; applications: ClientRecord[];
   services: ClientService[]; packages: ClientPackage[]; notifications: ClientNotification[];
   paymentInstructions: string;
-  user: { id: string; fullName: string; email: string; phone: string | null; country: string | null } | null;
+  user: { id: string; clientReference: string | null; fullName: string; email: string; phone: string | null; country: string | null } | null;
   loading: boolean; error: string | null; refresh: () => Promise<void>;
 };
 const Context = createContext<ClientData | null>(null);

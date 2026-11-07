@@ -17,6 +17,8 @@
     "db:deploy": "prisma migrate deploy",
     "db:seed": "tsx prisma/seed.ts",
     "pricing:diagnose": "tsx scripts/diagnose-state-pricing.ts",
+    "clients:backfill-references": "tsx scripts/backfill-client-references.ts",
+    "test:client-references": "node --import tsx --test -r ./tests/test-env.cjs tests/client-references.test.cjs",
     "email:check": "node scripts/check-registration-readiness.mjs",
     "owner:bootstrap": "tsx scripts/bootstrap-owner.ts",
     "test:integration": "node --test -r ./tests/test-env.cjs tests/integration.test.cjs",

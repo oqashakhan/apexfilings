@@ -17,7 +17,7 @@ type Params = { params: Promise<{ segments: string[] }> };
 const pageNumber = (value: string | null, fallback: number, limit: number) => Math.max(1, Math.min(limit, Number(value) || fallback));
 
 async function application(id: string) {
-  const found = await db.application.findUnique({ where: { id }, include: { customer: { select: { id: true, fullName: true, email: true, phone: true } }, company: { include: { owners: true } }, service: true, package: true, documents: { include: { reviewedBy: { select: { fullName: true } } } }, order: { include: { payments: true, refunds: true } }, statusHistory: { orderBy: { createdAt: "desc" }, include: { changedBy: { select: { fullName: true } } } }, customerResponses: { orderBy: { createdAt: "desc" } }, notes: { orderBy: { createdAt: "desc" }, include: { author: { select: { fullName: true } } } }, reviews: true } });
+  const found = await db.application.findUnique({ where: { id }, include: { customer: { select: { id: true, clientReference: true, fullName: true, email: true, phone: true } }, company: { include: { owners: true } }, service: true, package: true, documents: { include: { reviewedBy: { select: { fullName: true } } } }, order: { include: { payments: true, refunds: true } }, statusHistory: { orderBy: { createdAt: "desc" }, include: { changedBy: { select: { fullName: true } } } }, customerResponses: { orderBy: { createdAt: "desc" } }, notes: { orderBy: { createdAt: "desc" }, include: { author: { select: { fullName: true } } } }, reviews: true } });
   if (!found) throw new ApiError(404, "Application not found");
   return found;
 }
@@ -91,47 +91,47 @@ export async function GET(request: NextRequest, context: Params) {
         db.application.count(), db.application.count({ where: { status: "UNDER_REVIEW" } }),
         db.application.count({ where: { status: { in: ["INFORMATION_REQUIRED", "ADDITIONAL_ACTION_REQUIRED", "AWAITING_PAYMENT"] } } }),
         db.payment.aggregate({ where: { status: "VERIFIED" }, _sum: { amountCents: true } }),
-        db.application.findMany({ include: { customer: { select: { fullName: true } }, company: { select: { preferredName: true, formationState: true } }, package: { select: { name: true } } }, orderBy: { createdAt: "desc" }, take: 5 }),
+        db.application.findMany({ include: { customer: { select: { fullName: true, clientReference: true } }, company: { select: { preferredName: true, formationState: true } }, package: { select: { name: true } } }, orderBy: { createdAt: "desc" }, take: 5 }),
         db.auditLog.findMany({ select: { id: true, action: true, resourceType: true, resourceId: true, createdAt: true }, orderBy: { createdAt: "desc" }, take: 10 }),
         db.document.count({ where: { reviewStatus: "UNDER_REVIEW" } }), db.payment.count({ where: { status: "AWAITING_VERIFICATION" } }),
       ]);
-      return json({ metrics: { total, pending, requiringAction, verifiedPaymentCents: verifiedPayments._sum.amountCents ?? 0, documentCount, paymentCount }, recentApplications: recentApplications.map((item) => ({ id: item.id, customer: item.customer.fullName, company: item.company.preferredName, state: item.company.formationState, packageName: item.package.name, status: statusNames[item.status], submittedAt: item.submittedAt })), activity: audit });
+      return json({ metrics: { total, pending, requiringAction, verifiedPaymentCents: verifiedPayments._sum.amountCents ?? 0, documentCount, paymentCount }, recentApplications: recentApplications.map((item) => ({ id: item.id, customer: item.customer.fullName, clientReference: item.customer.clientReference, company: item.company.preferredName, state: item.company.formationState, packageName: item.package.name, status: statusNames[item.status], submittedAt: item.submittedAt })), activity: audit });
     }
     if (resource === "applications") {
       if (id) return json({ application: await application(id), approvalReady: await approvalReady(id) });
       const search = url.searchParams.get("search")?.trim().slice(0, 100);
       const status = url.searchParams.get("status");
       const state = url.searchParams.get("state");
-      const where: Prisma.ApplicationWhereInput = { ...(status && status in ApplicationStatus ? { status: status as ApplicationStatus } : {}), ...(state ? { company: { formationState: state } } : {}), ...(search ? { OR: [{ id: { contains: search, mode: "insensitive" } }, { company: { preferredName: { contains: search, mode: "insensitive" } } }, { customer: { fullName: { contains: search, mode: "insensitive" } } }] } : {}) };
-      const [items, total] = await Promise.all([db.application.findMany({ where, include: { customer: { select: { id: true, fullName: true } }, company: { select: { preferredName: true, formationState: true } }, package: { select: { name: true } }, order: { select: { paymentStatus: true } } }, orderBy: { createdAt: "desc" }, skip: (page - 1) * take, take }), db.application.count({ where })]);
-      return json({ items: items.map((item) => ({ id: item.id, customerId: item.customerId, customer: item.customer.fullName, companyId: item.companyId, company: item.company.preferredName, state: item.company.formationState, packageName: item.package.name, paymentStatus: item.order?.paymentStatus ?? "UNPAID", status: statusNames[item.status], statusCode: item.status, submittedAt: item.submittedAt })), total, page, pageSize: take });
+      const where: Prisma.ApplicationWhereInput = { ...(status && status in ApplicationStatus ? { status: status as ApplicationStatus } : {}), ...(state ? { company: { formationState: state } } : {}), ...(search ? { OR: [{ id: { contains: search, mode: "insensitive" } }, { company: { preferredName: { contains: search, mode: "insensitive" } } }, { customer: { fullName: { contains: search, mode: "insensitive" } } }, { customer: { clientReference: search } }] } : {}) };
+      const [items, total] = await Promise.all([db.application.findMany({ where, include: { customer: { select: { id: true, clientReference: true, fullName: true } }, company: { select: { preferredName: true, formationState: true } }, package: { select: { name: true } }, order: { select: { paymentStatus: true } } }, orderBy: { createdAt: "desc" }, skip: (page - 1) * take, take }), db.application.count({ where })]);
+      return json({ items: items.map((item) => ({ id: item.id, customerId: item.customerId, customer: item.customer.fullName, clientReference: item.customer.clientReference, companyId: item.companyId, company: item.company.preferredName, state: item.company.formationState, packageName: item.package.name, paymentStatus: item.order?.paymentStatus ?? "UNPAID", status: statusNames[item.status], statusCode: item.status, submittedAt: item.submittedAt })), total, page, pageSize: take });
     }
     if (resource === "clients") {
       if (id) {
-        const client = await db.user.findFirst({ where: { id, role: "CLIENT" }, select: { id: true, fullName: true, email: true, phone: true, status: true, emailVerifiedAt: true, verificationRequired: true, createdAt: true, companies: { select: { id: true, preferredName: true, formationState: true } }, applications: { select: { id: true, status: true, companyId: true } }, supportTickets: { select: { id: true, subject: true, status: true, createdAt: true }, orderBy: { createdAt: "desc" }, take: 25 } } });
+        const client = await db.user.findFirst({ where: { id, role: "CLIENT" }, select: { id: true, clientReference: true, fullName: true, email: true, phone: true, status: true, emailVerifiedAt: true, verificationRequired: true, createdAt: true, companies: { select: { id: true, preferredName: true, formationState: true } }, applications: { select: { id: true, status: true, companyId: true } }, supportTickets: { select: { id: true, subject: true, status: true, createdAt: true }, orderBy: { createdAt: "desc" }, take: 25 } } });
         if (!client) throw new ApiError(404, "Client not found");
         return json({ client });
       }
       const search = url.searchParams.get("search")?.trim().slice(0, 100);
-      const where: Prisma.UserWhereInput = { role: "CLIENT", ...(search ? { OR: [{ fullName: { contains: search, mode: "insensitive" } }, { emailNormalized: { contains: search.toLowerCase() } }] } : {}) };
-      const [items, total] = await Promise.all([db.user.findMany({ where, select: { id: true, fullName: true, email: true, phone: true, status: true, createdAt: true, _count: { select: { companies: true, applications: true } } }, orderBy: { createdAt: "desc" }, skip: (page - 1) * take, take }), db.user.count({ where })]);
+      const where: Prisma.UserWhereInput = { role: "CLIENT", ...(search ? /^[1-9][0-9]{8}$/.test(search) ? { clientReference: search } : { OR: [{ fullName: { contains: search, mode: "insensitive" } }, { emailNormalized: { contains: search.toLowerCase() } }, { clientReference: search }] } : {}) };
+      const [items, total] = await Promise.all([db.user.findMany({ where, select: { id: true, clientReference: true, fullName: true, email: true, phone: true, status: true, createdAt: true, companies: { select: { id: true } }, _count: { select: { companies: true, applications: true } } }, orderBy: { createdAt: "desc" }, skip: (page - 1) * take, take }), db.user.count({ where })]);
       return json({ items, total, page, pageSize: take });
     }
     if (resource === "orders") {
       const where: Prisma.OrderWhereInput = id ? { id } : {};
-      const [items, total] = await Promise.all([db.order.findMany({ where, include: { application: { include: { customer: { select: { id: true, fullName: true } }, company: { select: { preferredName: true, formationState: true } }, package: { select: { name: true, slug: true } } } }, items: true, payments: true, refunds: true, invoice: true }, orderBy: { createdAt: "desc" }, skip: id ? 0 : (page - 1) * take, take: id ? 1 : take }), db.order.count({ where })]);
+      const [items, total] = await Promise.all([db.order.findMany({ where, include: { application: { include: { customer: { select: { id: true, clientReference: true, fullName: true } }, company: { select: { preferredName: true, formationState: true } }, package: { select: { name: true, slug: true } } } }, items: true, payments: true, refunds: true, invoice: true }, orderBy: { createdAt: "desc" }, skip: id ? 0 : (page - 1) * take, take: id ? 1 : take }), db.order.count({ where })]);
       if (id && !items.length) throw new ApiError(404, "Order not found");
       const catalog = await pricingCatalog();
       return json({ items: items.map(item => ({ ...item, pricingQuote: resolveOrderQuote(catalog, item, item.application) })), total, page, pageSize: take });
     }
     if (resource === "documents") {
       const where: Prisma.DocumentWhereInput = { ...(id ? { id } : {}), ...(url.searchParams.get("status") ? { reviewStatus: url.searchParams.get("status") as Prisma.EnumDocumentStatusFilter["equals"] } : {}) };
-      const [items, total] = await Promise.all([db.document.findMany({ where, select: { id: true, applicationId: true, documentType: true, originalFilename: true, fileSize: true, mimeType: true, reviewStatus: true, createdAt: true, ownerId: true, application: { select: { customer: { select: { fullName: true } }, company: { select: { preferredName: true } } } } }, orderBy: { createdAt: "desc" }, skip: id ? 0 : (page - 1) * take, take: id ? 1 : take }), db.document.count({ where })]);
+      const [items, total] = await Promise.all([db.document.findMany({ where, select: { id: true, applicationId: true, documentType: true, originalFilename: true, fileSize: true, mimeType: true, reviewStatus: true, createdAt: true, ownerId: true, application: { select: { customer: { select: { fullName: true, clientReference: true } }, company: { select: { preferredName: true } } } } }, orderBy: { createdAt: "desc" }, skip: id ? 0 : (page - 1) * take, take: id ? 1 : take }), db.document.count({ where })]);
       if (id && !items.length) throw new ApiError(404, "Document not found");
       return json({ items, total, page, pageSize: take });
     }
     if (resource === "payments") {
-      const [items, refunds] = await Promise.all([db.payment.findMany({ include: { order: { include: { application: { include: { customer: { select: { fullName: true } } } } } } }, orderBy: { createdAt: "desc" }, skip: (page - 1) * take, take }), db.refundRequest.findMany({ include: { order: { include: { application: { select: { customer: { select: { fullName: true } } } } } } }, orderBy: { createdAt: "desc" }, take: 100 })]);
+      const [items, refunds] = await Promise.all([db.payment.findMany({ include: { order: { include: { application: { include: { customer: { select: { fullName: true, clientReference: true } } } } } } }, orderBy: { createdAt: "desc" }, skip: (page - 1) * take, take }), db.refundRequest.findMany({ include: { order: { include: { application: { select: { customer: { select: { fullName: true, clientReference: true } } } } } } }, orderBy: { createdAt: "desc" }, take: 100 })]);
       return json({ items, refunds });
     }
     if (resource === "services") {
@@ -157,7 +157,7 @@ export async function GET(request: NextRequest, context: Params) {
     }
     if (resource === "notification-preferences") return json({ preferences: await db.notificationPreference.findUnique({ where: { userId: owner.id } }) });
     if (resource === "support") {
-      const tickets = await db.supportTicket.findMany({ where: id ? { id } : {}, include: { customer: { select: { id: true, fullName: true, email: true } }, replies: { select: { id: true, body: true, createdAt: true, author: { select: { role: true } } }, orderBy: { createdAt: "asc" } } }, orderBy: { updatedAt: "desc" }, take: 100 });
+      const tickets = await db.supportTicket.findMany({ where: id ? { id } : {}, include: { customer: { select: { id: true, clientReference: true, fullName: true, email: true } }, replies: { select: { id: true, body: true, createdAt: true, author: { select: { role: true } } }, orderBy: { createdAt: "asc" } } }, orderBy: { updatedAt: "desc" }, take: 100 });
       if (id && !tickets.length) throw new ApiError(404, "Support request not found");
       return json({ tickets });
     }

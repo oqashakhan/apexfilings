@@ -4,7 +4,7 @@ export type AdminRole = "owner" | "staff" | "partner" | "client";
 export type AdminPermission = "applications.read" | "applications.review" | "applications.approve" | "documents.review" | "documents.publish" | "payments.verify" | "refunds.review" | "catalog.edit" | "content.edit" | "content.publish" | "settings.manage";
 export type AdminUser = { id: string; name: string; role: AdminRole; clientId: string | null; active: boolean };
 export type AdminOwner = { id: string; name: string; email: string; phone: string; nationality: string; residence: string; address: string; ownership: number };
-export type AdminClient = { id: string; name: string; email: string; phone: string; registeredAt: string; status: string; companyIds: string[] };
+export type AdminClient = { id: string; clientReference: string | null; name: string; email: string; phone: string; registeredAt: string; status: string; companyIds: string[] };
 export type AdminCompany = { id: string; name: string; state: string; clientId: string; type: "US LLC" };
 export type AdminApplication = {
   id: string; clientId: string; companyId: string; preferredName: string; alternatives: string[];

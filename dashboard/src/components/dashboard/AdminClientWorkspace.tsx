@@ -5,9 +5,10 @@ import Link from "next/link";
 import { ArrowRight, FileText } from "lucide-react";
 import { useAdminDemo } from "@/components/dashboard/AdminDemoContext";
 import { PageHeader, Panel, StatusBadge } from "@/components/ui/DashboardUI";
+import { ClientReference } from "./ClientReference";
 import { AdminApplicationDetail } from "@/components/dashboard/AdminApplicationDetail";
 
-type ClientDetail = { emailVerifiedAt: string | null; verificationRequired: boolean; supportTickets: { id: string; subject: string; status: string; createdAt: string }[] };
+type ClientDetail = { id:string; clientReference:string|null; fullName:string; email:string; phone:string|null; status:string; createdAt:string; companies:{id:string;preferredName:string;formationState:string}[]; applications:{id:string}[]; emailVerifiedAt: string | null; verificationRequired: boolean; supportTickets: { id: string; subject: string; status: string; createdAt: string }[] };
 const tabs = ["Overview", "Companies", "Applications", "Documents", "Orders & Payments", "Activity", "Support"] as const;
 
 export function AdminClientWorkspace({ id }: { id: string }) {
@@ -16,6 +17,7 @@ export function AdminClientWorkspace({ id }: { id: string }) {
   const [companyId, setCompanyId] = useState("");
   const [selectedAppId, setSelectedAppId] = useState("");
   const [detail, setDetail] = useState<ClientDetail | null>(null);
+  const [detailReady, setDetailReady] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [documentType, setDocumentType] = useState("COMPANY_DOCUMENT");
   const [share, setShare] = useState(true);
@@ -24,12 +26,15 @@ export function AdminClientWorkspace({ id }: { id: string }) {
   const loadDetail = useCallback(async () => {
     const response = await fetch(`/api/v1/admin/clients/${encodeURIComponent(id)}`, { cache: "no-store" });
     if (response.ok) setDetail((await response.json()).client);
+    setDetailReady(true);
   }, [id]);
   useEffect(() => { queueMicrotask(() => { void loadDetail(); }); }, [loadDetail]);
-  const client = data.clients.find((item) => item.id === id);
-  if (data.loading) return <Panel title="Loading customer">Loading customer records…</Panel>;
+  const currentDetail = detail?.id === id ? detail : null;
+  // Exact reference search can find accounts beyond the snapshot's display limit.
+  const client = data.clients.find((item) => item.id === id) ?? (currentDetail ? {id:currentDetail.id,clientReference:currentDetail.clientReference,name:currentDetail.fullName,email:currentDetail.email,phone:currentDetail.phone??'—',registeredAt:currentDetail.createdAt.slice(0,10),status:currentDetail.status==='ACTIVE'?'Active':'On Hold',companyIds:currentDetail.companies.map(c=>c.id)} : null);
+  if (data.loading || (!client && !detailReady)) return <Panel title="Loading customer">Loading customer records…</Panel>;
   if (!client) return <PageHeader title="Client not found" description="This customer is not available." />;
-  const companies = data.companies.filter((item) => item.clientId === id);
+  const companies = currentDetail ? currentDetail.companies.map(c=>({id:c.id,name:c.preferredName,state:c.formationState,clientId:id,type:'US LLC' as const})) : data.companies.filter((item) => item.clientId === id);
   const chosen = companies.some((item) => item.id === companyId) ? companyId : (companies[0]?.id ?? "");
   const applications = data.applications.filter((item) => item.clientId === id && (!chosen || item.companyId === chosen));
   const applicationIds = new Set(applications.map((item) => item.id));
@@ -65,7 +70,7 @@ export function AdminClientWorkspace({ id }: { id: string }) {
   }
   return <>
     <div className="backline"><Link href="/admin/clients">← Clients</Link><span>/</span><span>{client.name}</span></div>
-    <PageHeader eyebrow="CUSTOMER WORKSPACE" title={client.name} description={`${client.email} · ${client.status}`} />
+    <PageHeader eyebrow="CUSTOMER WORKSPACE" title={client.name} description={`${client.email} · ${client.status}`} /><ClientReference value={client.clientReference} />
     <div className="two-grid"><Panel title="Customer details"><div className="detail-list"><div><span>Email</span><strong>{client.email}</strong></div><div><span>Phone</span><strong>{client.phone}</strong></div><div><span>Registered</span><strong>{client.registeredAt}</strong></div><div><span>Verification</span><strong>{detail ? (detail.emailVerifiedAt ? "Verified" : detail.verificationRequired ? "Pending" : "Existing account") : "Loading…"}</strong></div><div><span>Companies</span><strong>{companies.length}</strong></div><div><span>Applications</span><strong>{data.applications.filter((item) => item.clientId === id).length}</strong></div></div></Panel><Panel title="Selected company"><label className="admin-form-field">Company<select value={chosen} onChange={(event) => setCompanyId(event.target.value)}>{companies.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>{companies.find((item) => item.id === chosen) && <p>{companies.find((item) => item.id === chosen)!.state} · US LLC</p>}{applications[0] && <><StatusBadge status={applications[0].status} /><p><Link className="text-action" href={`/admin/applications/${applicationId}`}>Manage application <ArrowRight size={15} /></Link></p></>}</Panel></div>
     <div className="admin-filters" role="tablist" aria-label="Customer workspace tabs">{tabs.map((item) => <button key={item} role="tab" aria-selected={tab === item} className={`button ${tab === item ? "button-primary" : "button-secondary"}`} onClick={() => setTab(item)}>{item}</button>)}</div>
     {tab === "Overview" && <div className="two-grid"><Panel title="Current applications">{applications.map((item) => <div className="admin-row admin-subcard" key={item.id}><div><strong>{item.preferredName}</strong><p>{item.packageName} · {item.state}</p></div><StatusBadge status={item.status} /></div>)}{!applications.length && <p>No applications for this company.</p>}</Panel><Panel title="Recent status events">{events.slice(-5).reverse().map((item) => <div className="admin-subcard" key={item.id}><strong>{item.status}</strong><p>{item.reason}</p><small>{item.date}</small></div>)}{!events.length && <p>No status events yet.</p>}</Panel></div>}

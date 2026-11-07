@@ -40,19 +40,22 @@ export async function body(request: NextRequest, maxBytes = 65536): Promise<unkn
   if (Number(request.headers.get("content-length") ?? 0) > maxBytes) throw new ApiError(413, "Request too large");
   const text = await request.text();
   if (Buffer.byteLength(text) > maxBytes) throw new ApiError(413, "Request too large");
-  try { return JSON.parse(text); } catch { throw new ApiError(400, "Invalid JSON"); }
+  let parsed: unknown;
+  try { parsed = JSON.parse(text); } catch { throw new ApiError(400, "Invalid JSON"); }
+  if (parsed && typeof parsed === 'object' && Object.hasOwn(parsed, 'clientReference')) throw new ApiError(400, 'Client reference numbers are assigned automatically and cannot be changed.');
+  return parsed;
 }
 
 export const cookieName = process.env.NODE_ENV === "production" ? "__Host-apex_session" : "apex_session";
-export type Actor = Pick<User, "id" | "fullName" | "email" | "role" | "status" | "verificationRequired" | "emailVerifiedAt">;
+export type Actor = Pick<User, "id" | "clientReference" | "fullName" | "email" | "role" | "status" | "verificationRequired" | "emailVerifiedAt">;
 
 export async function actor(request: NextRequest): Promise<Actor> {
   const raw = request.cookies.get(cookieName)?.value;
   if (!raw || raw.length < 40) throw new ApiError(401, "Sign in required");
   const session = await db.session.findUnique({ where: { tokenHash: hashToken(raw) }, include: { user: true } });
   if (!session || session.revokedAt || session.expiresAt <= new Date() || session.user.status !== "ACTIVE") throw new ApiError(401, "Session expired");
-  const { id, fullName, email, role, status, verificationRequired, emailVerifiedAt } = session.user;
-  return { id, fullName, email, role, status, verificationRequired, emailVerifiedAt };
+  const { id, clientReference, fullName, email, role, status, verificationRequired, emailVerifiedAt } = session.user;
+  return { id, clientReference, fullName, email, role, status, verificationRequired, emailVerifiedAt };
 }
 
 export function assertVerifiedClient(user: Actor) {

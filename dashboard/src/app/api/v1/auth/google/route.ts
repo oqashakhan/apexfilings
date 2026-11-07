@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createGoogleClient } from '@/server/google-client';
 import * as oidc from "openid-client";
 import { db } from "@/server/db";
 import { actor, ApiError, handleError } from "@/server/http";
@@ -94,12 +95,12 @@ export async function GET(request: NextRequest) {
       if (existing?.passwordHash) throw new ApiError(409, "An account already uses this email. Sign in with your password and link Google from account settings.");
       if (existing) throw new ApiError(409, "This email belongs to a different account");
       user = await db.$transaction(async (tx) => {
-        const created = await tx.user.create({ data: { fullName: typeof claims.name === "string" && claims.name.trim() ? claims.name.trim().slice(0, 120) : normalized.split("@")[0], email: normalized, emailNormalized: normalized, emailVerifiedAt: new Date(), role: "CLIENT", googleAccounts: { create: { subject: claims.sub } } } });
+        const created = await createGoogleClient(tx, { fullName: typeof claims.name === "string" && claims.name.trim() ? claims.name.trim().slice(0, 120) : normalized.split("@")[0], normalizedEmail: normalized, subject: claims.sub });
         await tx.auditLog.create({ data: { actorUserId: created.id, action: "GOOGLE_ACCOUNT_REGISTERED", resourceType: "User", resourceId: created.id } });
         await queueEmail(tx, `welcome:${created.id}`, created.email, "Welcome to Apex Filings", emailHtml("Your account is ready", ["Your Google email was verified. You can continue in your dashboard."], { label: "Open dashboard", href: `${process.env.APP_ORIGIN ?? "http://localhost:3001"}/client/dashboard` }));
         const owners = await tx.user.findMany({ where: { role: "OWNER", status: "ACTIVE" }, select: { id: true } });
         for (const owner of owners) await queueNotification(tx, `registration:${created.id}:${owner.id}`, owner.id, "NEW_REGISTRATION", "New client registered", `${created.fullName} created a client account.`, created.id);
-        if (process.env.ADMIN_NOTIFICATION_EMAIL) await queueEmail(tx, `registration:${created.id}:admin`, process.env.ADMIN_NOTIFICATION_EMAIL, "New client registration — Apex Filings", emailHtml("New client registration", [`Client reference: ${created.id}`, "The customer signed up using a verified Google email."], { label: "View client", href: `${process.env.APP_ORIGIN ?? "http://localhost:3001"}/admin/clients/${created.id}` }));
+        if (process.env.ADMIN_NOTIFICATION_EMAIL) await queueEmail(tx, `registration:${created.id}:admin`, process.env.ADMIN_NOTIFICATION_EMAIL, "New client registration — Apex Filings", emailHtml("New client registration", [`Client Reference Number: ${created.clientReference}`, "The customer signed up using a verified Google email."], { label: "View client", href: `${process.env.APP_ORIGIN ?? "http://localhost:3001"}/admin/clients/${created.id}` }));
         return created;
       });
     }

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
+import { ClientReference } from "./ClientReference";
 import { useAdminDemo, reviewChecks } from "@/components/dashboard/AdminDemoContext";
 import { AdminField, AdminTabs, DemoDialog, DemoOnlyLine } from "@/components/dashboard/AdminUI";
 import { applicationStatuses, displayFee, money } from "@/lib/display";
@@ -32,7 +33,7 @@ export function AdminApplicationDetail({ id }: { id: string }) {
   return <>
     <div className="backline"><Link href="/admin/applications">← Applications</Link><span>/</span><span>{id}</span></div>
     <PageHeader eyebrow="APPLICATION REVIEW" title={company?.name ?? item.preferredName} description={`${id} · ${client?.name ?? "Unknown client"} · ${item.submittedAt ?? "Draft"}`} />
-    <div className="detail-banner"><div><span className="eyebrow">CURRENT STATUS</span><StatusBadge status={item.status} /></div><div><span className="eyebrow">FORMATION STATE</span><strong>{item.state}</strong></div><div><span className="eyebrow">PACKAGE</span><strong>{item.packageName}</strong></div><div><span className="eyebrow">PAYMENT</span><StatusBadge status={order?.paymentStatus ?? "Pending"} /></div></div>
+    <ClientReference value={client?.clientReference} /><div className="detail-banner"><div><span className="eyebrow">CURRENT STATUS</span><StatusBadge status={item.status} /></div><div><span className="eyebrow">FORMATION STATE</span><strong>{item.state}</strong></div><div><span className="eyebrow">PACKAGE</span><strong>{item.packageName}</strong></div><div><span className="eyebrow">PAYMENT</span><StatusBadge status={order?.paymentStatus ?? "Pending"} /></div></div>
     <div className="two-grid application-review-grid">
       <Panel><AdminTabs names={["Company", "Owners", "Documents", "Order & Payment", "Customer Responses", "Internal Notes", "History"]} value={tab} onChange={setTab} label="Application details" />
         {tab === "Company" && <div className="admin-detail-fields"><AdminField label="Preferred name" value={item.preferredName} /><AdminField label="Alternative names" value={item.alternatives.join(", ") || "None"} /><AdminField label="State" value={item.state} /><AdminField label="Business activity" value={item.businessActivity} /><AdminField label="Description" value={item.description} /><AdminField label="Address requirement" value={item.addressRequirement} /><AdminField label="Number of owners" value={item.owners.length} /><AdminField label="Management" value={item.management} /><AdminField label="Additional services" value={item.additionalServices.join(", ") || "None"} /><AdminField label="Customer confirmation" value={item.customerConfirmed ? "Received" : "Awaiting customer"} /></div>}
