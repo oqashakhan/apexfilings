@@ -1,6 +1,7 @@
 import PDFDocument from 'pdfkit';
 import { resolve } from 'node:path';
 import { invoiceMoney, type InvoiceSnapshot } from '@/lib/invoices';
+import { invoiceBalanceNote, invoiceStatusLabel } from '@/lib/invoice-presentation';
 type View=ReturnType<typeof import('./invoices').invoiceView>;
 type Credit={number:string;amountCents:number;issuedAt:Date;snapshot:unknown};
 
@@ -40,16 +41,20 @@ export async function invoicePdf(view:View,credit?:Credit):Promise<Buffer>{
  text('APEX FILINGS',48,44,22,'Bold',orange);text('US Business Formation Services',48,76,10,'Body',muted);
  text(credit?'CREDIT NOTE':'INVOICE',324,44,24,'Bold',dark,223,'right');
  text(number,300,82,11,'Bold',dark,247,'right');
- text(`${credit?'Refunded':view.status.replaceAll('_',' ')}${view.discrepancies.length?' - Review required':''}`,48,108,11,'Bold',orange);
+ const statusColor=view.status==='PAID'?'#16734B':view.status==='OVERDUE'?'#B42318':view.status==='VOIDED'?'#667085':orange;
+ text(credit?'Refunded':invoiceStatusLabel(view.status),48,108,11,'Bold',statusColor);
  text(`Issued: ${date(credit?.issuedAt??view.issuedAt)}`,300,108,10,'Body',muted,247,'right');
  if(!credit&&view.dueAt)text(`Due: ${date(view.dueAt)}`,300,125,10,'Body',muted,247,'right');
- doc.moveTo(48,148).lineTo(547,148).strokeColor(orange).lineWidth(2).stroke().lineWidth(1);
- text('FROM',48,166,9,'Bold',muted);text('BILL TO',310,166,9,'Bold',muted);
+ doc.roundedRect(48,150,width,80,8).fill('#FFF5F1');
+ text(credit?'TOTAL CREDITED':'AMOUNT DUE',62,162,9,'Bold',muted);
+ text(invoiceMoney(credit?.amountCents??view.balanceCents??0,snapshot.currency),62,180,26,'Bold',dark,260);
+ if(!credit){text('Total invoice',350,168,9,'Body',muted,90);text(invoiceMoney(snapshot.totalCents,snapshot.currency),445,168,10,'Bold',dark,88,'right');text('Amount paid',350,192,9,'Body',muted,90);text(invoiceMoney(view.paidCents,snapshot.currency),445,192,10,'Bold',dark,88,'right');}
+ text('FROM',48,250,9,'Bold',muted);text('BILL TO',310,250,9,'Bold',muted);
  const from=[seller.legalName,seller.address,seller.email,seller.website,seller.taxDetails].filter(Boolean).join('\n');
  const to=[snapshot.customer.name,snapshot.customer.email,`Client Reference Number: ${snapshot.customer.clientReference??'Not recorded'}`,snapshot.customer.billingAddress??'',snapshot.company.name,`Formation state: ${snapshot.company.state}`].filter(Boolean).join('\n');
- const left=wrap(from,235),right=wrap(to,237);y=188;
+ const left=wrap(from,235),right=wrap(to,237);y=272;
  for(let i=0;i<Math.max(left.length,right.length);i++){ensure(16);if(left[i]!==undefined)text(left[i],48,y,10,'Body',dark,235);if(right[i]!==undefined)text(right[i],310,y,10,'Body',dark,237);y+=16;}
- y+=12;block(`Order: ${snapshot.orderId}`,9,muted);block(`Application: ${snapshot.applicationId}`,9,muted);
+ y+=12;
  if(credit)block(`Original invoice: ${view.number}`,10,orange,'Bold');
  y+=8;
  function tableHead(){ensure(36);doc.rect(48,y,width,28).fill('#FFF1EB');text('DESCRIPTION',58,y+8,9,'Bold');text('QTY',335,y+8,9,'Bold',dark,30,'right');text('UNIT PRICE',374,y+8,9,'Bold',dark,75,'right');text('AMOUNT',462,y+8,9,'Bold',dark,75,'right');y+=36;}
@@ -62,23 +67,18 @@ export async function invoicePdf(view:View,credit?:Credit):Promise<Buffer>{
   for(const line of lines){if(y+18>748){page();tableHead();}text(line,58,y,10);if(first){text(String(item.quantity),335,y,10,'Body',dark,30,'right');text(invoiceMoney(item.unitCents,snapshot.currency),374,y,10,'Body',dark,75,'right');text(invoiceMoney(item.amountCents,snapshot.currency),462,y,10,'Body',dark,75,'right');first=false;}y+=16;}
   y+=6;doc.moveTo(48,y).lineTo(547,y).strokeColor('#EAECF0').stroke();y+=10;
  }
- const rows=credit?[['Total credited',credit.amountCents]] as const:[['Subtotal',snapshot.subtotalCents],['Taxes',snapshot.taxCents],['Discounts',snapshot.discountCents?-snapshot.discountCents:0],['Invoice total',snapshot.totalCents],['Amount received',view.paidCents],['Amount refunded',view.refundedCents],['Outstanding balance',view.balanceCents??0]] as const;
- ensure(rows.length*24+20);y+=10;
- for(const [label,amount] of rows){const strong=label==='Invoice total'||label==='Outstanding balance'||!!credit;text(label,270,y,10,strong?'Bold':'Body',strong?dark:muted,175);text(invoiceMoney(amount,snapshot.currency),450,y,11,strong?'Bold':'Body',strong?orange:dark,87,'right');y+=24;}
+ const rows:[string,number][]=credit?[['Total credited',credit.amountCents]]:[['Subtotal',snapshot.subtotalCents],['Discounts',snapshot.discountCents?-snapshot.discountCents:0],...(snapshot.taxCents?[['Taxes',snapshot.taxCents] as [string,number]]:[]),['Total',snapshot.totalCents],['Amount paid',view.paidCents],...(view.refundedCents?[['Amount refunded',view.refundedCents] as [string,number]]:[]),['Amount due',view.balanceCents??0]];
+ ensure(rows.length*21+20);y+=10;
+ for(const [label,amount] of rows){const strong=label==='Total'||label==='Amount due'||!!credit;text(label,270,y,10,strong?'Bold':'Body',strong?dark:muted,175);text(invoiceMoney(amount,snapshot.currency),450,y,11,strong?'Bold':'Body',strong?orange:dark,87,'right');y+=21;}
  rule();
- const received=view.payments.filter(p=>p.verifiedAt&&['VERIFIED','DISPUTED','REFUNDED'].includes(p.status));
- const closingHeight=(credit?0:16+(received.length?received.reduce((sum,p)=>sum+16+wrap(`Payment reference: ${p.reference??'Not recorded'}`,width,9).length*15,0):wrap('Unpaid. Sign in to your secure dashboard to view authorized payment options.',width).length*16))+(seller.footer?10+wrap(seller.footer,width,9).length*15:0)+(snapshot.provenance==='REVIEWED_BACKFILL'?42:0)+view.discrepancies.reduce((sum,d)=>sum+wrap(d,width,10,'Bold').length*16,0);
+ const closingHeight=(credit?0:16+wrap(invoiceBalanceNote(view),width).length*16)+(seller.footer?10+wrap(seller.footer,width,9).length*15:0);
  // Keep a short payment/terms section together; do not orphan the closing text.
  if(closingHeight<=500)ensure(closingHeight);
  if(!credit){
   block('PAYMENT INFORMATION',10,muted,'Bold');
-  const paid=received;
-  if(!paid.length)block('Unpaid. Sign in to your secure dashboard to view authorized payment options.');
-  for(const payment of paid){block(`${date(payment.verifiedAt)} | ${payment.method} | ${invoiceMoney(payment.amountCents??0,snapshot.currency)}`);block(`Payment reference: ${payment.reference??'Not recorded'}`,9,muted);}
-  for(const issue of view.discrepancies)block(issue,10,orange,'Bold');
+  block(invoiceBalanceNote(view));
  }
  if(seller.footer){y+=10;block(seller.footer,9,muted);}
- if(snapshot.provenance==='REVIEWED_BACKFILL')block('Historical details reconstructed and reviewed by Apex Filings; original provider documents remain available where recorded.',8,muted);
  const range=doc.bufferedPageRange();
  for(let pageIndex=range.start;pageIndex<range.start+range.count;pageIndex++){
   doc.switchToPage(pageIndex);const bottom=doc.page.margins.bottom;doc.page.margins.bottom=0;

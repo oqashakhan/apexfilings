@@ -114,6 +114,9 @@ test('finalized orders, issuance, immutable PDFs, access, email, voiding and rev
   okay(await api(`/api/v1/admin/payments/${draftPayment.payment.id}/verify`,owner.token,'POST',{}));
   const after=okay(await api(`/api/v1/invoices?customerId=${client.user.id}`,owner.token)).totals.find(t=>t.currency==='USD').collectedCents;assert.equal(after-before,29900);
   const draftView=okay(await api(`/api/v1/invoices/${paidDraft.invoice.id}`,client.token)).invoice;assert.equal(draftView.lifecycle,'DRAFT');assert.equal(draftView.paidCents,29900);assert.equal((await api(`/api/v1/invoices/${paidDraft.invoice.id}/pdf`,client.token)).status,409);
+  for(const status of ['DRAFT','UNPAID','PAID','OVERDUE','VOIDED']){const filtered=okay(await api(`/api/v1/invoices?status=${status}&customerId=${client.user.id}`,owner.token));assert.ok(filtered.items.length>0,status);assert.ok(filtered.items.every(i=>i.status===status));}
+  assert.equal((await api('/api/v1/invoices?status=NOT_A_STATUS',client.token)).status,400);
+  assert.equal(okay(await api(`/api/v1/invoices?status=PAID&customerId=${client.user.id}`,stranger.token)).total,0,'client scope overrides requested customer');
   okay(await api(settingsPath,owner.token,'PATCH',{data:seller,approved:true,verifiedDetails:true}));okay(await api(`/api/v1/invoices/${paidDraft.invoice.id}/issue`,owner.token,'POST',{}));assert.equal(okay(await api(`/api/v1/invoices/${paidDraft.invoice.id}`,client.token)).invoice.status,'PAID');
  }finally{const {code,...state}=backupState;await db.stateFilingFee.update({where:{code},data:state});if(backupSettings){const {id,...data}=backupSettings;await db.invoiceSettings.upsert({where:{id},create:{id,...data},update:data});}else await db.invoiceSettings.deleteMany({where:{id:'default'}});await new Promise(resolve=>mail.close(resolve));await db.$disconnect();}
 });
