@@ -2,13 +2,13 @@ import { invoiceMoney } from './invoices';
 import type { invoiceView } from '@/server/invoices';
 
 export type InvoiceData = ReturnType<typeof invoiceView>;
-export type InvoiceTotals = { currency: string; invoicedCents: number; collectedCents: number; refundedCents: number; outstandingCents: number; overdue: number };
-export const invoiceStatuses = ['DRAFT', 'UNPAID', 'PARTIALLY_PAID', 'PAID', 'OVERDUE', 'VOIDED', 'PARTIALLY_REFUNDED', 'REFUNDED'] as const;
-const labels: Record<string, string> = { DRAFT: 'Draft', UNPAID: 'Unpaid', PARTIALLY_PAID: 'Partially paid', PAID: 'Paid', OVERDUE: 'Overdue', VOIDED: 'Cancelled', PARTIALLY_REFUNDED: 'Partially refunded', REFUNDED: 'Refunded' };
+export type InvoiceTotals = { currency: string; invoicedCents: number; collectedCents: number; refundedCents: number; outstandingCents: number; overdue: number; knownPendingCents?: number; pendingCount?: number };
+export const invoiceStatuses = ['DRAFT', 'PENDING_REVIEW', 'READY_TO_PAY', 'PROCESSING', 'FAILED', 'UNPAID', 'PARTIALLY_PAID', 'PAID', 'OVERDUE', 'VOIDED', 'PARTIALLY_REFUNDED', 'REFUNDED'] as const;
+const labels: Record<string, string> = { DRAFT: 'Draft', PENDING_REVIEW:'Pending review', READY_TO_PAY:'Ready to pay', PROCESSING:'Processing', FAILED:'Failed', UNPAID: 'Unpaid', PARTIALLY_PAID: 'Partially paid', PAID: 'Paid', OVERDUE: 'Overdue', VOIDED: 'Cancelled', PARTIALLY_REFUNDED: 'Partially refunded', REFUNDED: 'Refunded' };
 export const invoiceStatusLabel = (status: string) => labels[status] ?? 'Draft';
-export const invoiceStatusTone = (status: string) => ({ PAID: 'paid', UNPAID: 'unpaid', PARTIALLY_PAID: 'partial', OVERDUE: 'overdue', VOIDED: 'cancelled', REFUNDED: 'refunded', PARTIALLY_REFUNDED: 'refunded' }[status] ?? 'draft');
+export const invoiceStatusTone = (status: string) => ({ READY_TO_PAY:'unpaid', PENDING_REVIEW:'draft', PROCESSING:'partial', FAILED:'overdue', PAID: 'paid', UNPAID: 'unpaid', PARTIALLY_PAID: 'partial', OVERDUE: 'overdue', VOIDED: 'cancelled', REFUNDED: 'refunded', PARTIALLY_REFUNDED: 'refunded' }[status] ?? 'draft');
 export const invoiceDate = (value: Date | string | null) => value ? new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }).format(new Date(value)) : '—';
-export const invoiceAmount = (value: number | null, currency: string) => value === null ? 'Amount unavailable' : invoiceMoney(value, currency);
+export const invoiceAmount = (value: number | null, currency: string) => value === null ? 'Pending confirmation' : invoiceMoney(value, currency);
 export const invoiceCanPrint = (invoice: InvoiceData) => !!invoice.snapshot && ['ISSUED', 'VOIDED'].includes(invoice.lifecycle);
 export function invoiceDownloadHref(invoice: InvoiceData) {
   if (invoiceCanPrint(invoice)) return `/api/v1/invoices/${encodeURIComponent(invoice.id)}/pdf`;

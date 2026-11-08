@@ -401,7 +401,7 @@ test("authenticated dashboard workflow and ownership", async () => {
     let payment = await call("/api/v1/admin/payments", "POST", { orderId, amountCents: 29900, reference: `TEST-${suffix}` }, admin.cookie);
     expect(payment, 201, "record manual payment");
     assert.equal(await db.emailOutbox.count({ where: { eventKey: `payment-review:${payment.data.payment.id}:admin` } }), 1, "payment review queues owner email");
-    expect(await call("/api/v1/admin/payments", "POST", { orderId, amountCents: 1, reference: `BAD-${suffix}` }, admin.cookie), 400, "reject incomplete payment");
+    expect(await call("/api/v1/admin/payments", "POST", { orderId, amountCents: 1, reference: `BAD-${suffix}` }, admin.cookie), 409, "block a parallel payment while verification is pending");
     expect(await call("/api/v1/admin/payments", "POST", { orderId, amountCents: 29900, reference: `DUP-${suffix}` }, admin.cookie), 409, "reject duplicate payment review");
     expect(await call(`/api/v1/admin/payments/${payment.data.payment.id}/verify`, "POST", {}, first.cookie), 403, "client cannot verify payment");
     expect(await call(`/api/v1/admin/payments/${payment.data.payment.id}/reject`, "POST", { reason: "Fictional reference could not be confirmed." }, first.cookie), 403, "client cannot reject payment");

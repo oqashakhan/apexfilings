@@ -9,6 +9,7 @@ const db = new PrismaClient();
 const root = "http://localhost:3002";
 const suffix = randomBytes(6).toString("hex");
 let session;
+let sessionCount=0;
 let settingsBackup;
 let invoice;
 let refundCount = 0;
@@ -22,10 +23,10 @@ const stripeMock = createServer(async (request, response) => {
   if (request.method === "POST" && path === "/v1/customers") result = { id: `cus_${suffix}`, object: "customer", email: form.get("email") };
   else if (request.method === "POST" && path === "/v1/checkout/sessions") {
     const amount = [...form.entries()].filter(([key]) => key.endsWith("[unit_amount]")).reduce((sum, [, value]) => sum + Number(value), 0);
-    session = { id: `cs_test_${suffix}`, object: "checkout.session", url: `https://checkout.stripe.com/c/pay/${suffix}`, amount_total: amount, currency: "usd", livemode: false, status: "open", payment_status: "unpaid", expires_at: Math.floor(Date.now() / 1000) + 3600, metadata: { orderId: form.get("metadata[orderId]"), checkoutId: form.get("metadata[checkoutId]") }, client_reference_id: form.get("client_reference_id"), customer: form.get("customer"), payment_intent: `pi_${suffix}`, invoice: `in_${suffix}` };
+    session = { id: `cs_test_${suffix}_${++sessionCount}`, object: "checkout.session", url: `https://checkout.stripe.com/c/pay/${suffix}`, amount_total: amount, currency: "usd", livemode: false, status: "open", payment_status: "unpaid", expires_at: Math.floor(Date.now() / 1000) + 3600, metadata: { orderId: form.get("metadata[orderId]"), checkoutId: form.get("metadata[checkoutId]") }, client_reference_id: form.get("client_reference_id"), customer: form.get("customer"), payment_intent: `pi_${suffix}`, invoice: `in_${suffix}` };
     invoice = { id: session.invoice, object: "invoice", metadata: { orderId: session.client_reference_id }, livemode: false, status: "paid", amount_paid: amount, currency: "usd", number: `TEST-${suffix}`, hosted_invoice_url: `https://invoice.stripe.com/i/${suffix}`, invoice_pdf: `https://pay.stripe.com/invoice/${suffix}/pdf`, status_transitions: { paid_at: Math.floor(Date.now() / 1000) } };
     result = session;
-  } else if (request.method === "GET" && path === `/v1/checkout/sessions/cs_test_${suffix}`) result = session;
+  } else if (request.method === "GET" && path === `/v1/checkout/sessions/${session?.id}`) result = session;
   else if (request.method === "GET" && path === `/v1/payment_intents/pi_${suffix}`) result = { id: `pi_${suffix}`, object: "payment_intent", status: "succeeded", amount_received: session.amount_total, currency: "usd", metadata: { orderId: session.client_reference_id }, customer: session.customer, latest_charge: { id: `ch_${suffix}`, receipt_url: `https://pay.stripe.com/receipts/${suffix}` } };
   else if (request.method === "GET" && path === `/v1/invoices/in_${suffix}`) result = invoice;
   else if (request.method === "POST" && path === "/v1/refunds") {
@@ -79,6 +80,15 @@ test("Stripe Checkout and provider events preserve the order lifecycle", async (
   assert.equal((await api("/api/v1/admin/payments", "POST", { orderId: order.id, amountCents: order.totalCents, reference: "fictional-manual" }, ownerToken)).status, 409, "manual payment cannot overlap Stripe checkout");
   assert.equal((await db.order.findUniqueOrThrow({ where: { id: order.id } })).paymentStatus, "UNPAID", "checkout return is not payment proof");
   assert.equal((await api("/api/v1/payments/stripe/webhook", "POST", "{}", null, "t=1,v1=wrong")).status, 400, "invalid signature rejected");
+  assert.equal(await db.paymentAttempt.count({where:{orderId:order.id}}),1,'session reuse retains one attempt');
+  session.status='complete';
+  assert.equal((await webhook('checkout.session.completed',{id:session.id},`evt_${suffix}_processing`)).status,200);
+  assert.equal((await api(`/api/v1/invoices/${canonical.id}`,'GET',undefined,clientToken)).data.invoice.presentationStatus,'PROCESSING');
+  assert.equal((await webhook('checkout.session.async_payment_failed',{id:session.id},`evt_${suffix}_failed`)).status,200);
+  assert.equal((await db.paymentAttempt.findFirstOrThrow({where:{orderId:order.id}})).status,'FAILED');
+  assert.equal((await api(`/api/v1/invoices/${canonical.id}`,'GET',undefined,clientToken)).data.invoice.presentationStatus,'FAILED');
+  assert.equal((await api(path,'POST',{orderId:order.id},clientToken)).status,200,'failed attempt can retry');
+  assert.equal(await db.paymentAttempt.count({where:{orderId:order.id}}),2,'retry preserves failed attempt');
   session.payment_status = "paid"; session.status = "complete";
   session.amount_total += 1;
   assert.equal((await webhook("checkout.session.completed", { id: session.id }, `evt_${suffix}_mismatch`)).status, 409, "wrong provider amount rejected");
@@ -86,6 +96,7 @@ test("Stripe Checkout and provider events preserve the order lifecycle", async (
   session.amount_total -= 1;
   const paid = await webhook("checkout.session.completed", { id: session.id }, `evt_${suffix}_paid`);
   assert.equal(paid.status, 200, JSON.stringify(paid.data));
+  assert.equal(await db.paymentAttempt.count({where:{orderId:order.id,status:"PAID"}}),1);
   assert.equal((await db.order.findUniqueOrThrow({ where: { id: order.id } })).paymentStatus, "VERIFIED");
   assert.equal((await db.application.findUniqueOrThrow({ where: { id: application.id } })).status, "PAYMENT_RECEIVED");
   assert.equal((await db.payment.count({ where: { orderId: order.id, method: "STRIPE" } })), 1);

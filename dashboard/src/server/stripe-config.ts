@@ -41,10 +41,12 @@ export function stripeAppOrigin() {
   return url.origin;
 }
 
-export function checkoutAmounts(order: { serviceFeeCents: number; governmentFeeCents: number | null; thirdPartyFeeCents: number | null; additionalFeeCents: number | null; discountCents: number | null; totalCents: number | null; currency: string }, packageName: string) {
+export function checkoutAmounts(order: { serviceFeeCents: number; governmentFeeCents: number | null; thirdPartyFeeCents: number | null; additionalFeeCents: number | null; discountCents: number | null; totalCents: number | null; currency: string; pricingSnapshot?: unknown }, packageName: string) {
   const fields = [order.serviceFeeCents, order.governmentFeeCents, order.thirdPartyFeeCents, order.additionalFeeCents, order.discountCents, order.totalCents];
   if (fields.some((value) => value === null || !Number.isSafeInteger(value) || value! < 0) || order.currency !== "USD") throw new ApiError(409, "Order fees must be confirmed before checkout");
-  const expected = order.serviceFeeCents + order.governmentFeeCents! + order.thirdPartyFeeCents! + order.additionalFeeCents! - order.discountCents!;
+  const tax=(order.pricingSnapshot as {taxCents?:number}|null)?.taxCents??0;
+  if(!Number.isSafeInteger(tax)||tax<0)throw new ApiError(409,"Tax amount needs review");
+  const expected = tax+order.serviceFeeCents + order.governmentFeeCents! + order.thirdPartyFeeCents! + order.additionalFeeCents! - order.discountCents!;
   if (expected !== order.totalCents || expected < 50) throw new ApiError(409, "Order total needs review before checkout");
   let discount = order.discountCents!;
   const parts = [
@@ -52,6 +54,7 @@ export function checkoutAmounts(order: { serviceFeeCents: number; governmentFeeC
     { name: "State filing fee", amount: order.governmentFeeCents! },
     { name: "Third-party fees", amount: order.thirdPartyFeeCents! },
     { name: "Additional services", amount: order.additionalFeeCents! },
+    { name: "Tax", amount: tax },
   ].map((part) => { const reduction = Math.min(part.amount, discount); discount -= reduction; return { ...part, amount: part.amount - reduction, reduction }; });
   if (discount) throw new ApiError(409, "Discount exceeds order fees");
   return parts.filter((part) => part.amount > 0).map((part) => ({ price_data: { currency: "usd", product_data: { name: part.reduction ? `${part.name} (discount applied)` : part.name }, unit_amount: part.amount }, quantity: 1 })) satisfies Stripe.Checkout.SessionCreateParams.LineItem[];

@@ -17,10 +17,10 @@ test('invoice statuses have distinct accurate labels and colors',()=>{
  for(const [status,tone] of [['DRAFT','draft'],['UNPAID','unpaid'],['PARTIALLY_PAID','partial'],['PAID','paid'],['OVERDUE','overdue'],['VOIDED','cancelled'],['REFUNDED','refunded']])assert.match(renderToStaticMarkup(<InvoiceStatus status={status}/>),new RegExp(`invoice-status--${tone}`));
  assert.equal(invoiceStatusLabel('VOIDED'),'Cancelled');
 });
-test('unpaid and partial invoices show real totals and a disabled payment placeholder',()=>{
+test('unpaid and partial invoices show real totals and safely gated Checkout',()=>{
  for(const [paid,balance] of [[0,'$399.00'],[10000,'$299.00']] as const){
   const html=renderToStaticMarkup(<InvoiceDocument invoice={fixture(paid)} role="client"/>);
-  assert.ok(html.includes(balance));assert.match(html,/disabled="" aria-describedby="invoice-coming-soon"/);assert.match(html,/Stripe payments coming soon/);assert.match(html,/Advanced LLC Formation/);assert.match(html,/123456789/);
+  assert.ok(html.includes(balance));assert.match(html,/invoice-button--pay" disabled=""/);assert.match(html,paid?/A partial payment is recorded/:/Online payment is not configured yet/);assert.match(html,/Advanced LLC Formation/);assert.match(html,/123456789/);
   for(const hidden of ['INTERNAL SELLER APPROVAL','Historical details','Reconciliation required','INTERNAL PAYMENT REFERENCE'])assert.equal(html.includes(hidden),false);
   assert.equal(html.includes('/payments/checkout'),false);
  }
@@ -29,7 +29,7 @@ test('paid and cancelled documents cannot initiate payments; drafts cannot downl
  for(const invoice of [fixture(39900),fixture(0,'VOIDED')])assert.equal(renderToStaticMarkup(<InvoiceDocument invoice={invoice} role="client"/>).includes('Pay Invoice'),false);
  assert.equal(invoiceDownloadHref(fixture()),'/api/v1/invoices/invoice/pdf');assert.equal(invoiceDownloadHref(fixture(0,'DRAFT')),null);
  const unknown={...fixture(0,'LEGACY'),snapshot:null,totalCents:null,balanceCents:null};
- assert.match(renderToStaticMarkup(<InvoiceDocument invoice={unknown} role="client"/>),/Amount unavailable/);
+ assert.match(renderToStaticMarkup(<InvoiceDocument invoice={unknown} role="client"/>),/Pending confirmation/);
 });
 test('admin controls retain internal records outside printable customer document',()=>{
  const html=renderToStaticMarkup(<InvoiceAdminControls invoice={fixture(10000)} busy={false} reviewed={false} reason="" onReviewed={()=>{}} onReason={()=>{}} onAction={()=>{}}/>);
@@ -38,4 +38,11 @@ test('admin controls retain internal records outside printable customer document
 test('directory exposes dates, financial amounts, client reference, actions and server filter control',()=>{
  const html=renderToStaticMarkup(<InvoiceDirectory role="client" invoices={[fixture(10000)]} totals={[]} total={31} page={1} query="" status="ALL" onQuery={()=>{}} onStatus={()=>{}} onPage={()=>{}}/>);
  for(const value of ['123456789','$399.00','$100.00','$299.00','View invoice','Download','View related order','Invoice status','Partially paid','1–30 of 31'])assert.ok(html.includes(value),value);
+});
+
+test('pending pricing exposes known subtotal and specific charges without a payable total',()=>{
+ const invoice={...fixture(0,'DRAFT'),snapshot:null,totalCents:null,balanceCents:null,pricing:{items:[{description:'Advanced LLC Formation',quantity:1,unitCents:29900,amountCents:29900}],pending:[{description:'Government filing fee — Louisiana',reason:'Awaiting verified state fee approval'}],knownSubtotalCents:29900,finalTotalCents:null,discountCents:0,taxCents:0,requiresReview:true}};
+ const html=renderToStaticMarkup(<InvoiceDocument invoice={invoice} role="client"/>);
+ for(const text of ['Known subtotal','$299.00','Pending charges','Government filing fee','Awaiting approval','Your final amount is being confirmed'])assert.ok(html.includes(text),text);
+ assert.equal(html.includes('Amount unavailable'),false);
 });

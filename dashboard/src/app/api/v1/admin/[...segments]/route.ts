@@ -241,11 +241,16 @@ export async function POST(request: NextRequest, context: Params) {
       const order = await db.order.findUnique({ where: { id: input.orderId } });
       if (!order || order.status !== "OPEN" || order.paymentStatus === "VERIFIED" || order.totalCents === null) throw new ApiError(409, "Confirm all order fees before recording a payment");
       if (await db.stripeCheckout.findUnique({ where: { orderId: order.id } })) throw new ApiError(409, "A Stripe checkout exists for this order");
-      if (input.amountCents !== order.totalCents) throw new ApiError(400, "Payment amount must match the confirmed order total");
+      if (input.amountCents > order.totalCents) throw new ApiError(400, "Payment exceeds the confirmed order total");
       const result = await db.$transaction(async (tx) => {
         await tx.$queryRaw`SELECT "id" FROM "Order" WHERE "id" = ${input.orderId} FOR UPDATE`;
         if (await tx.stripeCheckout.findUnique({ where: { orderId: input.orderId } })) throw new ApiError(409, "A Stripe checkout exists for this order");
-        const claim = await tx.order.updateMany({ where: { id: input.orderId, paymentStatus: "UNPAID", totalCents: input.amountCents }, data: { paymentStatus: "AWAITING_VERIFICATION" } });
+        const prior=await tx.payment.findFirst({where:{orderId:input.orderId,reference:input.reference}});
+        if(prior){if(prior.amountCents!==input.amountCents)throw new ApiError(409,"Reference already recorded with another amount");return prior;}
+        const receipts=await tx.payment.aggregate({where:{orderId:input.orderId,verifiedAt:{not:null},status:{in:["VERIFIED","DISPUTED","REFUNDED"]}},_sum:{amountCents:true}});
+        const latest=await tx.order.findUniqueOrThrow({where:{id:input.orderId}});
+        if(latest.totalCents===null||input.amountCents>latest.totalCents-(receipts._sum.amountCents??0))throw new ApiError(409,"Payment exceeds the remaining balance");
+        const claim = await tx.order.updateMany({ where: { id: input.orderId, status:"OPEN", paymentStatus: "UNPAID" }, data: { paymentStatus: "AWAITING_VERIFICATION" } });
         if (!claim.count) throw new ApiError(409, "Payment review has already started for this order");
         const payment = await tx.payment.create({ data: { orderId: input.orderId, amountCents: input.amountCents, reference: input.reference, supportingInfo: input.supportingInfo, status: "AWAITING_VERIFICATION" } });
         const related = await tx.order.findUniqueOrThrow({ where: { id: input.orderId }, include: { application: { include: { customer: { include: { notificationPreference: true } } } } } });
@@ -261,14 +266,21 @@ export async function POST(request: NextRequest, context: Params) {
     }
     if (resource === "payments" && id && action === "verify") {
       const payment = await db.payment.findUnique({ where: { id }, include: { order: { include: { application: true } } } });
-      if (!payment || payment.status !== "AWAITING_VERIFICATION" || !payment.amountCents || !payment.reference || payment.order.totalCents !== payment.amountCents || payment.order.paymentStatus === "VERIFIED") throw new ApiError(409, "Payment unavailable for verification");
+      if (!payment || payment.status !== "AWAITING_VERIFICATION" || !payment.amountCents || !payment.reference || payment.order.totalCents === null || payment.order.paymentStatus === "VERIFIED") throw new ApiError(409, "Payment unavailable for verification");
       await db.$transaction(async (tx) => {
+        await tx.$queryRaw`SELECT id FROM "Order" WHERE id=${payment.orderId} FOR UPDATE`;
+        if(payment.method!=="MANUAL")throw new ApiError(409,"Provider payments require provider confirmation");
+        const receipts=await tx.payment.aggregate({where:{orderId:payment.orderId,verifiedAt:{not:null},status:{in:["VERIFIED","DISPUTED","REFUNDED"]}},_sum:{amountCents:true}});
+        const latest=await tx.order.findUniqueOrThrow({where:{id:payment.orderId}});
+        const collected=(receipts._sum.amountCents??0)+payment.amountCents!;
+        if(latest.status!=="OPEN"||latest.totalCents===null||collected>latest.totalCents)throw new ApiError(409,"Payment exceeds remaining balance");
+        const full=collected===latest.totalCents;
         const claim = await tx.payment.updateMany({ where: { id, status: "AWAITING_VERIFICATION" }, data: { status: "VERIFIED", verifiedById: user.id, verifiedAt: new Date() } });
         if (!claim.count) throw new ApiError(409, "Payment already reviewed");
-        const orderClaim = await tx.order.updateMany({ where: { id: payment.orderId, paymentStatus: "AWAITING_VERIFICATION", totalCents: payment.amountCents }, data: { paymentStatus: "VERIFIED" } });
+        const orderClaim = await tx.order.updateMany({ where: { id: payment.orderId, paymentStatus: "AWAITING_VERIFICATION" }, data: { paymentStatus: full?"VERIFIED":"UNPAID" } });
         if (!orderClaim.count) throw new ApiError(409, "Order payment already reviewed or changed");
         const oldStatus = payment.order.application.status;
-        if (oldStatus === "AWAITING_PAYMENT") {
+        if (full && oldStatus === "AWAITING_PAYMENT") {
           await tx.application.update({ where: { id: payment.order.applicationId }, data: { status: "PAYMENT_RECEIVED" } });
           await tx.applicationStatusHistory.create({ data: { applicationId: payment.order.applicationId, previousStatus: oldStatus, newStatus: "PAYMENT_RECEIVED", changedById: user.id, reason: "Manual payment verified by owner" } });
         }

@@ -6,7 +6,7 @@ import { InvoiceDocument } from './InvoiceDocument';
 import { InvoiceAdminControls } from './InvoiceAdminControls';
 import './invoice-experience.css';
 
-export function InvoiceCenter({ role, id, customerId }: { role: 'admin' | 'client'; id?: string; customerId?: string }) {
+export function InvoiceCenter({ role, id, customerId, payments=false }: { role: 'admin' | 'client'; id?: string; customerId?: string; payments?: boolean }) {
   const [invoices, setInvoices] = useState<InvoiceData[]>([]);
   const [invoice, setInvoice] = useState<InvoiceData | null>(null);
   const [totals, setTotals] = useState<InvoiceTotals[]>([]);
@@ -57,7 +57,7 @@ export function InvoiceCenter({ role, id, customerId }: { role: 'admin' | 'clien
     finally { setBusy(false); }
   }
   if (loading) return <div className="invoice-experience invoice-loading" role="status">Loading invoices…</div>;
-  if (!id) return <div className="invoice-experience"><InvoiceDirectory role={role} invoices={invoices} totals={totals} total={total} page={page} query={search} status={status} onQuery={value => { setSearch(value); setPage(1); }} onStatus={value => { setStatus(value); setPage(1); }} onPage={setPage} customerId={customerId} notice={error} /></div>;
+  if (!id) return <div className="invoice-experience">{payments&&<><h1>Payments</h1><p>Review your latest invoice and pay securely once pricing is finalized.</p>{invoices[0]&&<InvoiceDocument invoice={invoices[0]} role="client" onPrint={()=>window.print()} />}</>}<InvoiceDirectory role={role} invoices={invoices} totals={totals} total={total} page={page} query={search} status={status} onQuery={value => { setSearch(value); setPage(1); }} onStatus={value => { setStatus(value); setPage(1); }} onPage={setPage} customerId={customerId} notice={error} /></div>;
   if (!invoice || invoice.id !== id) return <div className="invoice-experience invoice-loading" role={error ? 'alert' : 'status'}>{error || 'Loading invoice…'}</div>;
   return <div className="invoice-experience">{error && <p className="invoice-message invoice-no-print" role="alert">{error}</p>}{notice && <p className="invoice-message invoice-no-print" role="status">{notice}</p>}<InvoiceDocument invoice={invoice} role={role} onPrint={() => window.print()} />{role === 'admin' && <InvoiceAdminControls invoice={invoice} busy={busy} reviewed={reviewed} reason={reason} onReviewed={setReviewed} onReason={setReason} onAction={name => void action(name)} />}</div>;
 }

@@ -13,7 +13,10 @@ async function paidSession(sessionId: string, eventId: string) {
   const session = await stripe.checkout.sessions.retrieve(sessionId);
   const checkout = await db.stripeCheckout.findFirst({ where: { OR: [{ sessionId }, { id: session.metadata?.checkoutId ?? "" }] }, include: { order: { include: { application: { include: { company: true, customer: { include: { notificationPreference: true } } } }, invoice: true } } } });
   if (!checkout || checkout.mode !== mode || checkout.orderId !== session.client_reference_id || session.metadata?.orderId !== checkout.orderId || session.livemode !== (mode === "live") || session.amount_total !== checkout.amountCents || session.currency?.toUpperCase() !== checkout.currency || checkout.order.totalCents !== checkout.amountCents) throw new ApiError(409, "Stripe payment and order do not match");
-  if (session.payment_status !== "paid") return;
+  if (session.payment_status !== "paid") {
+    if(session.status==='complete')await db.$transaction(async tx=>{await tx.stripeCheckout.updateMany({where:{id:checkout.id,status:{not:'PAID'}},data:{status:'PROCESSING'}});await tx.paymentAttempt.updateMany({where:{sessionId,status:{not:'PAID'}},data:{status:'PROCESSING'}});});
+    return;
+  }
   const intentId = stripeId(session.payment_intent);
   if (!intentId) throw new ApiError(409, "Stripe payment reference is missing");
   const intent = await stripe.paymentIntents.retrieve(intentId, { expand: ["latest_charge"] });
@@ -35,6 +38,8 @@ async function paidSession(sessionId: string, eventId: string) {
     const payment = await tx.payment.create({ data: { orderId: checkout.orderId, amountCents: checkout.amountCents, method: "STRIPE", reference: intentId, status: "VERIFIED", verifiedAt: paidAt, stripePaymentIntentId: intentId, stripeCheckoutSessionId: session.id, stripeReceiptUrl: charge?.receipt_url ?? null } });
     await tx.order.update({ where: { id: checkout.orderId }, data: { paymentStatus: "VERIFIED" } });
     await tx.stripeCheckout.update({ where: { id: checkout.id }, data: { sessionId: session.id, status: "PAID" } });
+    const attempt=await tx.paymentAttempt.findUnique({where:{sessionId:session.id}});
+    await tx.paymentAttempt.updateMany({where:{key:attempt?.key??checkout.idempotencyKey},data:{sessionId:session.id,status:'PAID'}});
     if (checkout.order.application.status === "AWAITING_PAYMENT") {
       await tx.application.update({ where: { id: checkout.order.applicationId }, data: { status: "PAYMENT_RECEIVED" } });
       await tx.applicationStatusHistory.create({ data: { applicationId: checkout.order.applicationId, previousStatus: "AWAITING_PAYMENT", newStatus: "PAYMENT_RECEIVED", reason: "Stripe payment verified" } });
@@ -55,6 +60,7 @@ async function paidSession(sessionId: string, eventId: string) {
 }
 
 async function failedSession(sessionId: string, type: string) {
+  await db.paymentAttempt.updateMany({where:{sessionId,status:{not:'PAID'}},data:{status:type==='checkout.session.expired'?'EXPIRED':'FAILED'}});
   const checkout = await db.stripeCheckout.findUnique({ where: { sessionId }, include: { order: { include: { application: { include: { customer: { include: { notificationPreference: true } } } } } } } });
   if (!checkout || checkout.status === "PAID") return;
   await db.$transaction(async (tx) => {

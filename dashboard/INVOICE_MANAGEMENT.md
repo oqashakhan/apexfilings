@@ -1,5 +1,7 @@
 # Invoice management implementation
 
+Current invoice pricing/payment behavior and operational steps are documented in [INVOICE_PAYMENT_FIX.md](INVOICE_PAYMENT_FIX.md). This document records the earlier implementation.
+
 ## Existing behavior and changes
 
 The existing `Invoice` was an order-linked reference plus optional Stripe URLs. Owner fee confirmation created an `AF-{orderId}` reference; Stripe handlers could replace its number with the provider number. There were no immutable parties/line snapshots, local invoice PDFs, invoice directory, seller settings or full invoice lifecycle.

@@ -487,6 +487,7 @@ model DocumentRequest {
 }
 
 model Order {
+  paymentAttempts PaymentAttempt[]
   pricingSnapshot Json?
   id                 String        @id @default(cuid())
   applicationId      String        @unique
@@ -518,6 +519,7 @@ model OrderItem {
 }
 
 model Invoice {
+  lineItems InvoiceLineItem[]
   id        String   @id @default(cuid())
   orderId   String   @unique
   number    String   @unique
@@ -540,6 +542,33 @@ model Invoice {
   creditNotes InvoiceCreditNote[]
   order     Order    @relation(fields: [orderId], references: [id], onDelete: Restrict)
   @@index([lifecycle,dueAt])
+}
+
+model InvoiceLineItem {
+  id String @id @default(cuid())
+  invoiceId String
+  position Int
+  description String
+  quantity Int @default(1)
+  unitCents Int?
+  amountCents Int?
+  kind String @default("CHARGE")
+  approved Boolean @default(false)
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+  @@unique([invoiceId, position])
+}
+
+model PaymentAttempt {
+  id String @id @default(cuid())
+  orderId String
+  key String @unique
+  sessionId String? @unique
+  amountCents Int
+  status String @default("CREATING")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  order Order @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  @@index([orderId, createdAt])
 }
 
 model InvoiceSettings {

@@ -1,5 +1,7 @@
 # Invoice experience update
 
+Current invoice pricing/payment behavior and operational steps are documented in [INVOICE_PAYMENT_FIX.md](INVOICE_PAYMENT_FIX.md). This document records the earlier implementation.
+
 The Client and Admin invoice directory and detail pages now share a clean invoice document layout. This update changes presentation and adds a read-only status filter. It does not change invoice accounting, issuance rules or database records.
 
 ## Files and components

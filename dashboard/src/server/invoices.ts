@@ -5,20 +5,38 @@ import { ApiError } from './http';
 import { emailHtml } from './mail';
 
 const jsonValue=(value:unknown)=>JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
-export const invoiceInclude={order:{include:{payments:true,refunds:true,application:{include:{customer:{select:{id:true,fullName:true,email:true,clientReference:true,notificationPreference:true}},company:true,package:true}}}},creditNotes:true} satisfies Prisma.InvoiceInclude;
+export const invoiceInclude={lineItems:{orderBy:{position:'asc'}},order:{include:{items:true,paymentAttempts:{orderBy:{createdAt:'desc'}},stripeCheckout:true,payments:true,refunds:true,application:{include:{customer:{select:{id:true,fullName:true,email:true,clientReference:true,notificationPreference:true}},company:true,package:true}}}},creditNotes:true} satisfies Prisma.InvoiceInclude;
 export type InvoiceRecord=Prisma.InvoiceGetPayload<{include:typeof invoiceInclude}>;
 export function invoiceView(invoice:InvoiceRecord){
  const snapshot=invoice.snapshot as InvoiceSnapshot|null;
+ const pricing=invoicePricing(invoice);
  const ledger=invoiceFinancials({...invoice,payments:invoice.order.payments,refunds:invoice.order.refunds});
+ if(!['ISSUED','VOIDED'].includes(invoice.lifecycle))ledger.balanceCents=null;
  if(['VERIFIED','REFUNDED','DISPUTED'].includes(invoice.order.paymentStatus)&&ledger.paidCents===0)ledger.discrepancies.push('Order payment status has no matching verified receipt; reconcile the original payment records.');
- return {id:invoice.id,number:invoice.number,orderId:invoice.orderId,lifecycle:invoice.lifecycle,issuedAt:invoice.issuedAt,dueAt:invoice.dueAt,currency:snapshot?.currency??invoice.order.currency,totalCents:invoice.totalCents,snapshot,
+ const canPay=invoice.lifecycle==='ISSUED'&&['UNPAID','OVERDUE'].includes(ledger.status)&&ledger.paidCents===0&&invoice.order.status==='OPEN'&&invoice.order.paymentStatus==='UNPAID'&&invoice.order.application.status==='AWAITING_PAYMENT'&&invoice.order.stripeCheckout?.status!=='PROCESSING'&&!invoice.order.payments.some(p=>p.status==='AWAITING_VERIFICATION');
+ const processing=invoice.order.paymentStatus==='AWAITING_VERIFICATION'||invoice.order.stripeCheckout?.status==='PROCESSING';
+ const presentationStatus=invoice.lifecycle==='VOIDED'?'VOIDED':invoice.lifecycle!=='ISSUED'?'PENDING_REVIEW':ledger.paidCents>0?ledger.status:processing?'PROCESSING':invoice.order.stripeCheckout?.status==='FAILED'?'FAILED':canPay?'READY_TO_PAY':ledger.status;
+ return {id:invoice.id,number:invoice.number,orderId:invoice.orderId,lifecycle:invoice.lifecycle,issuedAt:invoice.issuedAt,dueAt:invoice.dueAt,currency:snapshot?.currency??invoice.order.currency,totalCents:invoice.lifecycle==='ISSUED'||invoice.lifecycle==='VOIDED'?invoice.totalCents:pricing.finalTotalCents,snapshot,pricing,presentationStatus,processing,
   customer:snapshot?.customer??{id:invoice.order.application.customer.id,name:invoice.order.application.customer.fullName,email:invoice.order.application.customer.email,clientReference:invoice.order.application.customer.clientReference},company:snapshot?.company??{id:invoice.order.application.company.id,name:invoice.order.application.company.preferredName,state:invoice.order.application.company.formationState},
   ...ledger,voidReason:invoice.voidReason,payments:invoice.order.payments.map(p=>({id:p.id,amountCents:p.amountCents,method:p.method,reference:p.reference,status:p.status,verifiedAt:p.verifiedAt,receiptUrl:p.stripeReceiptUrl})),
   refunds:invoice.order.refunds.map(r=>({id:r.id,amountCents:r.amountCents,status:r.status,providerStatus:r.stripeStatus})),creditNotes:invoice.creditNotes.map(c=>({id:c.id,number:c.number,amountCents:c.amountCents,issuedAt:c.issuedAt})),
   legacyProviderPdfUrl:invoice.invoicePdfUrl,legacyProviderInvoiceUrl:invoice.hostedInvoiceUrl,
   issueBlocked:invoice.lifecycle==='LEGACY'?'Historical invoice requires Owner review before a local PDF can be issued.':invoice.lifecycle==='DRAFT'?invoice.order.status==='CANCELLED'?'The order is cancelled; this draft cannot be issued.':'Owner-approved invoice business settings are required before issue.':null,
-  canPay:invoice.lifecycle==='ISSUED'&&['UNPAID','OVERDUE'].includes(ledger.status)&&ledger.paidCents===0&&invoice.order.status==='OPEN'&&invoice.order.paymentStatus==='UNPAID'&&invoice.order.application.status==='AWAITING_PAYMENT',
+  canPay,paymentAttempts:invoice.order.paymentAttempts.map(a=>({id:a.id,status:a.status,amountCents:a.amountCents,createdAt:a.createdAt})),
  };
+}
+
+export function invoicePricing(invoice:InvoiceRecord){
+ const order=invoice.order,snapshot=invoice.snapshot as InvoiceSnapshot|null;
+ const saved=order.pricingSnapshot as {items?:{description:string;amountCents:number}[];pendingItems?:{description:string;reason:string}[];taxCents?:number}|null;
+ const issued=['ISSUED','VOIDED'].includes(invoice.lifecycle);
+ const fallback=[{description:order.application.package.name,amountCents:order.serviceFeeCents},...(order.governmentFeeCents!==null?[{description:`Government filing fee — ${order.application.company.formationState}`,amountCents:order.governmentFeeCents}]:[]),...(order.thirdPartyFeeCents?[{description:'Third-party fees',amountCents:order.thirdPartyFeeCents}]:[]),...(order.additionalFeeCents?[{description:'Additional services',amountCents:order.additionalFeeCents}]:[])];
+ const items=(snapshot?.items??saved?.items??(order.items.length?order.items.filter(i=>i.amountCents!==null).map(i=>({description:i.description,amountCents:i.amountCents!})):fallback)).map(i=>({description:i.description,quantity:'quantity' in i?Number(i.quantity):1,unitCents:'unitCents' in i?Number(i.unitCents):i.amountCents,amountCents:i.amountCents}));
+ if(!items.length&&order.serviceFeeCents>0&&!issued)items.push({description:order.application.package.name,quantity:1,unitCents:order.serviceFeeCents,amountCents:order.serviceFeeCents});
+ const pending=issued?[]:saved?.pendingItems?.map(i=>({description:i.description,reason:i.reason}))??(order.governmentFeeCents===null?[{description:`Government filing fee — ${order.application.company.formationState}`,reason:'Awaiting verified state fee approval'}]:[]);
+ const knownSubtotalCents=snapshot?.subtotalCents??items.filter(i=>i.amountCents>=0).reduce((sum,i)=>sum+i.amountCents,0);
+ const finalTotalCents=issued?invoice.totalCents:pending.length?null:order.totalCents;
+ return {items,pending,knownSubtotalCents,finalTotalCents,discountCents:snapshot?.discountCents??order.discountCents??0,taxCents:snapshot?.taxCents??saved?.taxCents??0,requiresReview:!issued};
 }
 
 export async function invoiceSettings(tx:Prisma.TransactionClient){
@@ -42,6 +60,18 @@ function pricingSnapshot(order:Prisma.OrderGetPayload<{include:{items:true;appli
  if(!lines.length||lines.reduce((s,i)=>s+i.amountCents,0)!==subtotal)return null;
  const customer=order.application.customer,company=order.application.company;
  return {version:1,provenance:reviewed?'REVIEWED_BACKFILL':'ORDER_FINALIZATION',seller:null,customer:{id:customer.id,name:customer.fullName,email:customer.email,clientReference:customer.clientReference},company:{id:company.id,name:company.preferredName,state:company.formationState},applicationId:order.applicationId,orderId:order.id,currency:order.currency,items:lines,subtotalCents:subtotal,taxCents:tax,discountCents:discount,totalCents:order.totalCents};
+}
+
+async function persistInvoiceLines(tx:Prisma.TransactionClient,invoiceId:string,raw:unknown,snapshot:InvoiceSnapshot|null,orderItems:{description:string;amountCents:number|null}[],serviceFee:number,packageName:string){
+ const quote=raw as {items?:{description:string;amountCents:number}[];pendingItems?:{description:string;reason:string}[]}|null;
+ const source=snapshot?.items??quote?.items??orderItems;
+ const rows=source.map((item,position)=>({invoiceId,position,description:item.description,quantity:1,unitCents:item.amountCents,amountCents:item.amountCents,approved:item.amountCents!==null,kind:'CHARGE'}));
+ if(!rows.length)rows.push({invoiceId,position:0,description:packageName,quantity:1,unitCents:serviceFee,amountCents:serviceFee,approved:true,kind:'CHARGE'});
+ for(const item of quote?.pendingItems??[])rows.push({invoiceId,position:rows.length,description:item.description,quantity:1,unitCents:null,amountCents:null,approved:false,kind:'PENDING'});
+ if(snapshot?.discountCents)rows.push({invoiceId,position:rows.length,description:'Discount',quantity:1,unitCents:-snapshot.discountCents,amountCents:-snapshot.discountCents,approved:true,kind:'DISCOUNT'});
+ if(snapshot?.taxCents)rows.push({invoiceId,position:rows.length,description:'Tax',quantity:1,unitCents:snapshot.taxCents,amountCents:snapshot.taxCents,approved:true,kind:'TAX'});
+ await tx.invoiceLineItem.deleteMany({where:{invoiceId}});
+ await tx.invoiceLineItem.createMany({data:rows});
 }
 
 async function nextInvoiceNumber(tx:Prisma.TransactionClient,prefix:string,credit=false){
@@ -69,11 +99,18 @@ async function creditForRefund(tx:Prisma.TransactionClient,invoice:InvoiceRecord
 export async function ensureInvoice(tx:Prisma.TransactionClient,orderId:string,options:{reviewed?:boolean;actorId?:string;backfill?:boolean}={}){
  await tx.$queryRaw`SELECT id FROM "Order" WHERE id=${orderId} FOR UPDATE`;
  const order=await tx.order.findUnique({where:{id:orderId},include:{invoice:true,items:true,application:{include:{customer:true,company:true,package:true}}}});
- if(!order||order.totalCents===null)return null;
+ if(!order)return null;
  if(order.invoice&&['ISSUED','VOIDED'].includes(order.invoice.lifecycle))return order.invoice;
  if(order.status==='CANCELLED'&&order.invoice?.lifecycle!=='LEGACY')return order.invoice;
  if(order.invoice?.lifecycle==='LEGACY'&&!options.reviewed)return order.invoice;
- const snapshot=(order.invoice?.snapshot as InvoiceSnapshot|null)??pricingSnapshot(order,!!options.reviewed);
+ // Draft content follows the finalized order; never freeze a stale draft price.
+ const snapshot=pricingSnapshot(order,!!options.reviewed);
+ if(!snapshot&&order.totalCents===null){
+  const {data}=await invoiceSettings(tx);
+  const pending=order.invoice??await tx.invoice.create({data:{orderId,number:await nextInvoiceNumber(tx,data.prefix),lifecycle:'DRAFT',currency:order.currency}});
+  await persistInvoiceLines(tx,pending.id,order.pricingSnapshot,null,order.items,order.serviceFeeCents,order.application.package.name);
+  return pending;
+ }
  if(!snapshot)return order.invoice;
  const {record:settings,data}=await invoiceSettings(tx);
  const eligible=!!settings?.approvedAt&&!!data.legalName&&!!data.address&&!!data.email&&!!data.website;
@@ -82,7 +119,10 @@ export async function ensureInvoice(tx:Prisma.TransactionClient,orderId:string,o
  const dueAt=issuedAt&&data.termsDays!==null?new Date(issuedAt.getTime()+data.termsDays*86400000):null;
  const content={...snapshot,...(options.backfill&&!order.invoice?.snapshot?{provenance:'REVIEWED_BACKFILL' as const}:{}),seller:eligible?data:null};
  const fields={snapshot:jsonValue(content),subtotalCents:snapshot.subtotalCents,taxCents:snapshot.taxCents,discountCents:snapshot.discountCents,totalCents:snapshot.totalCents,currency:snapshot.currency,lifecycle:eligible?'ISSUED':'DRAFT',issuedAt,dueAt};
- const invoice=order.invoice?await tx.invoice.update({where:{id:order.invoice.id},data:fields}):await tx.invoice.create({data:{orderId,number:await nextInvoiceNumber(tx,data.prefix),...fields}});
+ // Populate rows while still Draft so issued rows can remain immutable.
+ const prepared=order.invoice??await tx.invoice.create({data:{orderId,number:await nextInvoiceNumber(tx,data.prefix),currency:order.currency}});
+ await persistInvoiceLines(tx,prepared.id,null,snapshot,order.items,order.serviceFeeCents,order.application.package.name);
+ const invoice=await tx.invoice.update({where:{id:prepared.id},data:fields});
  if(eligible){
   await tx.auditLog.create({data:{actorUserId:options.actorId,action:'INVOICE_ISSUED',resourceType:'Invoice',resourceId:invoice.id,safeMetadata:{orderId,provenance:content.provenance}}});
   const issued=await tx.invoice.findUniqueOrThrow({where:{id:invoice.id},include:invoiceInclude});
