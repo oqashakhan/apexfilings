@@ -27,4 +27,11 @@ export function canTransition(from: ApplicationStatus, to: ApplicationStatus) {
   return transitions[from].includes(to);
 }
 
+export function transitionBlockReason(from: ApplicationStatus, to: ApplicationStatus) {
+  if (from === to) return `This application is already ${statusNames[from]}.`;
+  const allowed = transitions[from];
+  const next = allowed.length ? allowed.map((status) => statusNames[status]).join(", ") : "no further statuses";
+  return `${statusNames[from]} cannot move to ${statusNames[to]}. Allowed next statuses: ${next}.`;
+}
+
 export const approvalChecks = ["CUSTOMER_INFORMATION", "COMPANY_DETAILS", "OWNER_INFORMATION", "REQUIRED_DOCUMENTS", "CUSTOMER_CONFIRMATION", "PAYMENT_VERIFIED"] as const;

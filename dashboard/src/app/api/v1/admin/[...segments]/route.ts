@@ -6,7 +6,7 @@ import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { db } from "@/server/db";
 import { ApiError, body, checkOrigin, handleError, json, requireRole } from "@/server/http";
-import { approvalChecks, canTransition, statusNames } from "@/server/workflow";
+import { approvalChecks, canTransition, statusNames, transitionBlockReason } from "@/server/workflow";
 import { statusInput } from "@/server/validation";
 import { adminSnapshot } from "@/server/admin-snapshot";
 import { emailHtml, queueEmail, queueNotification } from "@/server/mail";
@@ -51,13 +51,21 @@ async function approvalReady(id: string) {
 
 async function statusChange(id: string, userId: string, next: ApplicationStatus, reason: string) {
   const existing = await application(id);
-  if (!canTransition(existing.status, next)) throw new ApiError(409, "Status transition is not allowed");
-  if (next === "PAYMENT_RECEIVED") throw new ApiError(409, "Payment status changes only after verified payment");
+  if (next === "PAYMENT_RECEIVED" && (existing.order?.paymentStatus !== "VERIFIED" || !existing.order.payments.some((payment) => payment.verifiedAt && ["VERIFIED", "DISPUTED"].includes(payment.status)))) {
+    throw new ApiError(409, "Payment Received requires an already verified payment. Record or verify payment in the Payments workflow first; this action does not create a payment.");
+  }
+  if (next === "REFUND_REQUESTED" && !existing.order?.refunds.some((refund) => refund.status !== "DECLINED")) {
+    throw new ApiError(409, "Refund Requested requires an existing refund request. Create or review it in the Payments workflow first.");
+  }
+  if (next === "REFUNDED" && (existing.order?.paymentStatus !== "REFUNDED" || !existing.order.refunds.some((refund) => refund.status === "COMPLETED" && refund.stripeStatus === "succeeded"))) {
+    throw new ApiError(409, "Refunded requires a completed, confirmed full refund. Complete the refund in the Payments workflow first; this action does not issue a refund.");
+  }
+  if (!canTransition(existing.status, next)) throw new ApiError(409, transitionBlockReason(existing.status, next));
   if (next === "APPROVED_FOR_FILING" && !(await approvalReady(id))) throw new ApiError(409, "Review, documents, confirmation, and verified payment are required");
   if (next === "COMPLETED" && !(await requestedDocumentsReady(id))) throw new ApiError(409, "Requested documents must be accepted before completion");
   if (next === "COMPLETED" && !existing.documents.some((doc) => doc.reviewStatus === "COMPLETED_COMPANY_DOCUMENT" && doc.clientVisible)) throw new ApiError(409, "Share completed company documents with the client first");
   await db.$transaction(async (tx) => {
-    const changed = await tx.application.updateMany({ where: { id, status: existing.status }, data: { status: next, ...(next === "APPROVED_FOR_FILING" ? { approvedForFilingAt: new Date(), internalReviewStatus: "APPROVED" } : {}), ...(next === "SUBMITTED_TO_AUTHORITY" ? { authorityFilingStatus: "SUBMITTED" } : {}), ...(next === "COMPLETED" ? { completedAt: new Date(), authorityFilingStatus: "COMPLETED" } : {}) } });
+    const changed = await tx.application.updateMany({ where: { id, status: existing.status }, data: { status: next, ...(next === "APPROVED_FOR_FILING" ? { approvedForFilingAt: new Date(), internalReviewStatus: "APPROVED" } : {}), ...(next === "COMPLETED" ? { completedAt: new Date() } : {}) } });
     if (changed.count !== 1) throw new ApiError(409, "Application changed; refresh and try again");
     const event = await tx.applicationStatusHistory.create({ data: { applicationId: id, previousStatus: existing.status, newStatus: next, changedById: userId, reason } });
     await queueNotification(tx, `status:${event.id}`, existing.customerId, "STATUS_UPDATED", "Application status updated", `Your ${existing.company.preferredName} application is now ${statusNames[next]}.`, id);

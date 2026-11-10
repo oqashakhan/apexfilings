@@ -70,7 +70,7 @@ export function AdminDemoProvider({ children }: { children: React.ReactNode }) {
       const files = snapshot.documents.filter((item) => item.applicationId === id && item.status !== "Completed Company Document");
       return Boolean(application?.customerConfirmed && !application.pendingDocumentRequests && order?.paymentStatus === "Paid" && application.identityReady && files.filter(item => !isIdentityDocument(item.type)).every((item) => item.status === "Accepted") && reviewChecks.every((check) => snapshot.checks[id]?.includes(check)));
     },
-    changeStatus: async (id, status, reason) => { try { await act(`applications/${id}/status`, "POST", { status: statusCodes[status], reason }); return true; } catch { return false; } },
+    changeStatus: async (id, status, reason) => { await act(`applications/${id}/status`, "POST", { status: statusCodes[status], reason }); return true; },
     reviewDocument: async (id, status, reason) => { await act(`documents/${id}/review`, "POST", { status: status === "Accepted" ? "ACCEPTED" : "REPLACEMENT_REQUIRED", reason }); },
     reviewPayment: async (id, status, reason) => { if (status === "Paid") await act(`payments/${id}/verify`, "POST", {}); else if (status === "Failed" && reason && reason.trim().length >= 3) await act(`payments/${id}/reject`, "POST", { reason: reason.trim() }); else throw new Error("Choose a review decision and provide a reason for rejection"); },
     confirmOrderFees: async (id, fees) => { await act(`orders/${id}`, "PATCH", fees); },

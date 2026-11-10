@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useRef } from "react";
 
-export function DemoDialog({ open, onClose, title, children }: { open: boolean; onClose: () => void; title: string; children: React.ReactNode }) {
+export function DemoDialog({ open, onClose, title, children, className = "" }: { open: boolean; onClose: () => void; title: string; children: React.ReactNode; className?: string }) {
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
   useEffect(() => {
@@ -11,7 +11,7 @@ export function DemoDialog({ open, onClose, title, children }: { open: boolean; 
     if (open && !dialog.open) dialog.showModal();
     if (!open && dialog.open) dialog.close();
   }, [open]);
-  return <dialog ref={ref} className="admin-dialog" aria-labelledby={titleId} onCancel={onClose} onClose={onClose}>
+  return <dialog ref={ref} className={`admin-dialog ${className}`.trim()} aria-labelledby={titleId} onCancel={onClose} onClose={onClose}>
     <div className="admin-dialog-head"><div><span className="eyebrow accent">OWNER ACTION</span><h2 id={titleId}>{title}</h2></div><button className="icon-button" type="button" aria-label="Close dialog" onClick={onClose}>×</button></div>
     {children}
   </dialog>;
