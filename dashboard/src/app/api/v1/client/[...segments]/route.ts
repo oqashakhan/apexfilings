@@ -127,9 +127,12 @@ export async function GET(request: NextRequest, context: Params) {
     }
     if (resource === "notification-preferences") return json({ preferences: await db.notificationPreference.findUnique({ where: { userId: user.id } }) });
     if (resource === "support") {
-      const tickets = await db.supportTicket.findMany({ where: { customerId: user.id, ...(id ? { id } : {}) }, include: { replies: { select: { id: true, body: true, createdAt: true, author: { select: { role: true } } }, orderBy: { createdAt: "asc" } } }, orderBy: { createdAt: "desc" }, take: 50 });
+      const [tickets, companies] = await Promise.all([
+        db.supportTicket.findMany({ where: { customerId: user.id, ...(id ? { id } : {}) }, select: { id: true, category: true, subject: true, body: true, status: true, createdAt: true, updatedAt: true, company: { select: { id: true, preferredName: true } }, replies: { select: { id: true, body: true, createdAt: true, author: { select: { role: true } } }, orderBy: { createdAt: "asc" } } }, orderBy: { updatedAt: "desc" }, take: 50 }),
+        db.company.findMany({ where: { customerId: user.id }, select: { id: true, preferredName: true }, orderBy: { preferredName: "asc" } }),
+      ]);
       if (id && !tickets.length) throw new ApiError(404, "Support request not found");
-      return json({ tickets });
+      return json({ tickets, companies });
     }
     throw new ApiError(404, "Not found");
   } catch (error) { return handleError(error); }
@@ -161,31 +164,55 @@ export async function POST(request: NextRequest, context: Params) {
       return json({ refund }, 201);
     }
     if (resource === "support" && !id) {
-      const input = z.object({ subject: z.string().trim().min(5).max(160), message: z.string().trim().min(10).max(4000) }).parse(await body(request));
+      const input = z.object({ category: z.enum(["ACCOUNT", "APPLICATION", "DOCUMENTS", "BILLING", "TECHNICAL", "OTHER"]), subject: z.string().trim().min(5).max(160), message: z.string().trim().min(10).max(4000), companyId: z.string().trim().min(1).max(100).nullable().optional(), idempotencyKey: z.string().uuid() }).parse(await body(request));
+      const existing = await db.supportTicket.findUnique({ where: { idempotencyKey: input.idempotencyKey }, select: { id: true, customerId: true } });
+      if (existing) {
+        if (existing.customerId !== user.id) throw new ApiError(409, "This request could not be completed");
+        return json({ ticket: existing, duplicate: true });
+      }
+      const company = input.companyId ? await db.company.findFirst({ where: { id: input.companyId, customerId: user.id }, select: { id: true } }) : null;
+      if (input.companyId && !company) throw new ApiError(404, "Company not found");
       const recent = await db.supportTicket.count({ where: { customerId: user.id, createdAt: { gt: new Date(Date.now() - 24 * 60 * 60_000) } } });
       if (recent >= 5) throw new ApiError(429, "Too many support requests. Please try again later.");
       const ticket = await db.$transaction(async (tx) => {
-        const created = await tx.supportTicket.create({ data: { customerId: user.id, subject: input.subject, body: input.message } });
+        await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${user.id} FOR UPDATE`;
+        const retry = await tx.supportTicket.findUnique({ where: { idempotencyKey: input.idempotencyKey }, select: { id: true, customerId: true } });
+        if (retry) {
+          if (retry.customerId !== user.id) throw new ApiError(409, "This request could not be completed");
+          return { ticket: retry, duplicate: true };
+        }
+        const dailyCount = await tx.supportTicket.count({ where: { customerId: user.id, createdAt: { gt: new Date(Date.now() - 24 * 60 * 60_000) } } });
+        if (dailyCount >= 5) throw new ApiError(429, "Too many support requests. Please try again later.");
+        const created = await tx.supportTicket.create({ data: { customerId: user.id, category: input.category, subject: input.subject, body: input.message, companyId: company?.id, idempotencyKey: input.idempotencyKey } });
         const owners = await tx.user.findMany({ where: { role: "OWNER", status: "ACTIVE" }, select: { id: true } });
-        for (const owner of owners) await queueNotification(tx, `support-new:${created.id}:${owner.id}`, owner.id, "SUPPORT_NEW", "New support request", `A client sent a support request: ${input.subject}.`, created.id);
-        if (process.env.ADMIN_NOTIFICATION_EMAIL) await queueEmail(tx, `support-new:${created.id}:admin`, process.env.ADMIN_NOTIFICATION_EMAIL, "New support request — Apex Filings", emailHtml("New support request", [`Subject: ${input.subject}`, "Sign in to read and respond securely. No private message content is included in this email."], { label: "Open support", href: `${process.env.APP_ORIGIN ?? "http://localhost:3001"}/admin/support` }));
+        for (const owner of owners) await queueNotification(tx, `support-new:${created.id}:${owner.id}`, owner.id, "SUPPORT_NEW", "New support request", `A client sent a ${input.category.toLowerCase()} request: ${input.subject}.`, created.id);
+        if (process.env.ADMIN_NOTIFICATION_EMAIL) await queueEmail(tx, `support-new:${created.id}:admin`, process.env.ADMIN_NOTIFICATION_EMAIL, "New support request — Apex Filings", emailHtml("New support request", [`Category: ${input.category}`, `Subject: ${input.subject}`, "Sign in to read and respond securely. No private message content is included in this email."], { label: "Open support", href: `${process.env.APP_ORIGIN ?? "http://localhost:3001"}/admin/support` }));
         await queueNotification(tx, `support-new:${created.id}:client`, user.id, "SUPPORT_NEW", "Support request received", "Your support request is in the team queue.", created.id);
-        return created;
+        await tx.auditLog.create({ data: { actorUserId: user.id, action: "SUPPORT_TICKET_CREATED", resourceType: "SupportTicket", resourceId: created.id, safeMetadata: { category: input.category, companyId: company?.id ?? null } } });
+        return { ticket: created, duplicate: false };
       });
-      return json({ ticket }, 201);
+      return json(ticket, ticket.duplicate ? 200 : 201);
     }
     if (resource === "support" && id && action === "reply") {
-      const input = z.object({ message: z.string().trim().min(2).max(4000) }).parse(await body(request));
-      const ticket = await db.supportTicket.findFirst({ where: { id, customerId: user.id } });
-      if (!ticket) throw new ApiError(404, "Support request not found");
-      await db.$transaction(async (tx) => {
-        const reply = await tx.supportReply.create({ data: { ticketId: id, authorId: user.id, body: input.message } });
+      const input = z.object({ message: z.string().trim().min(2).max(4000), idempotencyKey: z.string().uuid() }).parse(await body(request));
+      const result = await db.$transaction(async (tx) => {
+        await tx.$queryRaw`SELECT "id" FROM "SupportTicket" WHERE "id" = ${id} FOR UPDATE`;
+        const retry = await tx.supportReply.findUnique({ where: { idempotencyKey: input.idempotencyKey }, select: { id: true, ticketId: true } });
+        if (retry) {
+          if (retry.ticketId !== id) throw new ApiError(409, "This request could not be completed");
+          return { duplicate: true };
+        }
+        const ownTicket = await tx.supportTicket.findFirst({ where: { id, customerId: user.id }, select: { id: true, subject: true } });
+        if (!ownTicket) throw new ApiError(404, "Support request not found");
+        const reply = await tx.supportReply.create({ data: { ticketId: id, authorId: user.id, body: input.message, idempotencyKey: input.idempotencyKey } });
         await tx.supportTicket.update({ where: { id }, data: { status: "OPEN" } });
         const owners = await tx.user.findMany({ where: { role: "OWNER", status: "ACTIVE" }, select: { id: true } });
-        for (const owner of owners) await queueNotification(tx, `support-reply:${reply.id}:${owner.id}`, owner.id, "SUPPORT_REPLY", "Customer replied to support", `A client replied to ${ticket.subject}.`, id);
-        if (process.env.ADMIN_NOTIFICATION_EMAIL) await queueEmail(tx, `support-reply:${reply.id}:admin`, process.env.ADMIN_NOTIFICATION_EMAIL, "Customer replied to support — Apex Filings", emailHtml("Support reply received", [`Subject: ${ticket.subject}`, "Sign in to read the reply securely."], { label: "Open support", href: `${process.env.APP_ORIGIN ?? "http://localhost:3001"}/admin/support` }));
+        for (const owner of owners) await queueNotification(tx, `support-reply:${reply.id}:${owner.id}`, owner.id, "SUPPORT_REPLY", "Customer replied to support", `A client replied to ${ownTicket.subject}.`, id);
+        if (process.env.ADMIN_NOTIFICATION_EMAIL) await queueEmail(tx, `support-reply:${reply.id}:admin`, process.env.ADMIN_NOTIFICATION_EMAIL, "Customer replied to support — Apex Filings", emailHtml("Support reply received", [`Subject: ${ownTicket.subject}`, "Sign in to read the reply securely."], { label: "Open support", href: `${process.env.APP_ORIGIN ?? "http://localhost:3001"}/admin/support` }));
+        await tx.auditLog.create({ data: { actorUserId: user.id, action: "SUPPORT_CLIENT_REPLIED", resourceType: "SupportTicket", resourceId: id } });
+        return { duplicate: false };
       });
-      return json({ ok: true }, 201);
+      return json({ ok: true, duplicate: result.duplicate }, result.duplicate ? 200 : 201);
     }
     if (resource === "applications" && !id) {
       const input = applicationDraftInput.parse(await body(request));

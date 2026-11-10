@@ -84,7 +84,7 @@ test('Client/Admin APIs agree, Owner exact search works and references grant no 
  assert.equal((await api(`/api/v1/admin/clients?search=${reference}`,null)).status,401);
  assert.equal((await api(`/api/v1/client/applications/${reference}`,stranger.token)).status,404);
  const badEdit=await api('/api/v1/client/notification-preferences',client.token,'PATCH',{everyLoginEmail:false,applicationEmail:true,paymentEmail:true,documentEmail:true,supportEmail:true,clientReference:'123456789'});assert.equal(badEdit.status,400);
- const ticket=await api('/api/v1/client/support',client.token,'POST',{subject:'Fictional reference test',message:'Test-only support request for permanent client references.'});assert.equal(ticket.status,201);
+ const ticket=await api('/api/v1/client/support',client.token,'POST',{category:'ACCOUNT',subject:'Fictional reference test',message:'Test-only support request for permanent client references.',idempotencyKey:randomUUID()});assert.equal(ticket.status,201);
  const support=await api('/api/v1/admin/support',owner.token);assert.equal(support.data.tickets.find(t=>t.customer.id===client.user.id).customer.clientReference,reference);
  const service=await db.service.findUniqueOrThrow({where:{slug:'llc'}}),pack=await db.package.findUniqueOrThrow({where:{slug:'basic'}});
  for(let i=0;i<2;i++){

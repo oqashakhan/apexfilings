@@ -158,9 +158,12 @@ export async function GET(request: NextRequest, context: Params) {
     }
     if (resource === "notification-preferences") return json({ preferences: await db.notificationPreference.findUnique({ where: { userId: owner.id } }) });
     if (resource === "support") {
-      const tickets = await db.supportTicket.findMany({ where: id ? { id } : {}, include: { customer: { select: { id: true, clientReference: true, fullName: true, email: true } }, replies: { select: { id: true, body: true, createdAt: true, author: { select: { role: true } } }, orderBy: { createdAt: "asc" } } }, orderBy: { updatedAt: "desc" }, take: 100 });
+      const [tickets, assignees] = await Promise.all([
+        db.supportTicket.findMany({ where: id ? { id } : {}, include: { customer: { select: { id: true, clientReference: true, fullName: true, email: true, notificationPreference: true } }, company: { select: { id: true, preferredName: true } }, assignedTo: { select: { id: true, fullName: true, role: true } }, replies: { select: { id: true, body: true, createdAt: true, author: { select: { role: true } } }, orderBy: { createdAt: "asc" } }, internalNotes: { select: { id: true, body: true, createdAt: true, author: { select: { fullName: true } } }, orderBy: { createdAt: "asc" } } }, orderBy: { updatedAt: "desc" }, take: 100 }),
+        db.user.findMany({ where: { role: { in: ["OWNER", "STAFF"] }, status: "ACTIVE" }, select: { id: true, fullName: true, role: true }, orderBy: { fullName: "asc" } }),
+      ]);
       if (id && !tickets.length) throw new ApiError(404, "Support request not found");
-      return json({ tickets });
+      return json({ tickets, assignees });
     }
     if (resource === "audit") return json({ items: await db.auditLog.findMany({ select: { id: true, actorUserId: true, action: true, resourceType: true, resourceId: true, safeMetadata: true, createdAt: true }, orderBy: { createdAt: "desc" }, skip: (page - 1) * take, take }) });
     throw new ApiError(404, "Not found");
@@ -173,17 +176,35 @@ export async function POST(request: NextRequest, context: Params) {
     const user = await requireRole(request, "OWNER");
     const [resource, id, action] = (await context.params).segments;
     if (resource === "support" && id && action === "reply") {
-      const input = z.object({ message: z.string().trim().min(2).max(4000) }).parse(await body(request));
+      const input = z.object({ message: z.string().trim().min(2).max(4000), idempotencyKey: z.string().uuid() }).parse(await body(request));
       const ticket = await db.supportTicket.findUnique({ where: { id }, include: { customer: { select: { email: true, notificationPreference: true } } } });
       if (!ticket) throw new ApiError(404, "Support request not found");
-      await db.$transaction(async (tx) => {
-        const reply = await tx.supportReply.create({ data: { ticketId: id, authorId: user.id, body: input.message } });
-        await tx.supportTicket.update({ where: { id }, data: { status: "REPLIED" } });
+      const result = await db.$transaction(async (tx) => {
+        await tx.$queryRaw`SELECT "id" FROM "SupportTicket" WHERE "id" = ${id} FOR UPDATE`;
+        const retry = await tx.supportReply.findUnique({ where: { idempotencyKey: input.idempotencyKey }, select: { id: true, ticketId: true } });
+        if (retry) {
+          if (retry.ticketId !== id) throw new ApiError(409, "This request could not be completed");
+          return { duplicate: true };
+        }
+        const reply = await tx.supportReply.create({ data: { ticketId: id, authorId: user.id, body: input.message, idempotencyKey: input.idempotencyKey } });
+        const changed = await tx.supportTicket.updateMany({ where: { id }, data: { status: "WAITING_FOR_CLIENT" } });
+        if (!changed.count) throw new ApiError(404, "Support request not found");
         await queueNotification(tx, `support-answer:${reply.id}`, ticket.customerId, "SUPPORT_REPLY", "Support replied", `The team replied to your request: ${ticket.subject}.`, id);
-        if (ticket.customer.notificationPreference?.supportEmail !== false) await queueEmail(tx, `support-answer:${reply.id}`, ticket.customer.email, "Apex Filings replied to your support request", emailHtml("Your support request has a reply", [`Subject: ${ticket.subject}`, "Sign in to read the response securely."], { label: "View support", href: `${process.env.APP_ORIGIN ?? "http://localhost:3001"}/client/support` }));
+        if (ticket.customer.notificationPreference?.supportEmail !== false) await queueEmail(tx, `support-answer:${reply.id}`, ticket.customer.email, "Apex Filings replied to your support request", emailHtml("Your support request has a reply", [`Subject: ${ticket.subject}`, "Sign in to read the response securely."], { label: "View support", href: `${process.env.APP_ORIGIN ?? "http://localhost:3001"}/client/support#ticket-${encodeURIComponent(id)}` }));
         await tx.auditLog.create({ data: { actorUserId: user.id, action: "SUPPORT_REPLIED", resourceType: "SupportTicket", resourceId: id } });
+        return { duplicate: false };
       });
-      return json({ ok: true }, 201);
+      return json({ ok: true, duplicate: result.duplicate }, result.duplicate ? 200 : 201);
+    }
+    if (resource === "support" && id && action === "note") {
+      const input = z.object({ body: z.string().trim().min(2).max(4000) }).parse(await body(request));
+      if (!await db.supportTicket.findUnique({ where: { id }, select: { id: true } })) throw new ApiError(404, "Support request not found");
+      const note = await db.$transaction(async (tx) => {
+        const created = await tx.supportInternalNote.create({ data: { ticketId: id, authorId: user.id, body: input.body } });
+        await tx.auditLog.create({ data: { actorUserId: user.id, action: "SUPPORT_INTERNAL_NOTE_ADDED", resourceType: "SupportTicket", resourceId: id } });
+        return created;
+      });
+      return json({ note }, 201);
     }
     if (resource === "applications" && id && action === "status") {
       const input = statusInput.parse(await body(request));
@@ -335,6 +356,35 @@ export async function PATCH(request: NextRequest, context: Params) {
     checkOrigin(request);
     const user = await requireRole(request, "OWNER");
     const [resource, id] = (await context.params).segments;
+    if (resource === "support" && id) {
+      const input = z.object({ status: z.enum(["OPEN", "IN_PROGRESS", "WAITING_FOR_CLIENT", "RESOLVED", "CLOSED", "REPLIED"]).optional(), assignedToId: z.string().trim().min(1).max(100).nullable().optional() }).refine((value) => value.status !== undefined || value.assignedToId !== undefined).parse(await body(request));
+      const existing = await db.supportTicket.findUnique({ where: { id }, include: { customer: { select: { id: true, email: true, fullName: true, notificationPreference: true } } } });
+      if (!existing) throw new ApiError(404, "Support request not found");
+      if (input.assignedToId) {
+        const assignee = await db.user.findFirst({ where: { id: input.assignedToId, role: { in: ["OWNER", "STAFF"] }, status: "ACTIVE" }, select: { id: true } });
+        if (!assignee) throw new ApiError(400, "Choose an active Admin or staff member");
+      }
+      const result = await db.$transaction(async (tx) => {
+        await tx.$queryRaw`SELECT "id" FROM "SupportTicket" WHERE "id" = ${id} FOR UPDATE`;
+        const latest = await tx.supportTicket.findUnique({ where: { id }, select: { status: true, assignedToId: true } });
+        if (!latest) throw new ApiError(404, "Support request not found");
+        const status = input.status ?? latest.status;
+        const assigneeId = input.assignedToId === undefined ? latest.assignedToId : input.assignedToId;
+        const changed = status !== latest.status;
+        const assignmentChanged = assigneeId !== latest.assignedToId;
+        const updated = await tx.supportTicket.update({ where: { id }, data: { status, assignedToId: assigneeId } });
+        if (changed || assignmentChanged) await tx.auditLog.create({ data: { actorUserId: user.id, action: changed ? "SUPPORT_STATUS_CHANGED" : "SUPPORT_ASSIGNED", resourceType: "SupportTicket", resourceId: id, safeMetadata: { fromStatus: latest.status, status, assignedToId: assigneeId } } });
+        if (changed) {
+          const label = status.replaceAll("_", " ").toLowerCase().replace(/\b\w/g, (letter) => letter.toUpperCase());
+          const eventKey = `support-status:${id}:${updated.updatedAt.toISOString()}`;
+          const message = `Your support request “${existing.subject}” is now ${label}.`;
+          await queueNotification(tx, eventKey, existing.customer.id, "SUPPORT_STATUS", "Support request updated", message, id);
+          if (existing.customer.notificationPreference?.supportEmail !== false) await queueEmail(tx, eventKey, existing.customer.email, "Apex Filings support request update", emailHtml("Support request updated", [`Hello ${existing.customer.fullName},`, message, "Sign in to view the conversation."], { label: "View support", href: `${process.env.APP_ORIGIN ?? "http://localhost:3001"}/client/support#ticket-${encodeURIComponent(id)}` }));
+        }
+        return updated;
+      });
+      return json({ ticket: result });
+    }
     if (resource === "documents" && id) {
       const input = z.object({ clientVisible: z.boolean() }).parse(await body(request));
       const document = await db.document.findUnique({ where: { id }, include: { uploadedBy: { select: { role: true } }, application: { select: { customerId: true, company: { select: { preferredName: true } }, customer: { select: { email: true, notificationPreference: true } } } } } });

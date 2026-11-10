@@ -92,7 +92,9 @@ model User {
   documents       Document[]    @relation("UploadedDocuments")
   notifications   Notification[]
   supportTickets  SupportTicket[] @relation("SupportCustomer")
+  assignedSupportTickets SupportTicket[] @relation("AssignedSupportTickets")
   supportReplies  SupportReply[]
+  supportInternalNotes SupportInternalNote[]
   auditEntries    AuditLog[]
   statusChanges   ApplicationStatusHistory[]
   reviews         ApplicationReview[]
@@ -273,6 +275,7 @@ model Company {
   owners                CompanyOwner[]
   applications          Application[]
   serviceRequests       ServiceRequest[]
+  supportTickets        SupportTicket[]
   documents             Document[]
   @@index([customerId, createdAt])
 }
@@ -703,20 +706,40 @@ model Notification {
 }
 
 model SupportTicket {
-  id         String   @id @default(cuid())
-  customerId String
-  subject    String
-  body       String
-  status     String   @default("OPEN")
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-  customer   User     @relation("SupportCustomer", fields: [customerId], references: [id], onDelete: Restrict)
-  replies    SupportReply[]
+  id             String   @id @default(cuid())
+  idempotencyKey String?  @unique
+  customerId     String
+  companyId      String?
+  assignedToId   String?
+  category       String   @default("GENERAL")
+  subject        String
+  body           String
+  status         String   @default("OPEN")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  customer       User     @relation("SupportCustomer", fields: [customerId], references: [id], onDelete: Restrict)
+  company        Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  assignedTo     User?    @relation("AssignedSupportTickets", fields: [assignedToId], references: [id], onDelete: SetNull)
+  replies        SupportReply[]
+  internalNotes  SupportInternalNote[]
   @@index([customerId, createdAt])
   @@index([status, createdAt])
+  @@index([assignedToId, status, updatedAt])
 }
 
 model SupportReply {
+  id             String   @id @default(cuid())
+  idempotencyKey String?  @unique
+  ticketId       String
+  authorId       String
+  body           String
+  createdAt      DateTime @default(now())
+  ticket         SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Restrict)
+  author         User @relation(fields: [authorId], references: [id], onDelete: Restrict)
+  @@index([ticketId, createdAt])
+}
+
+model SupportInternalNote {
   id        String   @id @default(cuid())
   ticketId  String
   authorId  String

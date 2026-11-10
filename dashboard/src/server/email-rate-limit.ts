@@ -36,3 +36,9 @@ export async function limitVerificationRequest(request: NextRequest, userId: str
   const ip = clientIp(request);
   if (ip) await consume("otp-request-ip", ip, 30);
 }
+
+export async function limitSensitiveAction(request: NextRequest, userId: string, scope: string, accountLimit = 5, ipLimit = 20) {
+  await consume(`${scope}-account`, userId, accountLimit);
+  const ip = clientIp(request);
+  if (ip) await consume(`${scope}-ip`, ip, ipLimit);
+}

@@ -9,7 +9,7 @@ import { join, resolve } from "node:path";
 import { emailHtml, mailConfigured, queueEmail, queueNotification } from "@/server/mail";
 import { issueEmailOtp, matchesEmailOtp, otpDeliveryAvailable } from "@/server/email-otp";
 import { dispatchEmail } from "@/server/email-dispatch";
-import { limitVerificationRequest } from "@/server/email-rate-limit";
+import { limitSensitiveAction, limitVerificationRequest } from "@/server/email-rate-limit";
 
 export const runtime = "nodejs";
 const email = z.email().max(254);
@@ -46,12 +46,12 @@ export async function GET(request: NextRequest, context: { params: Promise<{ act
     const { action } = await context.params;
     if (action !== "current") throw new ApiError(404, "Not found");
     const user = await actor(request);
-    const verification = await db.user.findUniqueOrThrow({ where: { id: user.id }, select: { emailVerifiedAt: true, verificationRequired: true } });
+    const verification = await db.user.findUniqueOrThrow({ where: { id: user.id }, select: { emailVerifiedAt: true, verificationRequired: true, passwordHash: true, googleAccounts: { select: { id: true }, take: 1 } } });
     const emailVerified = !verification.verificationRequired || Boolean(verification.emailVerifiedAt);
     const latestOtp = !emailVerified ? await db.emailVerification.findFirst({ where: { userId: user.id, method: "OTP" }, orderBy: { createdAt: "desc" }, select: { id: true, createdAt: true } }) : null;
     const delivery = latestOtp ? await db.emailOutbox.findUnique({ where: { eventKey: `verify-otp:${latestOtp.id}` }, select: { status: true } }) : null;
     const verificationRetryAfterSeconds = latestOtp ? Math.max(0, Math.ceil((latestOtp.createdAt.getTime() + 60_000 - Date.now()) / 1000)) : 0;
-    return json({ user: { id: user.id, fullName: user.fullName, email: user.email, role: user.role, status: user.status, emailVerified, canEnrollVerification: user.role === "CLIENT" && !verification.verificationRequired && !verification.emailVerifiedAt }, verificationRetryAfterSeconds, verificationDeliveryStatus: delivery?.status ?? null });
+    return json({ user: { id: user.id, fullName: user.fullName, email: user.email, role: user.role, status: user.status, emailVerified, hasPassword: Boolean(verification.passwordHash), googleLinked: verification.googleAccounts.length > 0, canEnrollVerification: user.role === "CLIENT" && !verification.verificationRequired && !verification.emailVerifiedAt }, verificationRetryAfterSeconds, verificationDeliveryStatus: delivery?.status ?? null });
   } catch (error) { return handleError(error); }
 }
 
@@ -169,9 +169,11 @@ export async function POST(request: NextRequest, context: { params: Promise<{ ac
     if (action === "change-password") {
       const user = await actor(request);
       const input = z.object({ currentPassword: z.string().min(1), password: z.string(), confirm: z.string() }).parse(await body(request));
+      await limitSensitiveAction(request, user.id, "password-change", 8, 30);
       const account = await db.user.findUniqueOrThrow({ where: { id: user.id } });
       if (!account.passwordHash || !(await verifyPassword(account.passwordHash, input.currentPassword))) throw new ApiError(403, "Current password is incorrect");
       if (input.password !== input.confirm || !passwordStrong(input.password)) throw new ApiError(400, "Password does not meet requirements");
+      if (await verifyPassword(account.passwordHash, input.password)) throw new ApiError(400, "Choose a password you have not just used");
       const passwordHash = await hashPassword(input.password);
       await db.$transaction(async (tx) => {
         await tx.user.update({ where: { id: user.id }, data: { passwordHash } });
@@ -184,27 +186,50 @@ export async function POST(request: NextRequest, context: { params: Promise<{ ac
     }
     if (action === "request-email-change") {
       const user = await actor(request);
-      const input = z.object({ newEmail: email, password: z.string().min(1) }).parse(await body(request));
+      const input = z.object({ newEmail: email, password: z.string().optional() }).parse(await body(request));
+      await limitSensitiveAction(request, user.id, "email-change-request", 5, 20);
       const normalized = normalizeEmail(input.newEmail);
-      const account = await db.user.findUniqueOrThrow({ where: { id: user.id } });
-      if (!account.passwordHash || !(await verifyPassword(account.passwordHash, input.password))) throw new ApiError(403, "Current password is incorrect");
+      const account = await db.user.findUniqueOrThrow({ where: { id: user.id }, include: { googleAccounts: { select: { id: true }, take: 1 } } });
+      if (account.passwordHash) {
+        if (!input.password || !(await verifyPassword(account.passwordHash, input.password))) throw new ApiError(403, "Current password is incorrect");
+      } else if (!account.googleAccounts.length || !account.emailVerifiedAt) {
+        throw new ApiError(403, "A verified Google account is required to change email without a password");
+      }
       if (normalized === account.emailNormalized || await db.user.findUnique({ where: { emailNormalized: normalized } })) throw new ApiError(409, "Email address is unavailable");
-      if (process.env.NODE_ENV === "production" && !mailConfigured()) throw new ApiError(503, "Account email delivery is not configured");
+      if (!mailConfigured()) throw new ApiError(503, "Account email delivery is not configured");
       const token = randomToken();
       await db.$transaction(async (tx) => {
+        await tx.emailChange.updateMany({ where: { userId: user.id, usedAt: null }, data: { usedAt: new Date() } });
         const change = await tx.emailChange.create({ data: { userId: user.id, tokenHash: hashToken(token), newEmail: input.newEmail.trim(), newEmailNormalized: normalized, expiresAt: new Date(Date.now() + 30 * 60_000) } });
         await queueEmail(tx, `email-change-request:${change.id}`, normalized, "Confirm your new email — Apex Filings", emailHtml("Confirm your new email", ["Use this link to confirm your new Apex Filings email address. The link expires in 30 minutes."], { label: "Confirm email", href: `${process.env.APP_ORIGIN ?? "http://localhost:3001"}/confirm-email-change?token=${encodeURIComponent(token)}` }));
       });
       return json({ ok: true, message: "Confirmation email queued for the new address" });
     }
+    if (action === "request-set-password") {
+      const user = await actor(request);
+      await limitSensitiveAction(request, user.id, "set-password-request", 5, 20);
+      const account = await db.user.findUniqueOrThrow({ where: { id: user.id }, select: { email: true, passwordHash: true, emailVerifiedAt: true } });
+      if (account.passwordHash) throw new ApiError(409, "This account already has a password. Use Change password instead.");
+      if (!account.emailVerifiedAt) throw new ApiError(403, "Verify your account email before setting a password");
+      if (!mailConfigured() && !(process.env.NODE_ENV !== "production" && process.env.RESET_DELIVERY === "development-file")) throw new ApiError(503, "Account email delivery is not configured");
+      const token = randomToken();
+      await db.$transaction(async (tx) => {
+        await tx.passwordReset.updateMany({ where: { userId: user.id, usedAt: null }, data: { usedAt: new Date() } });
+        const reset = await tx.passwordReset.create({ data: { userId: user.id, tokenHash: hashToken(token), expiresAt: new Date(Date.now() + 30 * 60_000) } });
+        if (mailConfigured()) await queueEmail(tx, `password-reset:${reset.id}`, account.email, "Set your Apex Filings password", emailHtml("Set your password", ["Use this secure link to set a password for your Apex Filings account. The link expires in 30 minutes."], { label: "Set password", href: `${process.env.APP_ORIGIN ?? "http://localhost:3001"}/reset-password?token=${encodeURIComponent(token)}` }));
+      });
+      await deliverReset(account.email, token);
+      return json({ ok: true, message: "A secure password setup link was sent to your verified account email." });
+    }
     if (action === "confirm-email-change") {
       const input = z.object({ token: z.string().min(40).max(200) }).parse(await body(request));
       const change = await db.emailChange.findUnique({ where: { tokenHash: hashToken(input.token) }, include: { user: true } });
       if (!change || change.usedAt || change.expiresAt <= new Date()) throw new ApiError(400, "Invalid or expired email change link");
-      if (await db.user.findUnique({ where: { emailNormalized: change.newEmailNormalized } })) throw new ApiError(409, "Email address is unavailable");
+      await limitSensitiveAction(request, change.userId, "email-change-confirm", 10, 30);
       await db.$transaction(async (tx) => {
         const claimed = await tx.emailChange.updateMany({ where: { id: change.id, usedAt: null, expiresAt: { gt: new Date() } }, data: { usedAt: new Date() } });
         if (!claimed.count) throw new ApiError(400, "Invalid or expired email change link");
+        if (await tx.user.findUnique({ where: { emailNormalized: change.newEmailNormalized }, select: { id: true } })) throw new ApiError(409, "Email address is unavailable");
         await tx.user.update({ where: { id: change.userId }, data: { email: change.newEmail, emailNormalized: change.newEmailNormalized, emailVerifiedAt: new Date() } });
         await tx.session.updateMany({ where: { userId: change.userId, revokedAt: null }, data: { revokedAt: new Date() } });
         await tx.auditLog.create({ data: { actorUserId: change.userId, action: "EMAIL_CHANGED", resourceType: "User", resourceId: change.userId } });
