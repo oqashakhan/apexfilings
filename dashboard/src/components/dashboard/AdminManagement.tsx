@@ -3,6 +3,7 @@
 
 import { useEffect, useState } from "react";
 import { PricingManager } from "./PricingManager";
+import { AdminServiceRequests } from "./AdminServiceRequests";
 import Link from "next/link";
 import { ArrowRight, Bell, Check, Pencil } from "lucide-react";
 import { useAdminDemo } from "@/components/dashboard/AdminDemoContext";
@@ -13,7 +14,8 @@ import { DataTable, PageHeader, Panel, PreviewNotice, StatusBadge, type TableCol
 import type { AdminContentItem, AdminPackage, AdminService, AdminStateFee } from "@/lib/admin-models";
 
 export function AdminServices() {
-  return <PricingManager />;
+  const [tab, setTab] = useState("Catalog & Pricing");
+  return <><AdminTabs names={["Catalog & Pricing", "Client Requests"]} value={tab} onChange={setTab} label="Services workspace" />{tab === "Client Requests" ? <AdminServiceRequests /> : <PricingManager />}</>;
 }
 
 export function LegacyCatalogEditor() {

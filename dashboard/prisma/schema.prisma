@@ -88,6 +88,7 @@ model User {
   notificationPreference NotificationPreference?
   companies       Company[]     @relation("CustomerCompanies")
   applications    Application[] @relation("CustomerApplications")
+  serviceRequests ServiceRequest[]
   documents       Document[]    @relation("UploadedDocuments")
   notifications   Notification[]
   supportTickets  SupportTicket[] @relation("SupportCustomer")
@@ -271,6 +272,7 @@ model Company {
   customer              User     @relation("CustomerCompanies", fields: [customerId], references: [id], onDelete: Restrict)
   owners                CompanyOwner[]
   applications          Application[]
+  serviceRequests       ServiceRequest[]
   documents             Document[]
   @@index([customerId, createdAt])
 }
@@ -311,6 +313,26 @@ model Service {
   applications Application[]
   packageServices PackageService[]
   requirements ServiceDocumentRequirement[]
+  serviceRequests ServiceRequest[]
+}
+
+model ServiceRequest {
+  id             String   @id @default(cuid())
+  idempotencyKey String   @unique
+  customerId     String
+  companyId      String
+  serviceId      String
+  details        String
+  status         String   @default("REQUESTED")
+  statusNote     String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  customer       User     @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  company        Company  @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  service        Service  @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+  @@index([customerId, createdAt])
+  @@index([status, createdAt])
+  @@index([companyId, createdAt])
 }
 
 model Package {

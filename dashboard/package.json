@@ -25,6 +25,7 @@
     "email:check": "node scripts/check-registration-readiness.mjs",
     "owner:bootstrap": "tsx scripts/bootstrap-owner.ts",
     "test:integration": "node --test -r ./tests/test-env.cjs tests/integration.test.cjs",
+    "test:service-requests": "node --test -r ./tests/test-env.cjs tests/service-requests.integration.test.cjs",
     "test:stripe": "node --test -r ./tests/test-env.cjs tests/stripe-integration.test.cjs",
     "test:pricing": "node --import tsx --test tests/pricing.test.ts tests/payment-summary.test.tsx tests/wizard-redesign.test.tsx tests/state-fee-approval.test.tsx",
     "test:pricing:integration": "node --test -r ./tests/test-env.cjs tests/pricing-integration.test.cjs"

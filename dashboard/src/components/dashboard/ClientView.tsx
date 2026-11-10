@@ -4,13 +4,14 @@ import {InvoiceCenter} from "./InvoiceCenter";
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Bell, Building2, ClipboardList, FileText, ShieldCheck } from "lucide-react";
+import { ArrowRight, Bell, Building2, ClipboardList, FileText } from "lucide-react";
 import { DashboardShell } from "@/components/layout/DashboardShell";
 import { NotificationCenter } from "@/components/dashboard/NotificationCenter";
 import { AccountSecurity } from "@/components/dashboard/AccountSecurity";
 import { GoogleOAuthAlert } from "@/components/forms/GoogleOAuthAlert";
 import { EmailVerificationEnrollment } from "@/components/dashboard/EmailVerificationEnrollment";
 import { SupportCenter } from "@/components/dashboard/SupportCenter";
+import { AdditionalServices } from "@/components/dashboard/AdditionalServices";
 import { BillingActions } from "@/components/dashboard/BillingActions";
 import { PricingSummary } from "@/components/forms/PricingSummary";
 import { ApplicationProgress } from "@/components/dashboard/ApplicationProgress";
@@ -85,7 +86,7 @@ function Content({ section, detailId }: { section: string; detailId?: string }) 
   if (section === "payments") return <InvoiceCenter role="client" payments />;
   if (section === "orders") return <><PageHeader eyebrow="BILLING" title={section === "orders" ? "Orders" : "Payments"} description="View recorded orders and their verified payment status." /><div className="two-grid">{orders.map((item) => <Panel key={item.id} title={item.id} subtitle={item.application.packageName} action={<StatusBadge status={paymentLabel(item.paymentStatus)} />}><div className="detail-list"><div><span>Service fee</span><strong>{usd(item.pricingQuote?.serviceFeeCents ?? item.serviceFeeCents)}</strong></div><div><span>{item.pricingQuote?.totalCents === null ? "Known subtotal" : "Order total"}</span><strong>{usd(item.pricingQuote?.totalCents ?? item.pricingQuote?.knownSubtotalCents ?? item.totalCents)}</strong></div></div><Link className="text-action client-inline-link" href={`/client/orders/${item.id}`}>View breakdown <ArrowRight size={16} /></Link></Panel>)}</div>{!orders.length && <EmptyState title="No orders yet" description="An order is created after an application is submitted." />}</>;
   if (section === "documents") return <ClientDocumentCenter applications={selected} />;
-  if (section === "services") return <><PageHeader eyebrow="ADDITIONAL SERVICES" title="Explore services" description="Browse available services and contact the team to request one." /><div className="three-grid">{data.services.map((item) => <Panel key={item.id} className="client-service-card"><span className="concept-icon"><ShieldCheck size={20} /></span><h3>{item.name}</h3><p>{item.description}</p><a className="text-action" href="https://apexfiling.com/contact" target="_blank" rel="noopener noreferrer">Contact team <ArrowRight size={15} /></a></Panel>)}</div></>;
+  if (section === "services") return <AdditionalServices services={data.services} packages={data.packages} applications={data.applications} currentCompanyId={data.companyId} user={data.user} />;
   if (section === "notifications") return <NotificationCenter role="client" />;
   if (section === "profile") return <><PageHeader title="Profile" description="Your account information." /><Panel title="Personal information"><ClientReference value={data.user?.clientReference} /><div className="detail-list"><div><span>Full name</span><strong>{data.user?.fullName}</strong></div><div><span>Email</span><strong>{data.user?.email}</strong></div><div><span>Phone</span><strong>{data.user?.phone ?? "Not provided"}</strong></div><div><span>Country</span><strong>{data.user?.country ?? "Not provided"}</strong></div></div><a className="button button-secondary client-inline-button" href="/api/v1/auth/google?link=1">Link a Google account</a></Panel></>;
   if (section === "support") return <><ClientReference value={data.user?.clientReference} /><SupportCenter role="client" /></>;

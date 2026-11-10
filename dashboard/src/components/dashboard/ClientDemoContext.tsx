@@ -4,7 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useState } from "rea
 
 export type ClientRecord = {
   id: string; companyId: string; company: { id: string; name: string; state: string; owners: { id: string; fullName: string }[] };
-  packageName: string; status: string; statusCode: string; updatedAt: string; submittedAt: string | null;
+  packageName: string; packageSlug: string; status: string; statusCode: string; updatedAt: string; submittedAt: string | null;
   history: { id: string; status: string; reason: string | null; date: string }[];
   responses: { id: string; requestEventId: string; body: string; createdAt: string }[];
   requiredDocuments: { id: string; documentType: string }[];
@@ -13,8 +13,8 @@ export type ClientRecord = {
   nextAction: { kind: "action" | "waiting" | "complete"; title: string; description: string; ctaLabel: string; href: string; documentRequests: { id: string; documentType: string; ownerId: string | null; reason: string | null; replacesDocumentId: string | null; requestId: string | null }[] };
   order: { id: string; paymentStatus: string; pricingQuote: import("@/lib/pricing").QuoteSnapshot | null; pricingSnapshot: import("@/lib/pricing").QuoteSnapshot | null; serviceFeeCents: number; governmentFeeCents: number | null; thirdPartyFeeCents: number | null; additionalFeeCents: number | null; discountCents: number | null; totalCents: number | null; stripeCheckoutStatus: string | null; invoice: { id:string; number: string; issuedAt: string | null } | null } | null;
 };
-export type ClientService = { id: string; name: string; description: string; slug: string };
-export type ClientPackage = { id: string; name: string; slug: string; serviceFeeCents: number; currency: string };
+export type ClientService = { id: string; name: string; description: string; slug: string; priceCents: number | null; currency: string; priceApproved: boolean };
+export type ClientPackage = { id: string; name: string; slug: string; serviceFeeCents: number; currency: string; includedServiceSlugs: string[]; includedServices: string[] };
 export type ClientNotification = { id: string; title: string; message: string; readAt: string | null; createdAt: string };
 type ClientData = {
   companyId: string; setCompanyId: (id: string) => void; applications: ClientRecord[];

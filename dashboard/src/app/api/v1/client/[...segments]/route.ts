@@ -94,8 +94,8 @@ export async function GET(request: NextRequest, context: Params) {
       const [applications, notifications, services, packages, profile, paymentInstructions] = await Promise.all([
         db.application.findMany({ where: { customerId: user.id }, include: appInclude, orderBy: { updatedAt: "desc" } }),
         db.notification.findMany({ where: { userId: user.id }, orderBy: { createdAt: "desc" }, take: 50 }),
-        db.service.findMany({ where: { available: true }, select: { id: true, name: true, description: true, category: true, slug: true } }),
-        db.package.findMany({ where: { available: true }, select: { id: true, name: true, slug: true, serviceFeeCents: true, currency: true } }),
+        db.service.findMany({ where: { available: true }, select: { id: true, name: true, description: true, category: true, slug: true, priceCents: true, currency: true, priceApproved: true } }),
+        db.package.findMany({ where: { available: true }, select: { id: true, name: true, slug: true, serviceFeeCents: true, currency: true, includedServiceSlugs: true, includedServices: true } }),
         db.user.findUniqueOrThrow({ where: { id: user.id }, select: { phone: true } }),
         db.paymentInstructions.findUnique({ where: { id: "default" }, select: { body: true } }),
       ]);
