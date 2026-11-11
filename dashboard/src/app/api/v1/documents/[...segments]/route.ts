@@ -95,6 +95,7 @@ export async function GET(request: NextRequest, context: Params) {
     if (user.role === "CLIENT" && (!document.clientVisible || !["ACCEPTED", "COMPLETED_COMPANY_DOCUMENT"].includes(document.reviewStatus))) throw new ApiError(403, "Document is not available for download");
     const bytes = await loadDocument(document.privateStorageKey);
     await db.auditLog.create({ data: { actorUserId: user.id, action: "DOCUMENT_DOWNLOADED", resourceType: "Document", resourceId: id } });
-    return new Response(new Uint8Array(bytes), { headers: { "Content-Type": "application/octet-stream", "Content-Disposition": `attachment; filename="${safeFilename(document.originalFilename)}"`, "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" } });
+    const inline = new URL(request.url).searchParams.get("view") === "1" && ["application/pdf", "image/jpeg", "image/png"].includes(document.mimeType);
+    return new Response(new Uint8Array(bytes), { headers: { "Content-Type": inline ? document.mimeType : "application/octet-stream", "Content-Disposition": `${inline ? "inline" : "attachment"}; filename="${safeFilename(document.originalFilename)}"`, "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" } });
   } catch (error) { return handleError(error); }
 }

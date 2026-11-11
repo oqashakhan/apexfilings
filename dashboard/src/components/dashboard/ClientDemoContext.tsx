@@ -51,6 +51,10 @@ export function ClientDemoProvider({ children }: { children: React.ReactNode }) 
     } catch (cause) { setError(cause instanceof Error ? cause.message : "Could not load your workspace."); }
     finally { setLoading(false); }
   }, []);
+  const selectCompany = useCallback((id: string) => {
+    setCompanyId(id);
+    void refresh();
+  }, [refresh]);
   useEffect(() => { const frame = requestAnimationFrame(() => { void refresh(); }); return () => cancelAnimationFrame(frame); }, [refresh]);
   useEffect(() => {
     const sync = () => { if (document.visibilityState === "visible") void refresh(); };
@@ -58,7 +62,7 @@ export function ClientDemoProvider({ children }: { children: React.ReactNode }) 
     document.addEventListener("visibilitychange", sync);
     return () => { window.clearInterval(timer); document.removeEventListener("visibilitychange", sync); };
   }, [refresh]);
-  return <Context.Provider value={{ companyId, setCompanyId, applications, services, packages, notifications, paymentInstructions, user, loading, error, refresh }}>{children}</Context.Provider>;
+  return <Context.Provider value={{ companyId, setCompanyId: selectCompany, applications, services, packages, notifications, paymentInstructions, user, loading, error, refresh }}>{children}</Context.Provider>;
 }
 
 export function useClientDemo() {
