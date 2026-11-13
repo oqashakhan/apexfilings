@@ -4,7 +4,7 @@ import {InvoiceCenter} from "./InvoiceCenter";
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Bell, Building2, ClipboardList, FileText } from "lucide-react";
+import { ArrowRight, FileText } from "lucide-react";
 import { DashboardShell } from "@/components/layout/DashboardShell";
 import { NotificationCenter } from "@/components/dashboard/NotificationCenter";
 import { AccountSecurity } from "@/components/dashboard/AccountSecurity";
@@ -14,13 +14,12 @@ import { SupportCenter } from "@/components/dashboard/SupportCenter";
 import { AdditionalServices } from "@/components/dashboard/AdditionalServices";
 import { BillingActions } from "@/components/dashboard/BillingActions";
 import { PricingSummary } from "@/components/forms/PricingSummary";
-import { ApplicationProgress } from "@/components/dashboard/ApplicationProgress";
+import { CompanyDashboard } from "@/components/dashboard/CompanyDashboard";
 import { ClientDocumentCenter } from "@/components/dashboard/ClientDocumentCenter";
-import { NextActionCard } from "@/components/dashboard/NextActionCard";
 import { DocumentRequests } from "@/components/dashboard/DocumentRequests";
 import { ClientReference } from "@/components/dashboard/ClientReference";
 import { useClientDemo, type ClientRecord } from "@/components/dashboard/ClientDemoContext";
-import { DataTable, EmptyState, PageHeader, Panel, StatCard, StatusBadge, type TableColumn } from "@/components/ui/DashboardUI";
+import { DataTable, EmptyState, PageHeader, Panel, StatusBadge, type TableColumn } from "@/components/ui/DashboardUI";
 
 const titles: Record<string, string> = { invoices:"Invoices", dashboard: "Dashboard", companies: "My Companies", applications: "My Applications", orders: "Orders", documents: "Documents", payments: "Payments", services: "Additional Services", support: "Support", profile: "Profile", settings: "Settings", notifications: "Notifications" };
 const date = (value: string) => new Date(value).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
@@ -48,24 +47,14 @@ function Content({ section, detailId }: { section: string; detailId?: string }) 
   }
   const companies = [...new Map(data.applications.map((item) => [item.companyId, item.company])).values()];
   const selected = data.applications.filter((item) => item.companyId === data.companyId);
-  const current = companies.find((item) => item.id === data.companyId);
   const application = selected.find((item) => item.id === selectedApplicationId) ?? selected[0];
   const allOrders = data.applications.flatMap((item) => item.order ? [{ ...item.order, application: item }] : []);
   const orders = allOrders.filter((item) => item.application.companyId === data.companyId);
-  const docs = selected.flatMap((item) => item.documents.map((document) => ({ ...document, applicationId: item.id })))
-    .filter((document) => document.reviewStatus === "COMPLETED_COMPANY_DOCUMENT");
-  const einDocument = docs.find((document) => document.documentType === "EIN_CONFIRMATION");
-  const formationDocument = docs.find((document) => ["CERTIFICATE_OF_FORMATION", "ARTICLES_OF_ORGANIZATION"].includes(document.documentType));
-  const nextAction = application?.nextAction;
   if (data.loading) return <Panel title="Loading your workspace"><p>Loading account data…</p></Panel>;
   if (data.error) return <Panel title="Could not load your workspace"><p role="alert">{data.error}</p><button className="button button-secondary" onClick={() => void data.refresh()}>Try again</button></Panel>;
 
   if (section === "invoices") return <InvoiceCenter role="client" id={detailId}/>;
-  if (section === "dashboard") return <><ClientReference value={data.user?.clientReference} />
-    <PageHeader eyebrow="CLIENT WORKSPACE" title={data.user ? `Welcome back, ${data.user.fullName.split(" ")[0]}` : "Welcome back"} description="Manage your company formation and track your progress." action={{ label: "Start New Application", href: "/client/applications/new" }} />
-    <div className="stats-grid client-summary-grid"><StatCard label="My Companies" value={String(companies.length)} hint="Your companies" icon={Building2} /><StatCard label="Active Applications" value={String(selected.filter((item) => !["COMPLETED", "CANCELLED", "REFUNDED"].includes(item.statusCode)).length)} hint={current?.name ?? "No company selected"} icon={ClipboardList} /><StatCard label="Unread Notifications" value={String(data.notifications.filter((item) => !item.readAt).length)} hint="Account updates" icon={Bell} tone="orange" /><StatCard label="Documents" value={String(docs.length)} hint="Uploaded records" icon={FileText} tone="green" /></div>
-    {application ? <><NextActionCard application={application} />{selected.length > 1 && <div className="client-application-switch"><label htmlFor="client-application-select">Application</label><select id="client-application-select" value={application.id} onChange={(event) => setSelectedApplicationId(event.target.value)}>{selected.map((item) => <option key={item.id} value={item.id}>{item.company.name} · {item.packageName} · {item.status}</option>)}</select></div>}<div className="two-grid client-primary-grid"><Panel title="Company overview" subtitle={application.company.name} action={<StatusBadge status={application.status} />} className="client-feature-panel"><div className="detail-list"><div><span>Business name</span><strong>{application.company.name}</strong></div><div><span>Formation state</span><strong>{application.company.state}</strong></div><div><span>Client reference</span><strong>{data.user?.clientReference ?? "Pending"}</strong></div><div><span>Registered business name</span><strong>{formationDocument ? <a className="text-action" href={`/api/v1/documents/${formationDocument.id}?view=1`} target="_blank" rel="noreferrer">See approved formation document</a> : "Pending formation"}</strong></div><div><span>EIN</span><strong>{einDocument ? <a className="text-action" href={`/api/v1/documents/${einDocument.id}?view=1`} target="_blank" rel="noreferrer">See approved EIN document</a> : "Pending"}</strong></div><div><span>Business address</span><strong>Not assigned</strong></div><div><span>Formation status</span><strong>{application.status}</strong></div><div><span>Payment status</span><strong>{application.order ? paymentLabel(application.order.paymentStatus) : "No order yet"}</strong></div><div><span>Package</span><strong>{application.packageName}</strong></div></div><Link className="button button-primary client-inline-button" href={`/client/applications/${application.id}`}>View next steps <ArrowRight size={16} /></Link></Panel><ApplicationProgress status={application.status} statusCode={application.statusCode} submittedAt={application.submittedAt} history={application.history} nextStep={nextAction?.description ?? "Check your application for updates."} /></div><Panel title="Company documents" subtitle="Approved documents shared with you for this selected company"><div className="client-documents-table-wrap"><table className="client-documents-table"><thead><tr><th>Document</th><th>Type</th><th>Uploaded</th><th>Actions</th></tr></thead><tbody>{docs.map((document) => <tr key={document.id}><td>{document.originalFilename}</td><td>{document.documentType.replaceAll("_", " ")}</td><td>{date(document.createdAt)}</td><td><span className="client-document-actions"><a className="text-action" href={`/api/v1/documents/${document.id}?view=1`} target="_blank" rel="noreferrer">View</a><a className="text-action" href={`/api/v1/documents/${document.id}`}>Download</a></span></td></tr>)}</tbody></table></div>{!docs.length && <p className="panel-body-copy">No approved company documents are available yet. We’ll notify you when a file is shared.</p>}<Link className="text-action" href="/client/documents">View all documents <ArrowRight size={16} /></Link></Panel><Panel title="Need help?" subtitle="Our team can help with your company formation."><Link className="text-action" href="/client/support">Contact Support <ArrowRight size={16} /></Link></Panel></> : <Panel title="Ready to begin" subtitle="Ready to start your business?"><p className="panel-body-copy">You have no applications yet.</p><Link className="button button-primary client-inline-button" href="/client/applications/new">Start LLC Formation <ArrowRight size={16} /></Link></Panel>}
-  </>;
+  if (section === "dashboard") return <CompanyDashboard application={application} applications={selected} onSelect={setSelectedApplicationId} />;
 
   if (section === "companies") return <><PageHeader eyebrow="COMPANY WORKSPACE" title="My Companies" description="Companies linked to your formation applications." action={{ label: "Start New Application", href: "/client/applications/new" }} /><div className="two-grid">{companies.map((company) => <Panel key={company.id} title={company.name} subtitle={company.state}><div className="detail-list"><div><span>Applications</span><strong>{data.applications.filter((item) => item.companyId === company.id).length}</strong></div></div><button className="button button-secondary client-inline-button" onClick={() => data.setCompanyId(company.id)} disabled={data.companyId === company.id}>{data.companyId === company.id ? "Selected" : "Select company"}</button></Panel>)}</div>{!companies.length && <EmptyState title="No companies yet" description="Start an application to create your first company record." />}</>;
 
@@ -92,7 +81,7 @@ function Content({ section, detailId }: { section: string; detailId?: string }) 
   if (section === "services") return <AdditionalServices services={data.services} packages={data.packages} applications={data.applications} currentCompanyId={data.companyId} user={data.user} />;
   if (section === "notifications") return <NotificationCenter role="client" />;
   if (section === "profile") return <><PageHeader title="Profile" description="Your account information." /><Panel title="Personal information"><ClientReference value={data.user?.clientReference} /><div className="detail-list"><div><span>Full name</span><strong>{data.user?.fullName}</strong></div><div><span>Email</span><strong>{data.user?.email}</strong></div><div><span>Phone</span><strong>{data.user?.phone ?? "Not provided"}</strong></div><div><span>Country</span><strong>{data.user?.country ?? "Not provided"}</strong></div></div><a className="button button-secondary client-inline-button" href="/api/v1/auth/google?link=1">Link a Google account</a></Panel></>;
-  if (section === "support") return <><ClientReference value={data.user?.clientReference} /><SupportCenter role="client" /></>;
+  if (section === "support") return <><ClientReference value={data.user?.clientReference} /><SupportCenter key={data.companyId} role="client" selectedCompanyId={data.companyId} /></>;
   if (section === "settings") return <><PageHeader title="Settings" description="Manage your account and dashboard preferences." /><Panel title="Appearance"><div className="client-choice-row">{(["light", "dark"] as const).map((option) => <button key={option} className={`button ${theme === option ? "button-primary" : "button-secondary"}`} onClick={() => { document.documentElement.dataset.dashboardTheme = option; localStorage.setItem("apex-dashboard-theme", option); setTheme(option); }}>{option === "light" ? "Light" : "Dark"}</button>)}</div></Panel><Panel title="Connected accounts"><a className="button button-secondary client-inline-button" href="/api/v1/auth/google?link=1">Link a Google account</a></Panel><Panel title="Account security"><EmailVerificationEnrollment /><AccountSecurity /></Panel></>;
   return <PageHeader title="Page not found" description="Choose a page from the navigation." />;
 }

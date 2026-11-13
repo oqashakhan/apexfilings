@@ -20,12 +20,12 @@ const categories = ["ACCOUNT", "APPLICATION", "DOCUMENTS", "BILLING", "TECHNICAL
 const statuses = ["OPEN", "IN_PROGRESS", "WAITING_FOR_CLIENT", "RESOLVED", "CLOSED"];
 const humanize = (value: string) => value.replaceAll("_", " ").toLowerCase().replace(/\b\w/g, (letter) => letter.toUpperCase());
 
-export function SupportCenter({ role }: { role: "admin" | "client" }) {
+export function SupportCenter({ role, selectedCompanyId = "" }: { role: "admin" | "client"; selectedCompanyId?: string }) {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [assignees, setAssignees] = useState<Assignee[]>([]);
   const [category, setCategory] = useState("ACCOUNT");
-  const [companyId, setCompanyId] = useState("");
+  const [companyId, setCompanyId] = useState(selectedCompanyId);
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
   const [replyText, setReplyText] = useState<Record<string, string>>({});
@@ -38,6 +38,7 @@ export function SupportCenter({ role }: { role: "admin" | "client" }) {
   const [loadError, setLoadError] = useState("");
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const visibleTickets = role === "client" && selectedCompanyId ? tickets.filter(ticket => !ticket.company || ticket.company.id === selectedCompanyId) : tickets;
   const root = `/api/v1/${role}/support`;
 
   const load = useCallback(async () => {
@@ -92,7 +93,7 @@ export function SupportCenter({ role }: { role: "admin" | "client" }) {
     event.preventDefault();
     if (!requestKey.current) requestKey.current = crypto.randomUUID();
     const ok = await send(root, "POST", { category, companyId: companyId || null, subject, message, idempotencyKey: requestKey.current }, "Support request submitted. The team will reply in this dashboard.");
-    if (ok) { requestKey.current = crypto.randomUUID(); setCategory("ACCOUNT"); setCompanyId(""); setSubject(""); setMessage(""); }
+    if (ok) { requestKey.current = crypto.randomUUID(); setCategory("ACCOUNT"); setCompanyId(selectedCompanyId); setSubject(""); setMessage(""); }
   }
 
   async function reply(ticket: Ticket) {
@@ -122,7 +123,7 @@ export function SupportCenter({ role }: { role: "admin" | "client" }) {
     {error && <p role="alert" className="form-error">{error}</p>}
 
     {role === "client" && <Panel title="New support request" subtitle="Do not include passwords or payment card details.">
-      <form className="admin-stack" onSubmit={(event) => void createTicket(event)}>
+      <form id="new-request" className="admin-stack" onSubmit={(event) => void createTicket(event)}>
         <label className="admin-form-field">Category<select value={category} onChange={(event) => setCategory(event.target.value)} required>{categories.map((item) => <option key={item} value={item}>{humanize(item)}</option>)}</select></label>
         <label className="admin-form-field">Company (optional)<select value={companyId} onChange={(event) => setCompanyId(event.target.value)}><option value="">General account request</option>{companies.map((company) => <option key={company.id} value={company.id}>{company.preferredName}</option>)}</select></label>
         <label className="admin-form-field">Subject<input value={subject} onChange={(event) => setSubject(event.target.value)} minLength={5} maxLength={160} required /></label>
@@ -131,9 +132,9 @@ export function SupportCenter({ role }: { role: "admin" | "client" }) {
       </form>
     </Panel>}
 
-    <Panel title={role === "admin" ? "Customer requests" : "Your requests"} subtitle={loading ? "Loading requests…" : `${tickets.length} requests`}>
-      {loading ? <p className="panel-body-copy">Loading support requests…</p> : !tickets.length ? <p className="panel-body-copy">{role === "admin" ? "No support requests have been submitted." : "You have not submitted any support requests."}</p> : <div className="admin-stack">
-        {tickets.map((ticket) => <article id={`ticket-${ticket.id}`} className="admin-subcard support-ticket" key={ticket.id}>
+    <Panel title={role === "admin" ? "Customer requests" : "Your requests"} subtitle={loading ? "Loading requests…" : `${visibleTickets.length} requests`}>
+      {loading ? <p className="panel-body-copy">Loading support requests…</p> : !visibleTickets.length ? <p className="panel-body-copy">{role === "admin" ? "No support requests have been submitted." : "You have not submitted any support requests."}</p> : <div id="requests" className="admin-stack">
+        {visibleTickets.map((ticket) => <article id={`ticket-${ticket.id}`} className="admin-subcard support-ticket" key={ticket.id}>
           <div className="admin-row"><div><strong>{ticket.subject}</strong><p>{humanize(ticket.category ?? "GENERAL")} · {ticket.company?.preferredName ? `${ticket.company.preferredName} · ` : ""}{new Date(ticket.createdAt).toLocaleString()}</p>{role === "admin" && <p>{ticket.customer?.fullName} · {ticket.customer?.email} · {ticket.customer?.clientReference ?? "No client reference"}</p>}</div><span className="small-pill">{humanize(ticket.status)}</span></div>
           {role === "admin" && <><ClientReference value={ticket.customer?.clientReference ?? null} /><div className="support-admin-controls">
             <label>Assign to<select value={ticket.assignedTo?.id ?? ""} disabled={busy} onChange={(event) => void updateTicket(ticket, { assignedToId: event.target.value || null })}><option value="">Unassigned</option>{assignees.map((person) => <option key={person.id} value={person.id}>{person.fullName} · {humanize(person.role)}</option>)}</select></label>

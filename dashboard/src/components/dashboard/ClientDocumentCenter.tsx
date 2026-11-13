@@ -6,7 +6,7 @@ type Document = ClientRecord["documents"][number] & { applicationId: string };
 const label = (value: string) => value.replaceAll("_", " ");
 function Files({ items }: { items: Document[] }) {
   if (!items.length) return <p className="panel-body-copy">No documents in this category.</p>;
-  return <div className="client-document-list">{items.map((item) => <div key={item.id}><span className="concept-icon"><FileText size={18} /></span><div className="document-copy"><strong>{label(item.documentType)}</strong><small>{item.originalFilename} · {new Date(item.createdAt).toLocaleDateString()}</small></div><StatusBadge status={label(item.reviewStatus)} />{["ACCEPTED", "COMPLETED_COMPANY_DOCUMENT"].includes(item.reviewStatus) && <a className="text-action" href={`/api/v1/documents/${item.id}`}>Download</a>}</div>)}</div>;
+  return <div className="client-document-list">{items.map((item) => <div key={item.id}><span className="concept-icon"><FileText size={18} /></span><div className="document-copy"><strong>{label(item.documentType)}</strong><small>{item.originalFilename} · {new Date(item.createdAt).toLocaleDateString()}</small></div><StatusBadge status={label(item.reviewStatus)} />{["ACCEPTED", "COMPLETED_COMPANY_DOCUMENT"].includes(item.reviewStatus) && <span className="client-document-actions"><a className="text-action" href={`/api/v1/documents/${item.id}?view=1`} target="_blank" rel="noreferrer">View</a><a className="text-action" href={`/api/v1/documents/${item.id}`}>Download</a></span>}</div>)}</div>;
 }
 
 export function ClientDocumentCenter({ applications }: { applications: ClientRecord[] }) {
