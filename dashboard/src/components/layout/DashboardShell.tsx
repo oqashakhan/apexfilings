@@ -7,13 +7,13 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   Bell, BriefcaseBusiness, ChevronDown, ChevronLeft, ChevronRight, CreditCard, MailCheck,
   FileCheck2, FileClock, FileText, FolderOpen, Headphones, LayoutDashboard,
-  LogOut, Menu, Moon, Package, Search, Settings, Sun, Users,
+  LogOut, Menu, Moon, Package, Search, Settings, Sun, Users, History,
   UserRound, Wallet, X, PanelsTopLeft, Building2,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { PreviewRole } from "@/lib/permissions";
 import { useClientDemo } from "@/components/dashboard/ClientDemoContext";
-import { noticeHref } from "@/components/dashboard/NotificationCenter";
+import { noticeHref, NotificationRecordLink } from "@/components/dashboard/NotificationCenter";
 import { NotificationDropdown } from "@/components/dashboard/NotificationDropdown";
 
 type NavItem = { label: string; slug: string; icon: LucideIcon };
@@ -22,6 +22,8 @@ const adminNav: NavItem[] = [
   { label: "Dashboard", slug: "dashboard", icon: LayoutDashboard },
   { label: "Applications", slug: "applications", icon: FileClock },
   { label: "Clients", slug: "clients", icon: Users },
+  { label: "Staff Management", slug:"staff", icon:Users },
+  { label: "Activity Log", slug: "activity", icon: History },
   { label: "Orders", slug: "orders", icon: Package },
   { label: "Invoices", slug: "invoices", icon: FileText },
   { label: "Documents", slug: "documents", icon: FolderOpen },
@@ -29,6 +31,7 @@ const adminNav: NavItem[] = [
   { label: "Services & Pricing", slug: "services", icon: BriefcaseBusiness },
   { label: "Website Content", slug: "website-content", icon: PanelsTopLeft },
   { label: "Notifications", slug: "notifications", icon: Bell },
+  { label: "Email Broadcasts", slug: "email-broadcasts", icon: MailCheck },
   { label: "Email Delivery", slug: "email-delivery", icon: MailCheck },
   { label: "Support", slug: "support", icon: Headphones },
   { label: "Settings", slug: "settings", icon: Settings },
@@ -212,7 +215,7 @@ export function DashboardShell({ role, title, children }: { role: PreviewRole; t
         </header>
         {profile?.emailVerified === false && <div className="preview-strip" role="status">Verify your email before submitting an application. <button className="table-link" onClick={() => void resendVerification()}>Resend verification email</button></div>}
         <main className="page-content">{children}</main>
-        <div className="dashboard-toast-stack" aria-live="polite">{toasts.map((item) => <div className="dashboard-toast" key={item.id}><Bell size={18} /><div><strong>{item.title}</strong><p>{item.message}</p>{noticeHref(role, item) && <Link href={noticeHref(role, item)!} onClick={() => setToasts((current) => current.filter((toast) => toast.id !== item.id))}>View details</Link>}</div><button aria-label="Dismiss notification" onClick={() => setToasts((current) => current.filter((toast) => toast.id !== item.id))}><X size={16} /></button></div>)}</div>
+        <div className="dashboard-toast-stack" aria-live="polite">{toasts.map((item) => <div className="dashboard-toast" key={item.id}><Bell size={18} /><div><strong>{item.title}</strong><p>{item.message}</p>{noticeHref(role, item) && <NotificationRecordLink type={item.type} href={noticeHref(role, item)!} onClick={() => setToasts((current) => current.filter((toast) => toast.id !== item.id))}>View details</NotificationRecordLink>}</div><button aria-label="Dismiss notification" onClick={() => setToasts((current) => current.filter((toast) => toast.id !== item.id))}><X size={16} /></button></div>)}</div>
       </div>
     </div>
   );

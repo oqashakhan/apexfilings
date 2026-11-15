@@ -37,7 +37,12 @@ export async function storeDocument(buffer: Buffer, ext: string) {
   await mkdir(root, { recursive: true, mode: 0o700 });
   const key = `${randomUUID()}.${ext}`;
   const handle = await open(/* turbopackIgnore: true */ join(/* turbopackIgnore: true */ root, key), "wx", 0o600);
-  try { await handle.writeFile(buffer); } finally { await handle.close(); }
+  try { await handle.writeFile(buffer); await handle.close(); }
+  catch (error) {
+    await handle.close().catch(() => {});
+    await unlink(/* turbopackIgnore: true */ join(/* turbopackIgnore: true */ root, key)).catch(() => {});
+    throw error;
+  }
   return key;
 }
 export async function loadDocument(key: string) {

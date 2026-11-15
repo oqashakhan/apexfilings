@@ -54,7 +54,7 @@ export function AuthScreen({ mode, next, oauthError, googleEnabled = false }: { 
         const verificationQuery = new URLSearchParams();
         if (next) verificationQuery.set("next", next);
         if (result.emailDeliveryStatus === "unconfirmed") verificationQuery.set("delivery", "unconfirmed");
-        router.replace(result.role === "OWNER" ? "/admin/dashboard" : result.emailVerificationRequired ? `/verify-email${verificationQuery.size ? `?${verificationQuery.toString()}` : ""}` : next ?? "/client/dashboard"); router.refresh(); return;
+        router.replace(result.role === "STAFF" ? "/staff" : result.role === "OWNER" ? "/admin/dashboard" : result.emailVerificationRequired ? `/verify-email${verificationQuery.size ? `?${verificationQuery.toString()}` : ""}` : next ?? "/client/dashboard"); router.refresh(); return;
       }
       setMessage(mode === "forgot" ? result.message : "Password updated. Please sign in.");
       reset();

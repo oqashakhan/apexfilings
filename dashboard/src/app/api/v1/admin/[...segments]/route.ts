@@ -1,11 +1,12 @@
+import { updateCompanyDocument } from "@/server/document-publication";
+import { adminActivities } from "@/server/admin-activity";
 import { ensureInvoice, syncInvoice } from "@/server/invoices";
 import { isIdentityDocument, ownerHasIdentity } from "@/lib/identity-documents";
 import { NextRequest } from "next/server";
 import { ApplicationStatus, Prisma } from "@prisma/client";
-import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { db } from "@/server/db";
-import { ApiError, body, checkOrigin, handleError, json, requireRole } from "@/server/http";
+import { actor, ApiError, body, checkOrigin, handleError, json, requireRole } from "@/server/http";
 import { approvalChecks, canTransition, statusNames, transitionBlockReason } from "@/server/workflow";
 import { statusInput } from "@/server/validation";
 import { adminSnapshot } from "@/server/admin-snapshot";
@@ -25,7 +26,7 @@ async function application(id: string) {
 
 async function requestedDocumentsReady(id: string) {
   const [requests, documents] = await Promise.all([
-    db.documentRequest.findMany({ where: { applicationId: id }, select: { id: true } }),
+    db.documentRequest.findMany({ where: { applicationId: id, cancelledAt:null }, select: { id: true } }),
     db.document.findMany({ where: { applicationId: id }, select: { id: true, requestId: true, replacesDocumentId: true, reviewStatus: true } }),
   ]);
   return requests.every((request) => {
@@ -85,16 +86,8 @@ export async function GET(request: NextRequest, context: Params) {
     const url = new URL(request.url);
     const page = pageNumber(url.searchParams.get("page"), 1, 10000);
     const take = pageNumber(url.searchParams.get("pageSize"), 20, 100);
-    if (resource === "snapshot") return json(await adminSnapshot(owner.id));
-    if (resource === "applications" && id && action === "document-requests") {
-      await application(id);
-      const [requests, files] = await Promise.all([db.documentRequest.findMany({ where: { applicationId: id }, orderBy: { createdAt: "desc" } }), db.document.findMany({ where: { applicationId: id }, select: { id: true, requestId: true, replacesDocumentId: true, reviewStatus: true } })]);
-      return json({ requests: requests.map((item) => {
-        let file = files.find((document) => document.requestId === item.id);
-        while (file && files.some((document) => document.replacesDocumentId === file?.id)) file = files.find((document) => document.replacesDocumentId === file?.id);
-        return { id: item.id, documentType: item.documentType, ownerId: item.ownerId, reason: item.reason, createdAt: item.createdAt, status: file?.reviewStatus ?? "NOT_PROVIDED" };
-      }) });
-    }
+    if (resource === "activity" && !id) return json(await adminActivities(url.searchParams));
+    if (resource === "snapshot") return json(await adminSnapshot(owner.id, { applicationId: url.searchParams.get("applicationId")?.slice(0,100), orderId: url.searchParams.get("orderId")?.slice(0,100), clientId: url.searchParams.get("clientId")?.slice(0,100) }));
     if (resource === "dashboard") {
       const [total, pending, requiringAction, verifiedPayments, recentApplications, audit, documentCount, paymentCount] = await Promise.all([
         db.application.count(), db.application.count({ where: { status: "UNDER_REVIEW" } }),
@@ -166,12 +159,20 @@ export async function GET(request: NextRequest, context: Params) {
     }
     if (resource === "notification-preferences") return json({ preferences: await db.notificationPreference.findUnique({ where: { userId: owner.id } }) });
     if (resource === "support") {
-      const [tickets, assignees] = await Promise.all([
-        db.supportTicket.findMany({ where: id ? { id } : {}, include: { customer: { select: { id: true, clientReference: true, fullName: true, email: true, notificationPreference: true } }, company: { select: { id: true, preferredName: true } }, assignedTo: { select: { id: true, fullName: true, role: true } }, replies: { select: { id: true, body: true, createdAt: true, author: { select: { role: true } } }, orderBy: { createdAt: "asc" } }, internalNotes: { select: { id: true, body: true, createdAt: true, author: { select: { fullName: true } } }, orderBy: { createdAt: "asc" } } }, orderBy: { updatedAt: "desc" }, take: 100 }),
+      const search = url.searchParams.get("search")?.trim().slice(0,120);
+      const filterStatus = url.searchParams.get("status");
+      if (filterStatus && !["OPEN", "IN_PROGRESS", "WAITING_FOR_CLIENT", "RESOLVED", "CLOSED", "REPLIED"].includes(filterStatus)) throw new ApiError(400, "Invalid support status");
+      const dateFilter = (name: string) => { const value = url.searchParams.get(name); if (!value) return undefined; if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) throw new ApiError(400, "Invalid date"); const date = new Date(`${value}T00:00:00.000Z`); if (Number.isNaN(date.getTime()) || date.toISOString().slice(0,10) !== value) throw new ApiError(400, "Invalid date"); return date; };
+      const from = dateFilter("from"), to = dateFilter("to");
+      if (from && to && from > to) throw new ApiError(400, "Start date must precede end date");
+      const where: Prisma.SupportTicketWhereInput = id ? { id } : { ...(search ? { OR: [{ subject: { contains: search, mode: "insensitive" } }, { customer: { fullName: { contains: search, mode: "insensitive" } } }, { customer: { clientReference: search } }, { company: { preferredName: { contains: search, mode: "insensitive" } } }] } : {}), ...(filterStatus ? { status: filterStatus } : {}), ...(from || to ? { createdAt: { ...(from ? { gte: from } : {}), ...(to ? { lt: new Date(to.getTime() + 86400000) } : {}) } } : {}) };
+      const [tickets, assignees, total] = await Promise.all([
+        db.supportTicket.findMany({ where, include: { customer: { select: { id: true, clientReference: true, fullName: true, email: true, notificationPreference: true } }, company: { select: { id: true, preferredName: true } }, assignedTo: { select: { id: true, fullName: true, role: true } }, replies: { select: { id: true, body: true, createdAt: true, author: { select: { role: true } } }, orderBy: { createdAt: "asc" } }, internalNotes: { select: { id: true, body: true, createdAt: true, author: { select: { fullName: true } } }, orderBy: { createdAt: "asc" } } }, orderBy: [{ updatedAt: "desc" }, { id: "desc" }], ...(id ? {} : { skip: (page - 1) * take, take }) }),
         db.user.findMany({ where: { role: { in: ["OWNER", "STAFF"] }, status: "ACTIVE" }, select: { id: true, fullName: true, role: true }, orderBy: { fullName: "asc" } }),
+        db.supportTicket.count({ where }),
       ]);
       if (id && !tickets.length) throw new ApiError(404, "Support request not found");
-      return json({ tickets, assignees });
+      return json({ tickets, assignees, total, page, pageSize: take });
     }
     if (resource === "audit") return json({ items: await db.auditLog.findMany({ select: { id: true, actorUserId: true, action: true, resourceType: true, resourceId: true, safeMetadata: true, createdAt: true }, orderBy: { createdAt: "desc" }, skip: (page - 1) * take, take }) });
     throw new ApiError(404, "Not found");
@@ -181,14 +182,17 @@ export async function GET(request: NextRequest, context: Params) {
 export async function POST(request: NextRequest, context: Params) {
   try {
     checkOrigin(request);
-    const user = await requireRole(request, "OWNER");
     const [resource, id, action] = (await context.params).segments;
+    const user = await actor(request);
+    const scopedStaff = user.role==="STAFF" && ((resource==="support" && action==="reply") || (resource==="documents" && action==="review"));
+    if(user.role!=="OWNER" && !scopedStaff) throw new ApiError(403,"Not authorized");
     if (resource === "support" && id && action === "reply") {
       const input = z.object({ message: z.string().trim().min(2).max(4000), idempotencyKey: z.string().uuid() }).parse(await body(request));
-      const ticket = await db.supportTicket.findUnique({ where: { id }, include: { customer: { select: { email: true, notificationPreference: true } } } });
+      const ticket = await db.supportTicket.findFirst({ where: { id,...(scopedStaff?{assignedToId:user.id}:{}) }, include: { customer: { select: { email: true, notificationPreference: true } } } });
       if (!ticket) throw new ApiError(404, "Support request not found");
       const result = await db.$transaction(async (tx) => {
         await tx.$queryRaw`SELECT "id" FROM "SupportTicket" WHERE "id" = ${id} FOR UPDATE`;
+        if(scopedStaff && !await tx.supportTicket.count({where:{id,assignedToId:user.id}})) throw new ApiError(404,"Ticket not found");
         const retry = await tx.supportReply.findUnique({ where: { idempotencyKey: input.idempotencyKey }, select: { id: true, ticketId: true } });
         if (retry) {
           if (retry.ticketId !== id) throw new ApiError(409, "This request could not be completed");
@@ -218,24 +222,6 @@ export async function POST(request: NextRequest, context: Params) {
       const input = statusInput.parse(await body(request));
       return json({ application: await statusChange(id, user.id, input.status, input.reason) });
     }
-    if (resource === "applications" && id && action === "document-requests") {
-      const input = z.object({ documentType: z.string().regex(/^[A-Z_]{3,60}$/), ownerId: z.string().optional(), reason: z.string().trim().min(5).max(500) }).parse(await body(request));
-      const target = await application(id);
-      if (["DRAFT", "COMPLETED", "CANCELLED", "REFUNDED", "REFUND_REQUESTED"].includes(target.status)) throw new ApiError(409, "Document requests are unavailable at this stage");
-      if (input.ownerId && !target.company.owners.some((owner) => owner.id === input.ownerId)) throw new ApiError(400, "Owner does not belong to this application");
-      if (input.documentType === "OWNER_ID" && !input.ownerId) throw new ApiError(400, "Choose the owner for identification");
-      const customer = await db.user.findUniqueOrThrow({ where: { id: target.customerId }, select: { email: true, notificationPreference: true } });
-      const created = await db.$transaction(async (tx) => {
-        const requestKey = `${id}:${input.documentType}:${input.ownerId ?? "company"}`;
-        if (await tx.documentRequest.findUnique({ where: { requestKey } })) throw new ApiError(409, "A request for this document already exists");
-        const requestItem = await tx.documentRequest.create({ data: { requestKey, applicationId: id, documentType: input.documentType, ownerId: input.ownerId ?? null, reason: input.reason, createdById: user.id } });
-        await queueNotification(tx, `document-request:${requestItem.id}`, target.customerId, "DOCUMENT_REVIEW", "Document requested", "Please review a new document request in your application.", id);
-        if (customer.notificationPreference?.documentEmail !== false) await queueEmail(tx, `document-request:${requestItem.id}`, customer.email, "Document requested — Apex Filings", emailHtml("Document requested", ["Please sign in to review and upload the requested document. Do not reply with private files by email."], { label: "View request", href: `${process.env.APP_ORIGIN ?? "http://localhost:3001"}/client/applications/${id}#document-requests` }));
-        await tx.auditLog.create({ data: { actorUserId: user.id, action: "DOCUMENT_REQUESTED", resourceType: "DocumentRequest", resourceId: requestItem.id, safeMetadata: { applicationId: id, documentType: input.documentType } } });
-        return requestItem;
-      });
-      return json({ request: { id: created.id, documentType: created.documentType, ownerId: created.ownerId, reason: created.reason } }, 201);
-    }
     if (resource === "applications" && id && action === "checks") {
       const input = z.object({ check: z.enum(approvalChecks), checked: z.boolean() }).parse(await body(request));
       await application(id);
@@ -253,10 +239,13 @@ export async function POST(request: NextRequest, context: Params) {
     }
     if (resource === "documents" && id && action === "review") {
       const input = z.object({ status: z.enum(["ACCEPTED", "REPLACEMENT_REQUIRED"]), reason: z.string().trim().max(500).optional() }).parse(await body(request));
-      const found = await db.document.findUnique({ where: { id }, select: { id: true, reviewStatus: true, applicationId: true, application: { select: { customerId: true, customer: { select: { email: true, notificationPreference: true } } } } } });
+      if(input.status==="REPLACEMENT_REQUIRED" && !input.reason?.trim()) throw new ApiError(400,"Explain what needs to be replaced.");
+      const found = await db.document.findFirst({ where: { id,...(scopedStaff?{application:{assignedStaffId:user.id}}:{}) }, select: { id: true, reviewStatus: true, applicationId: true, application: { select: { customerId: true, customer: { select: { email: true, notificationPreference: true } } } } } });
       if (!found) throw new ApiError(404, "Document not found");
       if (found.reviewStatus !== "UNDER_REVIEW") throw new ApiError(409, "Document is not awaiting review");
       await db.$transaction(async (tx) => {
+        await tx.$queryRaw`SELECT id FROM "Application" WHERE id=${found.applicationId} FOR SHARE`;
+        if(scopedStaff && !await tx.application.count({where:{id:found.applicationId,assignedStaffId:user.id}})) throw new ApiError(404,"Document not found");
         const claim = await tx.document.updateMany({ where: { id, reviewStatus: "UNDER_REVIEW" }, data: { reviewStatus: input.status, reviewReason: input.status === "REPLACEMENT_REQUIRED" ? input.reason ?? null : null, reviewedById: user.id, reviewedAt: new Date() } });
         if (!claim.count) throw new ApiError(409, "Document already reviewed");
         await queueNotification(tx, `document-review:${id}`, found.application.customerId, "DOCUMENT_REVIEW", input.status === "REPLACEMENT_REQUIRED" ? "Document replacement requested" : "Document approved", input.status === "REPLACEMENT_REQUIRED" ? "Please review the document request in your dashboard." : "A submitted document was approved for internal review.", found.applicationId);
@@ -381,6 +370,7 @@ export async function PATCH(request: NextRequest, context: Params) {
         const changed = status !== latest.status;
         const assignmentChanged = assigneeId !== latest.assignedToId;
         const updated = await tx.supportTicket.update({ where: { id }, data: { status, assignedToId: assigneeId } });
+        if (assignmentChanged && assigneeId) await queueNotification(tx, "ticket-assigned:"+crypto.randomUUID(),assigneeId,"STAFF_ASSIGNMENT","Support ticket assigned",ticket.subject,id);
         if (changed || assignmentChanged) await tx.auditLog.create({ data: { actorUserId: user.id, action: changed ? "SUPPORT_STATUS_CHANGED" : "SUPPORT_ASSIGNED", resourceType: "SupportTicket", resourceId: id, safeMetadata: { fromStatus: latest.status, status, assignedToId: assigneeId } } });
         if (changed) {
           const label = status.replaceAll("_", " ").toLowerCase().replace(/\b\w/g, (letter) => letter.toUpperCase());
@@ -393,24 +383,7 @@ export async function PATCH(request: NextRequest, context: Params) {
       });
       return json({ ticket: result });
     }
-    if (resource === "documents" && id) {
-      const input = z.object({ clientVisible: z.boolean() }).parse(await body(request));
-      const document = await db.document.findUnique({ where: { id }, include: { uploadedBy: { select: { role: true } }, application: { select: { customerId: true, company: { select: { preferredName: true } }, customer: { select: { email: true, notificationPreference: true } } } } } });
-      if (!document) throw new ApiError(404, "Document not found");
-      if (document.uploadedBy.role !== "OWNER" || document.reviewStatus !== "COMPLETED_COMPANY_DOCUMENT") throw new ApiError(409, "Only completed Admin documents can change visibility");
-      if (document.clientVisible === input.clientVisible) return json({ document: { id, clientVisible: document.clientVisible } });
-      await db.$transaction(async (tx) => {
-        const changed = await tx.document.updateMany({ where: { id, clientVisible: !input.clientVisible }, data: { clientVisible: input.clientVisible } });
-        if (!changed.count) throw new ApiError(409, "Document visibility changed; refresh and try again");
-        await tx.auditLog.create({ data: { actorUserId: user.id, action: "DOCUMENT_VISIBILITY_CHANGED", resourceType: "Document", resourceId: id, safeMetadata: { clientVisible: input.clientVisible } } });
-        if (input.clientVisible) {
-          const eventKey = `document-share:${id}:${randomUUID()}`;
-          await queueNotification(tx, eventKey, document.application.customerId, "FINAL_DOCUMENT", "Company document available", `A document for ${document.application.company.preferredName} is available in your dashboard.`, document.applicationId);
-          if (document.application.customer.notificationPreference?.documentEmail !== false) await queueEmail(tx, eventKey, document.application.customer.email, "Your company document is available — Apex Filings", emailHtml("Company document available", ["A company document is ready in your secure dashboard. Sign in to download it."], { label: "View documents", href: `${process.env.APP_ORIGIN ?? "http://localhost:3001"}/client/documents` }));
-        }
-      });
-      return json({ document: { id, clientVisible: input.clientVisible } });
-    }
+    if (resource === "documents" && id) return json(await updateCompanyDocument(user, id, await body(request)));
     if (resource === "payment-instructions" && !id) {
       const input = z.object({ body: z.string().trim().max(3000) }).parse(await body(request));
       const result = await db.$transaction(async (tx) => {
@@ -467,24 +440,7 @@ export async function PATCH(request: NextRequest, context: Params) {
       });
       return json({ order });
     }
-    if (resource === "services" && id) {
-      const input = z.object({ name: z.string().trim().min(2).max(160).optional(), description: z.string().trim().min(2).max(3000).optional(), available: z.boolean().optional() }).parse(await body(request));
-      const result = await db.service.update({ where: { id }, data: input });
-      await db.auditLog.create({ data: { actorUserId: user.id, action: "SERVICE_UPDATED", resourceType: "Service", resourceId: id } });
-      return json({ service: result });
-    }
-    if (resource === "packages" && id) {
-      const input = z.object({ name: z.string().trim().min(2).max(160).optional(), serviceFeeCents: z.number().int().nonnegative().optional(), includedServices: z.array(z.string().trim().min(2).max(200)).max(40).optional(), available: z.boolean().optional() }).parse(await body(request));
-      const result = await db.package.update({ where: { id }, data: input });
-      await db.auditLog.create({ data: { actorUserId: user.id, action: "PACKAGE_UPDATED", resourceType: "Package", resourceId: id } });
-      return json({ package: result });
-    }
-    if (resource === "state-fees" && id) {
-      const input = z.object({ filingFeeCents: z.number().int().nonnegative().nullable(), additionalFeeNotes: z.string().trim().max(1000).nullable(), verifiedAt: z.iso.datetime().nullable() }).parse(await body(request));
-      const result = await db.stateFilingFee.update({ where: { code: id }, data: { ...input, verifiedAt: input.verifiedAt ? new Date(input.verifiedAt) : null } });
-      await db.auditLog.create({ data: { actorUserId: user.id, action: "STATE_FEE_UPDATED", resourceType: "StateFilingFee", resourceId: id } });
-      return json({ stateFee: result });
-    }
+    if (["packages","services","state-fees"].includes(resource) && id) throw new ApiError(409, "Use Services & Pricing to review and publish catalog changes.");
     if (resource === "website-content" && id) {
       const input = z.object({ title: z.string().trim().min(2).max(160), body: z.string().trim().max(10000) }).parse(await body(request));
       const result = await db.contentDraft.upsert({ where: { area: id }, create: { area: id, ...input }, update: input });

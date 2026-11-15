@@ -13,8 +13,8 @@ export type ClientRecord = {
   history: { id: string; status: string; reason: string | null; date: string }[];
   responses: { id: string; requestEventId: string; body: string; createdAt: string }[];
   requiredDocuments: { id: string; documentType: string }[];
-  documents: { id: string; documentType: string; reviewStatus: string; reviewReason: string | null; replacesDocumentId: string | null; requestId: string | null; originalFilename: string; createdAt: string; ownerId: string | null }[];
-  documentRequests: { id: string; documentType: string; ownerId: string | null; reason: string }[];
+  documents: { title?: string | null; description?: string | null; id: string; documentType: string; reviewStatus: string; reviewReason: string | null; replacesDocumentId: string | null; requestId: string | null; originalFilename: string; createdAt: string; ownerId: string | null }[];
+  documentRequests: { id: string; documentType: string; ownerId: string | null; reason: string; customTitle?:string|null;dueDate?:string|null;cancelledAt?:string|null }[];
   nextAction: { kind: "action" | "waiting" | "complete"; title: string; description: string; ctaLabel: string; href: string; documentRequests: { id: string; documentType: string; ownerId: string | null; reason: string | null; replacesDocumentId: string | null; requestId: string | null }[] };
   order: { id: string; paymentStatus: string; pricingQuote: import("@/lib/pricing").QuoteSnapshot | null; pricingSnapshot: import("@/lib/pricing").QuoteSnapshot | null; serviceFeeCents: number; governmentFeeCents: number | null; thirdPartyFeeCents: number | null; additionalFeeCents: number | null; discountCents: number | null; totalCents: number | null; stripeCheckoutStatus: string | null; invoice: { id:string; number: string; issuedAt: string | null } | null } | null;
 };

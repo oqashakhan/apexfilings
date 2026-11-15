@@ -1,3 +1,4 @@
+export type AdminCustomer = { id: string; fullName: string | null; clientReference: string | null };
 import type { ApplicationStatus, PaymentStatus } from "@/lib/client-models";
 
 export type AdminRole = "owner" | "staff" | "partner" | "client";
@@ -7,16 +8,17 @@ export type AdminOwner = { id: string; name: string; email: string; phone: strin
 export type AdminClient = { id: string; clientReference: string | null; name: string; email: string; phone: string; registeredAt: string; status: string; companyIds: string[] };
 export type AdminCompany = { id: string; name: string; state: string; clientId: string; type: "US LLC" };
 export type AdminApplication = {
+  customer?: AdminCustomer;
   id: string; clientId: string; companyId: string; preferredName: string; alternatives: string[];
   state: string; packageName: string;
   businessActivity: string; description: string; addressRequirement: string; management: string;
   owners: AdminOwner[]; additionalServices: string[]; status: ApplicationStatus;
   submittedAt: string | null; customerConfirmed: boolean; pendingDocumentRequests: boolean; identityReady: boolean;
 };
-export type AdminDocument = { id: string; applicationId: string; name: string; type: string; relatedOwner: string | null; status: "Required" | "Not Provided" | "Under Review" | "Accepted" | "Replacement Required" | "Completed Company Document"; uploadedAt: string | null; reviewedBy: string | null; uploadedBy: "Admin" | "Client"; clientVisible: boolean; sampleFileName?: string };
-export type AdminOrder = { pricingQuote: import("@/lib/pricing").QuoteSnapshot; pricingIssues: string[]; id: string; applicationId: string; date: string; serviceFee: number; governmentFee: number | null; additionalFee: number | null; thirdPartyFee: number | null; discount: number | null; total: number | null; paymentStatus: PaymentStatus; status: "Open" | "Fulfilled" | "Cancelled"; stripeCheckoutStatus: string | null; invoice: { id:string; number: string; hostedInvoiceUrl: string | null; invoicePdfUrl: string | null } | null };
-export type AdminPayment = { id: string; orderId: string; amount: number | null; method: string; date: string | null; status: PaymentStatus; reference: string | null; supportingInformation: string; disputeStatus: string | null };
-export type AdminRefund = { id: string; orderId: string; amount: number | null; reason: string; requestedAt: string; status: "Requested" | "Under Review" | "Approved" | "Declined" | "Completed" | "Approved · demo" | "Declined · demo"; stripeStatus: string | null };
+export type AdminDocument = { description?: string | null; customer?: AdminCustomer; id: string; applicationId: string; name: string; type: string; relatedOwner: string | null; status: "Required" | "Not Provided" | "Under Review" | "Accepted" | "Replacement Required" | "Completed Company Document"; uploadedAt: string | null; reviewedBy: string | null; uploadedBy: "Admin" | "Staff" | "Client"; clientVisible: boolean; sampleFileName?: string };
+export type AdminOrder = { customer?: AdminCustomer; pricingQuote: import("@/lib/pricing").QuoteSnapshot; pricingIssues: string[]; id: string; applicationId: string; date: string; serviceFee: number; governmentFee: number | null; additionalFee: number | null; thirdPartyFee: number | null; discount: number | null; total: number | null; paymentStatus: PaymentStatus; status: "Open" | "Fulfilled" | "Cancelled"; stripeCheckoutStatus: string | null; invoice: { id:string; number: string; hostedInvoiceUrl: string | null; invoicePdfUrl: string | null } | null };
+export type AdminPayment = { customer?: AdminCustomer; id: string; orderId: string; amount: number | null; method: string; date: string | null; status: PaymentStatus; reference: string | null; supportingInformation: string; disputeStatus: string | null };
+export type AdminRefund = { customer?: AdminCustomer; id: string; orderId: string; amount: number | null; reason: string; requestedAt: string; status: "Requested" | "Under Review" | "Approved" | "Declined" | "Completed" | "Approved · demo" | "Declined · demo"; stripeStatus: string | null };
 export type AdminService = { id: string; name: string; category: string; description: string; status: "Available" | "Inquiry Only" | "On Hold"; packages: string[] };
 export type AdminPackage = { id: string; name: string; serviceFee: number; includedServices: string[]; available: boolean };
 export type AdminStateFee = { code: string; state: string; filingFee: number | null; additionalFees: string | null; lastUpdated: string | null; notes: string[] };

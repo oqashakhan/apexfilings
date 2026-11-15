@@ -85,6 +85,9 @@ model User {
   oauthAttempts   OAuthAttempt[]
   trustedDevices  TrustedDevice[]
   securityEvents  SecurityEvent[]
+  staffScope       String @default("OPERATIONS")
+  marketingEmailConsent String?
+  marketingConsentAt DateTime?
   notificationPreference NotificationPreference?
   companies       Company[]     @relation("CustomerCompanies")
   applications    Application[] @relation("CustomerApplications")
@@ -233,6 +236,7 @@ enum EmailDeliveryStatus {
 }
 
 model EmailOutbox {
+  broadcastRecipient BroadcastRecipient?
   id             String              @id @default(cuid())
   eventKey       String              @unique
   toEmail        String
@@ -339,6 +343,7 @@ model ServiceRequest {
 }
 
 model Package {
+  description String @default("")
   includedServiceSlugs String[] @default([])
   id              String   @id @default(cuid())
   slug            String   @unique
@@ -456,6 +461,7 @@ model InternalNote {
 }
 
 model CustomerResponse {
+  readAt DateTime?
   id            String   @id @default(cuid())
   applicationId String
   customerId    String
@@ -469,6 +475,10 @@ model CustomerResponse {
 
 model Document {
   id                String         @id @default(cuid())
+  title             String?
+  description       String?
+  uploadKey         String?        @unique
+  uploadFingerprint String?
   applicationId     String
   companyId         String
   ownerId           String?
@@ -498,6 +508,9 @@ model Document {
 }
 
 model DocumentRequest {
+  customTitle String?
+  dueDate DateTime? @db.Date
+  cancelledAt DateTime?
   id            String      @id @default(cuid())
   requestKey    String      @unique
   applicationId String
@@ -768,4 +781,48 @@ model ContentDraft {
   title     String
   body      String
   updatedAt DateTime @updatedAt
+}
+
+model PricingDraft {
+  kind String
+  recordId String
+  data Json
+  version String
+  baseUpdatedAt DateTime?
+  updatedAt DateTime @updatedAt
+  @@id([kind, recordId])
+}
+
+model EmailBroadcast {
+  id String @id @default(cuid())
+  subject String
+  message String
+  category String
+  audience String
+  selectedIds String[]
+  createdById String
+  createdAt DateTime @default(now())
+  confirmedAt DateTime?
+  cancelledAt DateTime?
+  recipients BroadcastRecipient[]
+}
+
+model BroadcastRecipient {
+  id String @id @default(cuid())
+  broadcastId String
+  userId String
+  email String
+  outboxId String? @unique
+  suppressedAt DateTime?
+  unsubscribeToken String @unique @default(uuid())
+  broadcast EmailBroadcast @relation(fields: [broadcastId], references: [id], onDelete: Restrict)
+  outbox EmailOutbox? @relation(fields: [outboxId],references: [id],onDelete: SetNull)
+  @@unique([broadcastId, userId])
+  @@index([broadcastId,outboxId])
+}
+
+model BroadcastSuppression {
+  email String @id
+  reason String
+  createdAt DateTime @default(now())
 }

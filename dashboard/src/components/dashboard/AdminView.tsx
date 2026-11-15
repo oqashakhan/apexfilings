@@ -1,4 +1,7 @@
 "use client";
+import { StaffManagement } from "./StaffManagement";
+import { AdminActivity } from "./AdminActivity";
+import { BroadcastPreview } from "./BroadcastPreview";
 import {InvoiceCenter} from "./InvoiceCenter";
 import {InvoiceSettings} from "./InvoiceSettings";
 
@@ -17,7 +20,7 @@ import { SupportCenter } from "@/components/dashboard/SupportCenter";
 import { AdminClientWorkspace } from "@/components/dashboard/AdminClientWorkspace";
 
 const titles: Record<string, string> = {
-  invoices:"Invoices", dashboard: "Dashboard", applications: "Applications", clients: "Clients", orders: "Orders",
+  staff:"Staff management", activity: "Activity Log", "email-broadcasts": "Email Broadcasts", invoices:"Invoices", dashboard: "Dashboard", applications: "Applications", clients: "Clients", orders: "Orders",
   documents: "Documents", payments: "Payments", services: "Services & Pricing",
   "website-content": "Website Content", notifications: "Notifications", "email-delivery": "Email Delivery", support: "Support", settings: "Settings",
 };
@@ -29,6 +32,9 @@ export function AdminView({ section, detailId, oauthError }: { section: string; 
   else if (detailId && section === "clients") content = <AdminClientWorkspace id={detailId} />;
   else if (detailId && section === "orders") content = <AdminOrderDetail id={detailId} />;
   else switch (section) {
+    case "staff": content=<StaffManagement/>;break;
+    case "activity": content = <AdminActivity />; break;
+    case "email-broadcasts": content = <BroadcastPreview />; break;
     case "dashboard": content = <AdminOverview />; break;
     case "applications": content = <AdminApplications />; break;
     case "clients": content = <AdminClients />; break;

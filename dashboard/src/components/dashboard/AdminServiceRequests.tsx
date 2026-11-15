@@ -1,6 +1,7 @@
 "use client";
+import { AdminClientIdentity } from "./AdminClientIdentity";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { PageHeader, Panel } from "@/components/ui/DashboardUI";
 
 type Item = {
@@ -13,6 +14,9 @@ const statuses = ["REQUESTED", "UNDER_REVIEW", "INFORMATION_REQUIRED", "APPROVED
 const label = (status: string) => status.replaceAll("_", " ").toLowerCase().replace(/\b\w/g, (letter) => letter.toUpperCase());
 
 export function AdminServiceRequests() {
+  const [search, setSearch] = useState("");
+  const [query, setQuery] = useState("");
+  useEffect(() => { const timer = setTimeout(() => setQuery(search.trim()), 250); return () => clearTimeout(timer); }, [search]);
   const [items, setItems] = useState<Item[]>([]);
   const [selected, setSelected] = useState<Item | null>(null);
   const [status, setStatus] = useState("REQUESTED");
@@ -22,12 +26,22 @@ export function AdminServiceRequests() {
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
 
+  const loadSequence = useRef(0);
   const load = useCallback(async () => {
-    const response = await fetch("/api/v1/admin/service-requests", { cache: "no-store" });
+    const sequence = ++loadSequence.current;
+    const response = await fetch(`/api/v1/admin/service-requests?search=${encodeURIComponent(query)}`, { cache: "no-store" });
     const result = await response.json();
+    if (sequence !== loadSequence.current) return;
     if (!response.ok) throw new Error(result.error ?? "Could not load service requests.");
-    setItems(result.requests);
-  }, []);
+    const rows = result.requests;
+    const target = window.location.hash.slice(1);
+    if (!query && /^request-[a-zA-Z0-9_-]{1,100}$/.test(target) && !rows.some((item: Item) => `request-${item.id}` === target)) {
+      const detail = await fetch(`/api/v1/admin/service-requests?id=${encodeURIComponent(target.slice(8))}`, { cache: "no-store" });
+      if (detail.ok) rows.push(...(await detail.json()).requests);
+    }
+    if (sequence !== loadSequence.current) return;
+    setItems(rows);
+  }, [query]);
 
   useEffect(() => {
     let active = true;
@@ -41,6 +55,8 @@ export function AdminServiceRequests() {
     document.addEventListener("visibilitychange", sync);
     return () => { window.clearInterval(timer); document.removeEventListener("visibilitychange", sync); };
   }, [load]);
+
+  useEffect(() => { const target = window.location.hash.slice(1); if (target.startsWith("request-") && items.some(item => `request-${item.id}` === target)) document.getElementById(target)?.scrollIntoView({ block: "start" }); }, [items]);
 
   function review(item: Item) {
     setSelected(item);
@@ -70,15 +86,16 @@ export function AdminServiceRequests() {
     {notice && <p className="service-request-notice" role="status">{notice}</p>}
     {error && !selected && <p className="form-error" role="alert">{error}</p>}
     <Panel title="Requests" subtitle={`${items.length} requests`}>
-      {loading ? <p className="panel-body-copy">Loading requests…</p> : !items.length ? <p className="panel-body-copy">No additional service requests yet.</p> : <div className="admin-stack">{items.map((item) => <article className="admin-subcard" key={item.id}>
-        <div className="admin-row"><div><strong>{item.service.name} · {item.company.preferredName}</strong><p>{item.customer.fullName} · {item.customer.email} · {new Date(item.createdAt).toLocaleString()}</p></div><span className="small-pill">{label(item.status)}</span></div>
+      <label className="admin-list-search">Search requests<input value={search} onChange={event => setSearch(event.target.value)} placeholder="Client name, reference or company" maxLength={120} /></label>
+      {loading ? <p className="panel-body-copy">Loading requests…</p> : !items.length ? <p className="panel-body-copy">No additional service requests yet.</p> : <div className="admin-stack">{items.map((item) => <article id={`request-${item.id}`} className="admin-subcard" key={item.id}>
+        <div className="admin-row"><div><strong>{item.service.name} · {item.company.preferredName}</strong><AdminClientIdentity client={item.customer} /><p>{item.customer.email} · {new Date(item.createdAt).toLocaleString()}</p></div><span className="small-pill">{label(item.status)}</span></div>
         <div className="admin-inline-actions"><button className="button button-secondary" type="button" onClick={() => review(item)}>Review request</button></div>
       </article>)}</div>}
     </Panel>
     {selected && <div className="client-dialog-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !busy) setSelected(null); }}>
       <section className="client-service-review" role="dialog" aria-modal="true" aria-labelledby="admin-service-request-title">
         <div className="client-service-dialog-head"><div><span className="eyebrow accent">ADMIN REVIEW</span><h2 id="admin-service-request-title">{selected.service.name}</h2></div><button className="icon-button" type="button" aria-label="Close request" disabled={busy} onClick={() => setSelected(null)}>×</button></div>
-        <div className="service-request-admin-details"><div><span>Client</span><strong>{selected.customer.fullName} · {selected.customer.email}</strong></div><div><span>Company</span><strong>{selected.company.preferredName} · {selected.company.formationState}</strong></div><div><span>Submitted</span><strong>{new Date(selected.createdAt).toLocaleString()}</strong></div><div><span>Request details</span><p>{selected.details}</p></div></div>
+        <div className="service-request-admin-details"><div><span>Client</span><AdminClientIdentity client={selected.customer} /></div><div><span>Company</span><strong>{selected.company.preferredName} · {selected.company.formationState}</strong></div><div><span>Submitted</span><strong>{new Date(selected.createdAt).toLocaleString()}</strong></div><div><span>Request details</span><p>{selected.details}</p></div></div>
         <label className="admin-form-field">Status<select value={status} onChange={(event) => setStatus(event.target.value)}>{statuses.map((value) => <option key={value} value={value}>{label(value)}</option>)}</select></label>
         <label className="admin-form-field">Message to client{status === "INFORMATION_REQUIRED" && <span> (required)</span>}<textarea value={note} onChange={(event) => setNote(event.target.value)} rows={4} maxLength={1000} placeholder="Add an update or explain what information is needed." /></label>
         {error && <p className="form-error" role="alert">{error}</p>}

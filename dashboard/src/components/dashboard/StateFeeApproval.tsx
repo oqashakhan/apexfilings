@@ -2,19 +2,21 @@
 import { useState } from 'react';
 import type { PriceState } from '@/lib/pricing';
 import { diagnoseStateFee } from '@/lib/state-fee-diagnostics';
-export function StateFeeApproval({state,onSaved}:{state:PriceState;onSaved:()=>Promise<void>}) {
+export function StateFeeApproval({state:published,draft,onSaved}:{state:PriceState;draft?:Record<string,unknown>;onSaved:(data:Record<string,unknown>)=>Promise<void>}) {
+ const state = {...published,...draft} as PriceState;
  const [amount,setAmount]=useState(state.filingFeeCents === null ? state.referenceFilingFeeCents == null ? '' : (state.referenceFilingFeeCents/100).toFixed(2) : (state.filingFeeCents/100).toFixed(2));
  const [source,setSource]=useState(state.sourceReference?.startsWith('https://')?state.sourceReference:'');
- const [date,setDate]=useState(''); const [confirmed,setConfirmed]=useState(false); const [difference,setDifference]=useState(false);
+ const [date,setDate]=useState(draft?.verifiedAt ? String(draft.verifiedAt).slice(0,10) : ''); const [confirmed,setConfirmed]=useState(false); const [difference,setDifference]=useState(false);
  const [recurring,setRecurring]=useState(state.recurringFeeDescription??'');const [period,setPeriod]=useState(state.recurringFeePeriod??'');const [processing,setProcessing]=useState(state.processingTime??'');
  const [busy,setBusy]=useState(false);const [notice,setNotice]=useState('');
  const cents=/^\d+(\.\d{1,2})?$/.test(amount)?Math.round(Number(amount)*100):null;
  const differs=state.referenceFilingFeeCents!=null&&cents!==state.referenceFilingFeeCents;
- const diagnostic=diagnoseStateFee(state);
+ const diagnostic=diagnoseStateFee(published);
  const approved=diagnostic.status==='APPROVED';
  async function save(active:boolean){setBusy(true);setNotice('');try{
-  const response=await fetch('/api/v1/admin/pricing',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({kind:'state',id:state.code,data:{filingFeeCents:cents,sourceReference:source||null,verifiedAt:date?new Date(`${date}T00:00:00`).toISOString():state.verifiedAt?new Date(state.verifiedAt).toISOString():null,active,verificationConfirmed:confirmed,referenceDifferenceConfirmed:difference,recurringFeeDescription:recurring||null,recurringFeePeriod:period||null,processingTime:processing||null}})});
-  const result=await response.json();if(!response.ok)throw new Error(result.error??'Could not save fee');await onSaved();setConfirmed(false);setDifference(false);setNotice(active?'Approved. Current pending Client quotes will refresh automatically. Finalized orders retain their prices.':'Saved inactive. This fee cannot be used for payment.');
+  if (amount && cents===null) throw new Error('Enter a valid amount in USD.');
+  await onSaved({filingFeeCents:cents,sourceReference:source||null,verifiedAt:date?new Date(date).toISOString():null,active,verificationConfirmed:confirmed,referenceDifferenceConfirmed:difference,recurringFeeDescription:recurring||null,recurringFeePeriod:period||null,processingTime:processing||null});
+  setNotice('Saved for review. Publish the saved draft to update quotes.');
  }catch(e){setNotice(e instanceof Error?e.message:'Could not save fee');}finally{setBusy(false);}}
  return <section className="admin-subcard admin-stack"><h3>Verify and approve {state.state} filing fee</h3>
  <p>Imported initial fee: <strong>{state.referenceFilingFeeCents==null?'Not supplied':`$${(state.referenceFilingFeeCents/100).toFixed(2)}`}</strong> · {approved?'Approved':'Not approved for payment'}</p>
@@ -25,5 +27,5 @@ export function StateFeeApproval({state,onSaved}:{state:PriceState;onSaved:()=>P
  <label><input type="checkbox" checked={confirmed} onChange={e=>setConfirmed(e.target.checked)}/> I checked the current official initial formation fee for this state and confirm the amount above.</label>
  {differs&&<label><input type="checkbox" checked={difference} onChange={e=>setDifference(e.target.checked)}/> I reviewed the difference from the imported reference. Use the verified amount for new quotes.</label>}
  <details><summary>Recurring fees and processing estimates</summary><label>Future recurring fees<textarea value={recurring} onChange={e=>setRecurring(e.target.value)}/></label><label>Recurring period<input value={period} onChange={e=>setPeriod(e.target.value)}/></label><label>Estimated processing time<input value={processing} onChange={e=>setProcessing(e.target.value)}/></label><p>Future recurring fees are excluded from the initial formation payment. Processing estimates are not guarantees.</p></details>
- <div className="admin-inline-actions"><button className="button button-secondary" disabled={busy} onClick={()=>void save(false)}>Save inactive draft</button><button className="button button-primary" disabled={busy||cents===null||!source||!date||!confirmed||(differs&&!difference)} onClick={()=>void save(true)}>Verify and approve filing fee</button></div>{notice&&<p role="status">{notice}</p>}</section>;
+ <div className="admin-inline-actions"><button className="button button-secondary" disabled={busy} onClick={()=>void save(false)}>Save inactive fee draft</button><button className="button button-primary" disabled={busy||cents===null||!source||!date||!confirmed||(differs&&!difference)} onClick={()=>void save(true)}>Verify and approve filing fee draft</button></div>{notice&&<p role="status">{notice}</p>}</section>;
 }

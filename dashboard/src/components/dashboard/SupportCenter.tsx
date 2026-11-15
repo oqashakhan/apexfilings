@@ -1,7 +1,7 @@
 "use client";
+import { AdminClientIdentity } from "./AdminClientIdentity";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ClientReference } from "./ClientReference";
 import { PageHeader, Panel } from "@/components/ui/DashboardUI";
 
 type Reply = { id: string; body: string; createdAt: string; author: { role: string } };
@@ -21,6 +21,15 @@ const statuses = ["OPEN", "IN_PROGRESS", "WAITING_FOR_CLIENT", "RESOLVED", "CLOS
 const humanize = (value: string) => value.replaceAll("_", " ").toLowerCase().replace(/\b\w/g, (letter) => letter.toUpperCase());
 
 export function SupportCenter({ role, selectedCompanyId = "" }: { role: "admin" | "client"; selectedCompanyId?: string }) {
+  const [search, setSearch] = useState("");
+  const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [pageSize, setPageSize] = useState(20);
+  useEffect(() => { const timer = setTimeout(() => setQuery(search.trim()), 250); return () => clearTimeout(timer); }, [search]);
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [assignees, setAssignees] = useState<Assignee[]>([]);
@@ -41,15 +50,28 @@ export function SupportCenter({ role, selectedCompanyId = "" }: { role: "admin" 
   const visibleTickets = role === "client" && selectedCompanyId ? tickets.filter(ticket => !ticket.company || ticket.company.id === selectedCompanyId) : tickets;
   const root = `/api/v1/${role}/support`;
 
+  const loadSequence = useRef(0);
   const load = useCallback(async () => {
-    const response = await fetch(root, { cache: "no-store" });
+    const sequence = ++loadSequence.current;
+    const params = new URLSearchParams({ search: query, page: String(page), ...(statusFilter ? { status: statusFilter } : {}), ...(fromDate ? { from: fromDate } : {}), ...(toDate ? { to: toDate } : {}) });
+    const response = await fetch(root + (role === "admin" ? `?${params}` : ""), { cache: "no-store" });
     const result = await response.json();
+    if (sequence !== loadSequence.current) return;
     if (!response.ok) throw new Error(result.error ?? "Could not load support requests.");
-    setTickets(result.tickets ?? []);
+    const rows = result.tickets ?? [];
+    const target = window.location.hash.slice(1);
+    if (!query && /^ticket-[a-zA-Z0-9_-]{1,100}$/.test(target) && !rows.some((ticket: Ticket) => `ticket-${ticket.id}` === target)) {
+      const detail = await fetch(`${root}/${encodeURIComponent(target.slice(7))}`, { cache: "no-store" });
+      if (detail.ok) rows.push(...(await detail.json()).tickets);
+    }
+    if (sequence !== loadSequence.current) return;
+    setTickets(rows);
     setCompanies(result.companies ?? []);
     setAssignees(result.assignees ?? []);
+    setTotal(result.total ?? rows.length);
+    setPageSize(result.pageSize ?? 20);
     setLoadError("");
-  }, [root]);
+  }, [root, role, query, page, statusFilter, fromDate, toDate]);
 
   useEffect(() => {
     let active = true;
@@ -132,11 +154,13 @@ export function SupportCenter({ role, selectedCompanyId = "" }: { role: "admin" 
       </form>
     </Panel>}
 
-    <Panel title={role === "admin" ? "Customer requests" : "Your requests"} subtitle={loading ? "Loading requests…" : `${visibleTickets.length} requests`}>
+    <Panel title={role === "admin" ? "Customer requests" : "Your requests"} subtitle={loading ? "Loading requests…" : `${role === "admin" ? total : visibleTickets.length} requests`}>
+      {role === "admin" && <label className="admin-list-search">Search requests<input value={search} onChange={event => { setPage(1); setSearch(event.target.value); }} placeholder="Client name, reference, company or subject" maxLength={120} /></label>}
+      {role === "admin" && <div className="admin-filters"><label>Status<select value={statusFilter} onChange={event => { setPage(1); setStatusFilter(event.target.value); }}><option value="">All statuses</option>{statuses.map(status => <option key={status} value={status}>{humanize(status)}</option>)}</select></label><label>From date (UTC)<input type="date" value={fromDate} onChange={event => { setPage(1); setFromDate(event.target.value); }} /></label><label>To date (UTC)<input type="date" value={toDate} onChange={event => { setPage(1); setToDate(event.target.value); }} /></label></div>}
       {loading ? <p className="panel-body-copy">Loading support requests…</p> : !visibleTickets.length ? <p className="panel-body-copy">{role === "admin" ? "No support requests have been submitted." : "You have not submitted any support requests."}</p> : <div id="requests" className="admin-stack">
         {visibleTickets.map((ticket) => <article id={`ticket-${ticket.id}`} className="admin-subcard support-ticket" key={ticket.id}>
-          <div className="admin-row"><div><strong>{ticket.subject}</strong><p>{humanize(ticket.category ?? "GENERAL")} · {ticket.company?.preferredName ? `${ticket.company.preferredName} · ` : ""}{new Date(ticket.createdAt).toLocaleString()}</p>{role === "admin" && <p>{ticket.customer?.fullName} · {ticket.customer?.email} · {ticket.customer?.clientReference ?? "No client reference"}</p>}</div><span className="small-pill">{humanize(ticket.status)}</span></div>
-          {role === "admin" && <><ClientReference value={ticket.customer?.clientReference ?? null} /><div className="support-admin-controls">
+          <div className="admin-row"><div><strong>{ticket.subject}</strong><p>{humanize(ticket.category ?? "GENERAL")} · {ticket.company?.preferredName ? `${ticket.company.preferredName} · ` : ""}{new Date(ticket.createdAt).toLocaleString()}</p>{role === "admin" && <p>{ticket.customer?.email}</p>}</div><span className="small-pill">{humanize(ticket.status)}</span></div>
+          {role === "admin" && <><AdminClientIdentity client={ticket.customer} /><div className="support-admin-controls">
             <label>Assign to<select value={ticket.assignedTo?.id ?? ""} disabled={busy} onChange={(event) => void updateTicket(ticket, { assignedToId: event.target.value || null })}><option value="">Unassigned</option>{assignees.map((person) => <option key={person.id} value={person.id}>{person.fullName} · {humanize(person.role)}</option>)}</select></label>
             <label>Status<select value={ticket.status} disabled={busy} onChange={(event) => void updateTicket(ticket, { status: event.target.value })}>{[...new Set([...statuses, ...(statuses.includes(ticket.status) ? [] : [ticket.status])])].map((status) => <option key={status} value={status}>{humanize(status)}</option>)}</select></label>
           </div></>}
@@ -148,6 +172,7 @@ export function SupportCenter({ role, selectedCompanyId = "" }: { role: "admin" 
           {role === "admin" && <><label className="admin-form-field">Internal note · Admin only<textarea rows={2} maxLength={4000} value={noteText[ticket.id] ?? ""} onChange={(event) => setNoteText((current) => ({ ...current, [ticket.id]: event.target.value }))} placeholder="Visible only to Admin" /></label><button className="button button-secondary" type="button" disabled={busy || (noteText[ticket.id] ?? "").trim().length < 2} onClick={() => void addInternalNote(ticket)}>Add internal note</button></>}
         </article>)}
       </div>}
+      {role === "admin" && total > pageSize && <div className="admin-inline-actions"><button type="button" className="button button-secondary" disabled={page <= 1} onClick={() => setPage(page - 1)}>Previous</button><span>Page {page} of {Math.ceil(total / pageSize)}</span><button type="button" className="button button-secondary" disabled={page * pageSize >= total} onClick={() => setPage(page + 1)}>Next</button></div>}
     </Panel>
   </>;
 }

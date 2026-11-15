@@ -252,7 +252,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ ac
         throw new ApiError(401, "Invalid email or password");
       }
       await db.authThrottle.deleteMany({ where: { key } });
-      if (user.role !== "OWNER" && user.role !== "CLIENT") throw new ApiError(403, "This account cannot access the current dashboard");
+      if (user.role !== "OWNER" && user.role !== "CLIENT" && user.role !== "STAFF") throw new ApiError(403, "This account cannot access the current dashboard");
       const response = await makeSession(user.id, user.role, user.role === "CLIENT" && user.verificationRequired && !user.emailVerifiedAt);
       const device = await recordLogin(user.id, request.cookies.get(deviceCookieName)?.value, request);
       response.cookies.set(deviceCookieName, device, { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", path: "/", maxAge: 60 * 60 * 24 * 365 });

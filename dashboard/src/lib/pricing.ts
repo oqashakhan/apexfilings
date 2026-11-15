@@ -1,5 +1,5 @@
 import { diagnoseStateFee } from './state-fee-diagnostics';
-export type PricePackage = { id: string; slug: string; name: string; serviceFeeCents: number; currency: string; available: boolean; includedServices: string[]; includedServiceSlugs: string[] };
+export type PricePackage = { description?: string; id: string; slug: string; name: string; serviceFeeCents: number; currency: string; available: boolean; includedServices: string[]; includedServiceSlugs: string[] };
 export type PriceService = { id: string; slug: string; name: string; description: string; available: boolean; priceCents: number | null; currency: string; priceApproved: boolean; availableStateCodes?: string[]; category?: string; displayOrder?: number; automaticCharge?: boolean; requiredCharge?: boolean };
 export type PriceState = { code: string; state: string; filingFeeCents: number | null; referenceFilingFeeCents?: number | null; active: boolean; verifiedAt: string | Date | null; sourceReference: string | null; recurringFeeDescription: string | null; recurringFeePeriod: string | null; processingTime: string | null };
 export type PricingCatalog = { packages: PricePackage[]; services: PriceService[]; states: PriceState[] };

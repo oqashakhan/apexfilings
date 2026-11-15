@@ -17,7 +17,7 @@ export async function serverActor() {
 export async function requirePageRole(role: Role) {
   const user = await serverActor();
   if (!user) redirect("/login");
-  if (user.role !== role) redirect(user.role === "OWNER" ? "/admin/dashboard" : user.role === "CLIENT" ? "/client/dashboard" : "/login");
+  if (user.role !== role) redirect(user.role === "OWNER" ? "/admin/dashboard" : user.role === "CLIENT" ? "/client/dashboard" : user.role === "STAFF" ? "/staff" : "/login");
   if (role === "CLIENT" && !user.emailVerified) redirect("/verify-email");
   return user;
 }

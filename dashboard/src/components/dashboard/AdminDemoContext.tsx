@@ -1,7 +1,8 @@
 "use client";
 import { isIdentityDocument } from '@/lib/identity-documents';
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { usePathname } from "next/navigation";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { AdminActivity, AdminApplication, AdminClient, AdminCompany, AdminContentItem, AdminDocument, AdminNotification, AdminOrder, AdminPackage, AdminPayment, AdminRefund, AdminService, AdminStateFee, AdminStatusEvent } from "@/lib/admin-models";
 import type { ApplicationStatus, PaymentStatus } from "@/lib/client-models";
 
@@ -43,18 +44,24 @@ async function api(path: string, method = "GET", value?: unknown) {
 }
 
 export function AdminDemoProvider({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const detail = /^\/admin\/(applications|orders|clients)\/([^/]+)$/.exec(pathname);
+  const scope = detail ? `?${detail[1] === "orders" ? "orderId" : detail[1] === "clients" ? "clientId" : "applicationId"}=${encodeURIComponent(detail[2])}` : "";
+  const requestSequence = useRef(0);
   const [snapshot, setSnapshot] = useState<Snapshot>(empty);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const refresh = useCallback(async () => {
+    const sequence = ++requestSequence.current;
     try {
-      const result = await api("snapshot");
+      const result = await api("snapshot" + scope);
+      if (sequence !== requestSequence.current) return;
       const codesToLabels = Object.fromEntries(Object.entries(checkCodes).map(([label, code]) => [code, label]));
       setSnapshot({ ...result, checks: Object.fromEntries(Object.entries(result.checks as Record<string, string[]>).map(([id, codes]) => [id, codes.map((code) => codesToLabels[code] ?? code)])) });
       setError(null);
-    } catch (cause) { setError(cause instanceof Error ? cause.message : "Could not load dashboard"); }
-    finally { setLoading(false); }
-  }, []);
+    } catch (cause) { if (sequence === requestSequence.current) setError(cause instanceof Error ? cause.message : "Could not load dashboard"); }
+    finally { if (sequence === requestSequence.current) setLoading(false); }
+  }, [scope]);
   useEffect(() => { const frame = requestAnimationFrame(() => { void refresh(); }); return () => cancelAnimationFrame(frame); }, [refresh]);
 
   const act = useCallback(async (path: string, method: string, payload?: unknown) => {

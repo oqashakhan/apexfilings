@@ -43,7 +43,7 @@ export async function registerClientSession(input: ClientRegistration, request: 
   }
 }
 
-export async function makeSession(userId: string, role: "OWNER" | "CLIENT", emailVerificationRequired = false) {
+export async function makeSession(userId: string, role: "OWNER" | "CLIENT" | "STAFF", emailVerificationRequired = false) {
   const token = randomToken();
   await db.session.create({ data: { userId, tokenHash: hashToken(token), expiresAt: new Date(Date.now() + sessionAge * 1000) } });
   const response = json({ ok: true, role, emailVerificationRequired });
