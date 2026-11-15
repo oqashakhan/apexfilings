@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
 const {test}=require('node:test');const assert=require('node:assert/strict');
-const {PrismaClient}=require('@prisma/client');const {randomBytes,createHash}=require('node:crypto');
+const {PrismaClient,Prisma}=require('@prisma/client');const {randomBytes,createHash}=require('node:crypto');
 const {spawnSync}=require('node:child_process');const {readFileSync,readdirSync}=require('node:fs');const path=require('node:path');
 test('reproduce clean-deploy dependency failure, recover atomically, preserve records and replay adjustments without duplicates',async()=>{
  const base=new URL(process.env.DATABASE_URL);
@@ -32,8 +32,9 @@ test('reproduce clean-deploy dependency failure, recover atomically, preserve re
   const invoice=await db.invoice.create({data:{orderId:order.id,number:'RECOVERY-QA',lifecycle:'ISSUED',issuedAt:new Date(),subtotalCents:15000,totalCents:14500,discountCents:1000,taxCents:500,snapshot:{items}}});
   await db.payment.create({data:{orderId:order.id,amountCents:14500,status:'VERIFIED',verifiedAt:new Date(),reference:'FICTIONAL-RECOVERY'}});
   await db.refundRequest.create({data:{orderId:order.id,amountCents:500,status:'COMPLETED',reason:'Fictional QA refund'}});
-  await db.document.create({data:{applicationId:app.id,companyId:company.id,uploadedById:user.id,documentType:'QA',originalFilename:'fictional.pdf',privateStorageKey:name,mimeType:'application/pdf',fileSize:1}});
-  const preserve=async()=>JSON.stringify(await Promise.all(['user','company','application','order','invoice','payment','refundRequest','document'].map(model=>db[model].findMany({orderBy:{id:'asc'}}))));
+  await db.document.create({data:{applicationId:app.id,companyId:company.id,uploadedById:user.id,documentType:'QA',originalFilename:'fictional.pdf',privateStorageKey:name,mimeType:'application/pdf',fileSize:1},select:{id:true}});
+  const documentSelect=Object.fromEntries(Prisma.dmmf.datamodel.models.find(model=>model.name==='Document').fields.filter(field=>['scalar','enum'].includes(field.kind)&&!['title','description','uploadKey','uploadFingerprint'].includes(field.name)).map(field=>[field.name,true]));
+  const preserve=async()=>JSON.stringify(await Promise.all(['user','company','application','order','invoice','payment','refundRequest','document'].map(model=>db[model].findMany({orderBy:{id:'asc'},...(model==='document'?{select:documentSelect}:{})}))));
   const before=await preserve();
   sql('scripts/sql/repair-invoice-prerequisites.sql');sql('scripts/sql/verify-invoice-prerequisites.sql');
   sql('scripts/sql/repair-invoice-prerequisites.sql');sql('scripts/sql/verify-invoice-prerequisites.sql');
@@ -43,6 +44,8 @@ test('reproduce clean-deploy dependency failure, recover atomically, preserve re
   run=cli('migrate','deploy');assert.equal(run.status,0,run.stderr);
   sql('scripts/sql/verify-invoice-prerequisites.sql');sql('scripts/sql/verify-invoice-adjustments.sql');
   assert.equal(await db.invoiceLineItem.count(),4);assert.equal(await preserve(),before,'all original business records preserved byte-for-byte in scalar DTOs');
+  const legacyDocument=await db.document.findFirstOrThrow();
+  for(const field of ['title','description','uploadKey','uploadFingerprint'])assert.equal(legacyDocument[field],null,'new metadata remains null on preserved legacy documents');
   sql('prisma/migrations/20261108_invoice_adjustment_rows/migration.sql');sql('scripts/sql/verify-invoice-adjustments.sql');
   assert.equal(await db.invoiceLineItem.count(),4,'historical discount/tax inserts are idempotent');
   run=cli('migrate','status');assert.equal(run.status,0,run.stderr);

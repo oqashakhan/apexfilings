@@ -3,7 +3,7 @@ import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { db } from "@/server/db";
 import { ApiError, body, checkOrigin, handleError, json, requireRole } from "@/server/http";
-import { emailHtml, queueEmail, queueNotification } from "@/server/mail";
+import { emailHtml, queueAdminEmail, queueNotification } from "@/server/mail";
 
 export const runtime = "nodejs";
 
@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
         const serviceRequest = await tx.serviceRequest.create({ data: { customerId: user.id, companyId: company.id, serviceId: service.id, details: input.details, idempotencyKey: input.idempotencyKey } });
         const owners = await tx.user.findMany({ where: { role: "OWNER", status: "ACTIVE" }, select: { id: true } });
         for (const owner of owners) await queueNotification(tx, `service-request-new:${serviceRequest.id}:${owner.id}`, owner.id, "SERVICE_REQUEST", "New additional service request", `${service.name} requested for ${company.preferredName}.`, serviceRequest.id);
-        if (process.env.ADMIN_NOTIFICATION_EMAIL) await queueEmail(tx, `service-request-new:${serviceRequest.id}:admin`, process.env.ADMIN_NOTIFICATION_EMAIL, "New additional service request — Apex Filings", emailHtml("New additional service request", [`Service: ${service.name}`, `Company: ${company.preferredName}`, `Client: ${user.fullName}`, "Sign in to review the request details securely."], { label: "Review service requests", href: `${process.env.APP_ORIGIN ?? "http://localhost:3001"}/admin/services` }));
+        if (process.env.ADMIN_NOTIFICATION_EMAIL) await queueAdminEmail(tx, "applicationEmail", `service-request-new:${serviceRequest.id}:admin`, process.env.ADMIN_NOTIFICATION_EMAIL, "New additional service request — Apex Filings", emailHtml("New additional service request", [`Service: ${service.name}`, `Company: ${company.preferredName}`, `Client: ${user.fullName}`, "Sign in to review the request details securely."], { label: "Review service requests", href: `${process.env.APP_ORIGIN ?? "http://localhost:3001"}/admin/services` }));
         await queueNotification(tx, `service-request-new:${serviceRequest.id}:client`, user.id, "SERVICE_REQUEST", "Service request received", `Your ${service.name} request for ${company.preferredName} is awaiting review.`, serviceRequest.id);
         await tx.auditLog.create({ data: { actorUserId: user.id, action: "SERVICE_REQUEST_CREATED", resourceType: "ServiceRequest", resourceId: serviceRequest.id, safeMetadata: { companyId: company.id, serviceId: service.id } } });
         return { request: serviceRequest, duplicate: false };

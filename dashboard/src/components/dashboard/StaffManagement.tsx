@@ -10,7 +10,7 @@ export function StaffManagement({applicationId}:{applicationId?:string}) {
     if(!r.ok) throw new Error("Could not load staff.");
     const data=await r.json();setRows(data.staff);setAssigned(data.assignedStaffId??"");setLoaded(true);
   },[applicationId]);
-  useEffect(()=>{void load().catch(e=>setMessage(e.message));},[load]);
+  useEffect(()=>{const timer=setTimeout(()=>void load().catch(e=>setMessage(e.message)),0);return ()=>clearTimeout(timer);},[load]);
   async function save(method:string,input:object) {
     setBusy(true);try{
       const r=await fetch("/api/v1/admin/staff",{method,headers:{"Content-Type":"application/json"},body:JSON.stringify(input)});

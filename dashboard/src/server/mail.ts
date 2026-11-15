@@ -22,3 +22,8 @@ export async function queueEmail(tx: Prisma.TransactionClient, eventKey: string,
 export async function queueNotification(tx: Prisma.TransactionClient, eventKey: string, userId: string, type: string, title: string, message: string, relatedEntity?: string) {
   await tx.notification.create({ data: { eventKey, userId, type, title, message, relatedEntity } });
 }
+
+export async function queueAdminEmail(tx:Prisma.TransactionClient, category:'supportEmail'|'paymentEmail'|'documentEmail'|'applicationEmail', eventKey:string, email:string, subject:string, html:string) {
+  const owner=await tx.user.findFirst({where:{role:'OWNER',emailNormalized:email.trim().toLowerCase()},select:{notificationPreference:true}});
+  if(owner?.notificationPreference?.[category]!==false) await queueEmail(tx,eventKey,email,subject,html);
+}

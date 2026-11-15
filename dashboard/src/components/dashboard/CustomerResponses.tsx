@@ -1,0 +1,11 @@
+'use client';
+import {useEffect,useState} from 'react';
+import Link from 'next/link';
+import {Panel} from '@/components/ui/DashboardUI';
+type Row={id:string;body:string;applicationId:string;createdAt:string;readAt:string|null;customer:{fullName:string;clientReference:string|null};application:{company:{preferredName:string}}};
+export function CustomerResponses(){
+  const [q,setQ]=useState(''),[unread,setUnread]=useState(false),[page,setPage]=useState(1),[version,setVersion]=useState(0),[rows,setRows]=useState<Row[]>([]),[total,setTotal]=useState(0),[msg,setMsg]=useState('');
+  useEffect(()=>{const c=new AbortController(),timer=setTimeout(()=>{void fetch('/api/v1/admin/responses?'+new URLSearchParams({q,unread:String(unread),page:String(page)}),{signal:c.signal,cache:'no-store'}).then(async r=>{if(!r.ok)throw new Error();const data=await r.json();setRows(data.items);setTotal(data.total);setMsg('');}).catch(()=>{if(!c.signal.aborted)setMsg('Could not load customer responses.');});},180);return ()=>{c.abort();clearTimeout(timer);};},[q,unread,page,version]);
+  async function read(id:string){try{const r=await fetch('/api/v1/admin/responses',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})});if(!r.ok)throw new Error();setVersion(v=>v+1);}catch{setMsg('Could not update read status.');}}
+  return <Panel title="Customer responses"><label>Search<input value={q} onChange={e=>{setQ(e.target.value);setPage(1);}}/></label><label><input type="checkbox" checked={unread} onChange={e=>{setUnread(e.target.checked);setPage(1);}}/> Unread only</label>{msg&&<p role="alert">{msg}</p>}{rows.map(r=><article className="admin-subcard" key={r.id}><strong>{r.customer.fullName} #{r.customer.clientReference} · {r.application.company.preferredName}</strong><p>{r.body}</p><small>{new Date(r.createdAt).toLocaleString()}</small> <Link href={'/admin/applications/'+r.applicationId}>Review application</Link> {!r.readAt&&<button onClick={()=>void read(r.id)}>Mark read</button>}</article>)}{!rows.length&&<p>No matching responses.</p>}<button disabled={page===1} onClick={()=>setPage(page-1)}>Previous</button> Page {page} <button disabled={page*25>=total} onClick={()=>setPage(page+1)}>Next</button></Panel>;
+}

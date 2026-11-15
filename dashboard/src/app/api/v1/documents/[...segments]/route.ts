@@ -6,7 +6,7 @@ import { NextRequest } from "next/server";
 import { db } from "@/server/db";
 import { actor, assertVerifiedClient, body, ApiError, checkOrigin, handleError, json } from "@/server/http";
 import { loadDocument, maxDocumentBytes, removeDocument, safeFilename, storeDocument, validateDocument } from "@/server/storage";
-import { emailHtml, queueEmail, queueNotification } from "@/server/mail";
+import { emailHtml, queueAdminEmail, queueNotification } from "@/server/mail";
 
 export const runtime = "nodejs";
 type Params = { params: Promise<{ segments: string[] }> };
@@ -57,7 +57,7 @@ export async function POST(request: NextRequest, context: Params) {
       if (!requested || user.role !== "CLIENT") throw new ApiError(409, "Document request is no longer available");
     }
     if (requirementId) {
-      const requirement = await db.serviceDocumentRequirement.findFirst({ where: { id: requirementId, serviceId: application.serviceId, documentType, required: true, OR: [{ stateCode: null }, { stateCode: application.company.formationState }] } });
+      const requirement = await db.serviceDocumentRequirement.findFirst({ where: { id: requirementId, serviceId: application.serviceId, documentType:isIdentityDocument(documentType)?{in:[documentType,"OWNER_ID"]}:documentType, required: true, OR: [{ stateCode: null }, { stateCode: application.company.formationState }] } });
       if (!requirement || user.role !== "CLIENT") throw new ApiError(409, "Document requirement is no longer available");
     }
     if (replacesDocumentId) {
@@ -95,6 +95,13 @@ export async function POST(request: NextRequest, context: Params) {
           return { document: previous, duplicate: true, publication: "already-notified" };
         }
       }
+      if(replacesDocumentId){
+        const cancelled=await tx.$queryRaw<{id:string}[]>`WITH RECURSIVE chain AS (
+          SELECT id,"requestId","replacesDocumentId" FROM "Document" WHERE id=${replacesDocumentId} AND "applicationId"=${applicationId}
+          UNION SELECT d.id,d."requestId",d."replacesDocumentId" FROM "Document" d JOIN chain c ON c."replacesDocumentId"=d.id
+        ) SELECT r.id FROM "DocumentRequest" r JOIN chain c ON c."requestId"=r.id WHERE r."cancelledAt" IS NOT NULL`;
+        if(cancelled.length) throw new ApiError(409,"Document request was cancelled.");
+      }
       if(requestId && !await tx.documentRequest.count({where:{id:requestId,applicationId,cancelledAt:null,documents:{none:{}}}})) throw new ApiError(409,"This document request is no longer available.");
       const document = await tx.document.create({ data: { ...metadata, uploadKey, uploadFingerprint: uploadKey ? fingerprint : null, applicationId, companyId: application.companyId, ownerId, uploadedById: user.id, documentType, replacesDocumentId, requestId, originalFilename: safeFilename(file.name), privateStorageKey: storageKey!, mimeType: identified.mime, fileSize: buffer.length, clientVisible: user.role === "CLIENT" || (finalDocument && shareWithClient), reviewStatus: finalDocument ? "COMPLETED_COMPANY_DOCUMENT" : "UNDER_REVIEW" } });
       await tx.auditLog.create({ data: { actorUserId: user.id, action: "DOCUMENT_UPLOADED", resourceType: "Document", resourceId: document.id, safeMetadata: { documentType, fileSize: buffer.length } } });
@@ -102,7 +109,7 @@ export async function POST(request: NextRequest, context: Params) {
       if (!finalDocument && user.role === "CLIENT") {
         const owners = await tx.user.findMany({ where: { role: "OWNER", status: "ACTIVE" }, select: { id: true } });
         for (const owner of owners) await queueNotification(tx, `document-upload:${document.id}:${owner.id}`, owner.id, "DOCUMENT_UPLOADED", "Customer document uploaded", `A document was uploaded for ${application.company.preferredName}.`, applicationId);
-        if (process.env.ADMIN_NOTIFICATION_EMAIL) await queueEmail(tx, `document-upload:${document.id}:admin`, process.env.ADMIN_NOTIFICATION_EMAIL, "Customer document uploaded — Apex Filings", emailHtml("Document needs review", [`Company: ${application.company.preferredName}`, `Application reference: ${applicationId}`, "Open the secure dashboard to review. Private documents are never attached to email."], { label: "Review documents", href: `${process.env.APP_ORIGIN ?? "http://localhost:3001"}/admin/applications/${applicationId}` }));
+        if (process.env.ADMIN_NOTIFICATION_EMAIL) await queueAdminEmail(tx, "documentEmail", `document-upload:${document.id}:admin`, process.env.ADMIN_NOTIFICATION_EMAIL, "Customer document uploaded — Apex Filings", emailHtml("Document needs review", [`Company: ${application.company.preferredName}`, `Application reference: ${applicationId}`, "Open the secure dashboard to review. Private documents are never attached to email."], { label: "Review documents", href: `${process.env.APP_ORIGIN ?? "http://localhost:3001"}/admin/applications/${applicationId}` }));
       }
       return { document, duplicate: false, publication };
     });

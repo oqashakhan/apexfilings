@@ -32,21 +32,23 @@ export function EmptyState({ title = "No matching records", description = "Try a
 }
 
 export type TableColumn<T> = { heading: string; render: (row: T) => React.ReactNode };
-export function DataTable<T extends object>({ rows, columns, queryPlaceholder = "Search records...", filterOptions, filterValue, onFilterChange, searchText, onSearchChange, searchMatcher }: {
-  rows: T[]; columns: TableColumn<T>[]; queryPlaceholder?: string; filterOptions?: string[]; filterValue?: string; onFilterChange?: (value: string) => void; searchText?: string; onSearchChange?: (value: string) => void; searchMatcher?: (row: T, query: string) => boolean;
+export function DataTable<T extends object>({ rows, columns, queryPlaceholder = "Search records...", filterOptions, filterValue, onFilterChange, searchText, onSearchChange, searchMatcher, pagination }: {
+  rows: T[]; columns: TableColumn<T>[]; queryPlaceholder?: string; filterOptions?: string[]; filterValue?: string; onFilterChange?: (value: string) => void; searchText?: string; onSearchChange?: (value: string) => void; searchMatcher?: (row: T, query: string) => boolean; pagination?:{total:number;page:number;onPage:(n:number)=>void};
 }) {
   const [internalSearch, setInternalSearch] = useState("");
   const [page, setPage] = useState(1);
   const query = searchText ?? internalSearch;
   const setQuery = onSearchChange ?? setInternalSearch;
   const filtered = useMemo(() => rows.filter((row) => searchMatcher ? searchMatcher(row, query.toLowerCase()) : JSON.stringify(row).toLowerCase().includes(query.toLowerCase())), [rows, query, searchMatcher]);
-  const pageCount = Math.max(1, Math.ceil(filtered.length / 6));
-  const safePage = Math.min(page, pageCount);
-  const visible = filtered.slice((safePage - 1) * 6, safePage * 6);
+  const total = pagination?.total ?? filtered.length;
+  const changePage = pagination?.onPage ?? setPage;
+  const pageCount = Math.max(1, Math.ceil(total / 6));
+  const safePage = Math.min(pagination?.page ?? page, pageCount);
+  const visible = pagination ? rows : filtered.slice((safePage - 1) * 6, safePage * 6);
   return <>
     <div className="table-toolbar"><label className="table-search"><Search size={17} /><input value={query} onChange={(event) => { setQuery(event.target.value); setPage(1); }} placeholder={queryPlaceholder} aria-label={queryPlaceholder} /></label>{filterOptions && <select aria-label="Filter status" value={filterValue ?? "All statuses"} onChange={(event) => { onFilterChange?.(event.target.value); setPage(1); }}><option>All statuses</option>{filterOptions.map((option) => <option key={option}>{option}</option>)}</select>}</div>
     <div className="table-scroll">{visible.length ? <table className="data-table"><thead><tr>{columns.map((column) => <th key={column.heading}>{column.heading}</th>)}</tr></thead><tbody>{visible.map((row, index) => <tr key={index}>{columns.map((column) => <td key={column.heading}>{column.render(row)}</td>)}</tr>)}</tbody></table> : <EmptyState />}</div>
-    <div className="table-footer"><span>Showing {filtered.length ? (safePage - 1) * 6 + 1 : 0}–{Math.min(safePage * 6, filtered.length)} of {filtered.length} records</span><div><button className="icon-button" aria-label="Previous page" disabled={safePage === 1} onClick={() => setPage(safePage - 1)}><ChevronLeft size={17} /></button><span>{safePage} / {pageCount}</span><button className="icon-button" aria-label="Next page" disabled={safePage === pageCount} onClick={() => setPage(safePage + 1)}><ChevronRight size={17} /></button></div></div>
+    <div className="table-footer"><span>Showing {total ? (safePage - 1) * 6 + 1 : 0}–{Math.min(safePage * 6, total)} of {total} records</span><div><button className="icon-button" aria-label="Previous page" disabled={safePage === 1} onClick={() => changePage(safePage - 1)}><ChevronLeft size={17} /></button><span>{safePage} / {pageCount}</span><button className="icon-button" aria-label="Next page" disabled={safePage === pageCount} onClick={() => changePage(safePage + 1)}><ChevronRight size={17} /></button></div></div>
   </>;
 }
 

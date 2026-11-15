@@ -7,7 +7,7 @@ import { deviceCookieName, makeSession, recordLogin } from "@/server/client-auth
 import { hashToken, normalizeEmail } from "@/server/security";
 import { safeApplicationReturn } from "@/lib/application-return";
 import { googleOAuthErrorCode } from "@/lib/google-oauth-feedback";
-import { emailHtml, queueEmail, queueNotification } from "@/server/mail";
+import { emailHtml, queueAdminEmail, queueEmail, queueNotification } from "@/server/mail";
 
 export const runtime = "nodejs";
 const stateCookie = process.env.NODE_ENV === "production" ? "__Host-apex_google_state" : "apex_google_state";
@@ -100,7 +100,7 @@ export async function GET(request: NextRequest) {
         await queueEmail(tx, `welcome:${created.id}`, created.email, "Welcome to Apex Filings", emailHtml("Your account is ready", ["Your Google email was verified. You can continue in your dashboard."], { label: "Open dashboard", href: `${process.env.APP_ORIGIN ?? "http://localhost:3001"}/client/dashboard` }));
         const owners = await tx.user.findMany({ where: { role: "OWNER", status: "ACTIVE" }, select: { id: true } });
         for (const owner of owners) await queueNotification(tx, `registration:${created.id}:${owner.id}`, owner.id, "NEW_REGISTRATION", "New client registered", `${created.fullName} created a client account.`, created.id);
-        if (process.env.ADMIN_NOTIFICATION_EMAIL) await queueEmail(tx, `registration:${created.id}:admin`, process.env.ADMIN_NOTIFICATION_EMAIL, "New client registration — Apex Filings", emailHtml("New client registration", [`Client Reference Number: ${created.clientReference}`, "The customer signed up using a verified Google email."], { label: "View client", href: `${process.env.APP_ORIGIN ?? "http://localhost:3001"}/admin/clients/${created.id}` }));
+        if (process.env.ADMIN_NOTIFICATION_EMAIL) await queueAdminEmail(tx, "applicationEmail", `registration:${created.id}:admin`, process.env.ADMIN_NOTIFICATION_EMAIL, "New client registration — Apex Filings", emailHtml("New client registration", [`Client Reference Number: ${created.clientReference}`, "The customer signed up using a verified Google email."], { label: "View client", href: `${process.env.APP_ORIGIN ?? "http://localhost:3001"}/admin/clients/${created.id}` }));
         return created;
       });
     }

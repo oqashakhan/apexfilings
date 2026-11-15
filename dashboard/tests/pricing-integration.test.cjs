@@ -36,6 +36,11 @@ test('owner publishing, customer quote, draft restoration and immutable submitte
    if(code !== 'AK') stateBackups.push(original);
    assert.equal(original.referenceFilingFeeCents,fee,`${code} imported client reference`);
    await db.stateFilingFee.update({where:{code},data:{active:false,filingFeeCents:null,verifiedAt:null,sourceReference:'Client reference; not verified'}});
+   const publicPending=(await api('/api/v1/pricing')).data.states.find(item=>item.code===code);
+   assert.equal(publicPending.filingFeeCents,null); assert.equal(publicPending.referenceFilingFeeCents,null); assert.equal(publicPending.sourceReference,null); assert.equal(publicPending.active,false);
+   await db.stateFilingFee.update({where:{code},data:{filingFeeCents:fee}});
+   assert.equal((await api('/api/v1/pricing')).data.states.find(item=>item.code===code).filingFeeCents,null,'unapproved stored price is not public');
+   await db.stateFilingFee.update({where:{code},data:{filingFeeCents:null}});
    for(const selectedPackage of [pack,advanced]){
      const pending=await api('/api/v1/pricing/quote','POST',{packageSlug:selectedPackage.slug,state:name,services:[]},client.token);
      assert.equal(pending.data.totalCents,null);assert.equal(pending.data.paymentAllowed,false);assert.equal(pending.data.knownSubtotalCents,selectedPackage.serviceFeeCents);

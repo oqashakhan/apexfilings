@@ -31,7 +31,11 @@
     "test:pricing": "node --import tsx --test tests/pricing.test.ts tests/payment-summary.test.tsx tests/wizard-redesign.test.tsx tests/state-fee-approval.test.tsx",
     "test:pricing:integration": "node --test -r ./tests/test-env.cjs tests/pricing-integration.test.cjs",
     "test:client-dashboard": "node --import tsx --test tests/client-workspace.test.tsx",
-    "test:client-dashboard:integration": "node --test -r ./tests/test-env.cjs tests/client-dashboard.integration.test.cjs"
+    "test:client-dashboard:integration": "node --test -r ./tests/test-env.cjs tests/client-dashboard.integration.test.cjs",
+    "test:admin-workspace": "node --import tsx --test tests/admin-activity.test.tsx",
+    "test:admin-workspace:integration": "node --test -r ./tests/test-env.cjs tests/admin-activity.integration.test.cjs",
+    "test:company-documents": "node --test -r ./tests/test-env.cjs tests/company-documents.integration.test.cjs",
+    "test:company-documents:unit": "node --import tsx --test tests/company-document-form.test.tsx"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",

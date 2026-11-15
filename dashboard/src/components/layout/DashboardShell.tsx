@@ -22,6 +22,7 @@ const adminNav: NavItem[] = [
   { label: "Dashboard", slug: "dashboard", icon: LayoutDashboard },
   { label: "Applications", slug: "applications", icon: FileClock },
   { label: "Clients", slug: "clients", icon: Users },
+  { label:"Customer Responses",slug:"responses",icon:MailCheck },
   { label: "Staff Management", slug:"staff", icon:Users },
   { label: "Activity Log", slug: "activity", icon: History },
   { label: "Orders", slug: "orders", icon: Package },

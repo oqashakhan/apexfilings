@@ -10,7 +10,7 @@ import { actor, ApiError, body, checkOrigin, handleError, json, requireRole } fr
 import { approvalChecks, canTransition, statusNames, transitionBlockReason } from "@/server/workflow";
 import { statusInput } from "@/server/validation";
 import { adminSnapshot } from "@/server/admin-snapshot";
-import { emailHtml, queueEmail, queueNotification } from "@/server/mail";
+import { emailHtml, queueAdminEmail, queueEmail, queueNotification } from "@/server/mail";
 import { resolveOrderQuote } from "@/lib/pricing";
 import { applicationQuote, pricingCatalog } from "@/server/pricing";
 
@@ -82,7 +82,7 @@ async function statusChange(id: string, userId: string, next: ApplicationStatus,
 export async function GET(request: NextRequest, context: Params) {
   try {
     const owner = await requireRole(request, "OWNER");
-    const [resource, id, action] = (await context.params).segments;
+    const [resource, id] = (await context.params).segments;
     const url = new URL(request.url);
     const page = pageNumber(url.searchParams.get("page"), 1, 10000);
     const take = pageNumber(url.searchParams.get("pageSize"), 20, 100);
@@ -115,9 +115,10 @@ export async function GET(request: NextRequest, context: Params) {
         return json({ client });
       }
       const search = url.searchParams.get("search")?.trim().slice(0, 100);
-      const where: Prisma.UserWhereInput = { role: "CLIENT", ...(search ? /^[1-9][0-9]{8}$/.test(search) ? { clientReference: search } : { OR: [{ fullName: { contains: search, mode: "insensitive" } }, { emailNormalized: { contains: search.toLowerCase() } }, { clientReference: search }] } : {}) };
-      const [items, total] = await Promise.all([db.user.findMany({ where, select: { id: true, clientReference: true, fullName: true, email: true, phone: true, status: true, createdAt: true, companies: { select: { id: true } }, _count: { select: { companies: true, applications: true } } }, orderBy: { createdAt: "desc" }, skip: (page - 1) * take, take }), db.user.count({ where })]);
-      return json({ items, total, page, pageSize: take });
+      const status=url.searchParams.get("status");
+      const where: Prisma.UserWhereInput = { role: "CLIENT", ...(status==="ACTIVE"||status==="SUSPENDED"?{status}:{}), ...(search ? /^[1-9][0-9]{8}$/.test(search) ? { clientReference: search } : { OR: [{ fullName: { contains: search, mode: "insensitive" } }, { emailNormalized: { contains: search.toLowerCase() } }, {phone:{contains:search}}, { clientReference: search }] } : {}) };
+      const [items, total] = await Promise.all([db.user.findMany({ where, select: { id: true, clientReference: true, fullName: true, email: true, phone: true, status: true, createdAt: true, companies: { select: { id: true } }, _count: { select: { companies: true, applications: true } }, applications:{where:{status:{notIn:["COMPLETED","REFUNDED","CANCELLED"]}},select:{id:true}} }, orderBy: [{ createdAt: "desc" },{id:"desc"}], skip: (page - 1) * take, take }), db.user.count({ where })]);
+      return json({ items:items.map(({applications,...u})=>({...u,activeApplications:applications.length})), total, page, pageSize: take });
     }
     if (resource === "orders") {
       const where: Prisma.OrderWhereInput = id ? { id } : {};
@@ -157,7 +158,7 @@ export async function GET(request: NextRequest, context: Params) {
       const [notifications, unreadCount] = await Promise.all([db.notification.findMany({ where, orderBy: { createdAt: "desc" }, take: 100 }), db.notification.count({ where: { userId: owner.id, readAt: null } })]);
       return json({ notifications, unreadCount });
     }
-    if (resource === "notification-preferences") return json({ preferences: await db.notificationPreference.findUnique({ where: { userId: owner.id } }) });
+    if (resource === "notification-preferences") return json({ managesMailbox:owner.email.trim().toLowerCase()===process.env.ADMIN_NOTIFICATION_EMAIL?.trim().toLowerCase(), preferences: await db.notificationPreference.findUnique({ where: { userId: owner.id } }) });
     if (resource === "support") {
       const search = url.searchParams.get("search")?.trim().slice(0,120);
       const filterStatus = url.searchParams.get("status");
@@ -274,7 +275,7 @@ export async function POST(request: NextRequest, context: Params) {
         const related = await tx.order.findUniqueOrThrow({ where: { id: input.orderId }, include: { application: { include: { customer: { include: { notificationPreference: true } } } } } });
         const owners = await tx.user.findMany({ where: { role: "OWNER", status: "ACTIVE" }, select: { id: true } });
         for (const owner of owners) await queueNotification(tx, `payment-review:${payment.id}:${owner.id}`, owner.id, "PAYMENT_REVIEW", "Payment needs verification", `Manual payment for order ${input.orderId} is awaiting review.`, related.applicationId);
-        if (process.env.ADMIN_NOTIFICATION_EMAIL) await queueEmail(tx, `payment-review:${payment.id}:admin`, process.env.ADMIN_NOTIFICATION_EMAIL, "Payment verification requested — Apex Filings", emailHtml("Payment needs verification", [`Order reference: ${input.orderId}`, "Open the secure dashboard to review the recorded manual payment."], { label: "Review payment", href: `${process.env.APP_ORIGIN ?? "http://localhost:3001"}/admin/payments` }));
+        if (process.env.ADMIN_NOTIFICATION_EMAIL) await queueAdminEmail(tx, "paymentEmail", `payment-review:${payment.id}:admin`, process.env.ADMIN_NOTIFICATION_EMAIL, "Payment verification requested — Apex Filings", emailHtml("Payment needs verification", [`Order reference: ${input.orderId}`, "Open the secure dashboard to review the recorded manual payment."], { label: "Review payment", href: `${process.env.APP_ORIGIN ?? "http://localhost:3001"}/admin/payments` }));
         await queueNotification(tx, `payment-review:${payment.id}:customer`, related.application.customerId, "PAYMENT_UPDATE", "Payment awaiting verification", "A payment was recorded for review. It has not been verified yet.", related.applicationId);
         if (related.application.customer.notificationPreference?.paymentEmail !== false) await queueEmail(tx, `payment-review:${payment.id}:customer`, related.application.customer.email, "Payment awaiting verification — Apex Filings", emailHtml("Payment awaiting verification", [`Order reference: ${input.orderId}`, "A payment was recorded for review. This is not a successful-payment confirmation."], { label: "View order", href: `${process.env.APP_ORIGIN ?? "http://localhost:3001"}/client/orders/${input.orderId}` }));
         await tx.auditLog.create({ data: { actorUserId: user.id, action: "MANUAL_PAYMENT_RECORDED", resourceType: "Payment", resourceId: payment.id } });
@@ -325,7 +326,7 @@ export async function POST(request: NextRequest, context: Params) {
         const customer = payment.order.application.customer;
         await queueNotification(tx, `payment-rejected:${id}`, customer.id, "PAYMENT_UPDATE", "Payment verification rejected", "The recorded payment could not be verified. Review your order and contact support.", payment.order.applicationId);
         if (customer.notificationPreference?.paymentEmail !== false) await queueEmail(tx, `payment-rejected:${id}`, customer.email, "Payment verification update — Apex Filings", emailHtml("Payment could not be verified", [`Order reference: ${payment.orderId}`, "Please review your order and contact support for the next step. No payment was confirmed."], { label: "View order", href: `${process.env.APP_ORIGIN ?? "http://localhost:3001"}/client/orders/${payment.orderId}` }));
-        if (process.env.ADMIN_NOTIFICATION_EMAIL) await queueEmail(tx, `payment-rejected:${id}:admin`, process.env.ADMIN_NOTIFICATION_EMAIL, "Payment problem requires attention — Apex Filings", emailHtml("Payment could not be verified", [`Order reference: ${payment.orderId}`, "The recorded manual payment was rejected by an Owner. Review the order and follow up with the customer in the secure dashboard."], { label: "Review payments", href: `${process.env.APP_ORIGIN ?? "http://localhost:3001"}/admin/payments` }));
+        if (process.env.ADMIN_NOTIFICATION_EMAIL) await queueAdminEmail(tx, "paymentEmail", `payment-rejected:${id}:admin`, process.env.ADMIN_NOTIFICATION_EMAIL, "Payment problem requires attention — Apex Filings", emailHtml("Payment could not be verified", [`Order reference: ${payment.orderId}`, "The recorded manual payment was rejected by an Owner. Review the order and follow up with the customer in the secure dashboard."], { label: "Review payments", href: `${process.env.APP_ORIGIN ?? "http://localhost:3001"}/admin/payments` }));
         await tx.auditLog.create({ data: { actorUserId: user.id, action: "MANUAL_PAYMENT_REJECTED", resourceType: "Payment", resourceId: id, safeMetadata: { reason: input.reason } } });
       });
       return json({ ok: true });
@@ -351,26 +352,29 @@ export async function POST(request: NextRequest, context: Params) {
 export async function PATCH(request: NextRequest, context: Params) {
   try {
     checkOrigin(request);
-    const user = await requireRole(request, "OWNER");
+    const user = await actor(request);
     const [resource, id] = (await context.params).segments;
+    const staffTicket = user.role==="STAFF" && resource==="support" && !!id;
+    if(user.role!=="OWNER" && !staffTicket) throw new ApiError(403,"Not authorized");
     if (resource === "support" && id) {
       const input = z.object({ status: z.enum(["OPEN", "IN_PROGRESS", "WAITING_FOR_CLIENT", "RESOLVED", "CLOSED", "REPLIED"]).optional(), assignedToId: z.string().trim().min(1).max(100).nullable().optional() }).refine((value) => value.status !== undefined || value.assignedToId !== undefined).parse(await body(request));
-      const existing = await db.supportTicket.findUnique({ where: { id }, include: { customer: { select: { id: true, email: true, fullName: true, notificationPreference: true } } } });
+      if(staffTicket && input.assignedToId!==undefined) throw new ApiError(403,"Only the Owner can change assignments.");
+      const existing = await db.supportTicket.findFirst({ where: { id,...(staffTicket?{assignedToId:user.id}:{}) }, include: { customer: { select: { id: true, email: true, fullName: true, notificationPreference: true } } } });
       if (!existing) throw new ApiError(404, "Support request not found");
-      if (input.assignedToId) {
-        const assignee = await db.user.findFirst({ where: { id: input.assignedToId, role: { in: ["OWNER", "STAFF"] }, status: "ACTIVE" }, select: { id: true } });
-        if (!assignee) throw new ApiError(400, "Choose an active Admin or staff member");
-      }
       const result = await db.$transaction(async (tx) => {
+        if(input.assignedToId) {
+          await tx.$queryRaw`SELECT id FROM "User" WHERE id=${input.assignedToId} FOR SHARE`;
+          if(!await tx.user.count({where:{id:input.assignedToId,role:{in:["OWNER","STAFF"]},status:"ACTIVE"}})) throw new ApiError(400,"Choose an active Admin or staff member");
+        }
         await tx.$queryRaw`SELECT "id" FROM "SupportTicket" WHERE "id" = ${id} FOR UPDATE`;
         const latest = await tx.supportTicket.findUnique({ where: { id }, select: { status: true, assignedToId: true } });
-        if (!latest) throw new ApiError(404, "Support request not found");
+        if (!latest || (staffTicket && latest.assignedToId!==user.id)) throw new ApiError(404, "Support request not found");
         const status = input.status ?? latest.status;
         const assigneeId = input.assignedToId === undefined ? latest.assignedToId : input.assignedToId;
         const changed = status !== latest.status;
         const assignmentChanged = assigneeId !== latest.assignedToId;
         const updated = await tx.supportTicket.update({ where: { id }, data: { status, assignedToId: assigneeId } });
-        if (assignmentChanged && assigneeId) await queueNotification(tx, "ticket-assigned:"+crypto.randomUUID(),assigneeId,"STAFF_ASSIGNMENT","Support ticket assigned",ticket.subject,id);
+        if (assignmentChanged && assigneeId) await queueNotification(tx, "ticket-assigned:"+crypto.randomUUID(),assigneeId,"STAFF_ASSIGNMENT","Support ticket assigned",existing.subject,id);
         if (changed || assignmentChanged) await tx.auditLog.create({ data: { actorUserId: user.id, action: changed ? "SUPPORT_STATUS_CHANGED" : "SUPPORT_ASSIGNED", resourceType: "SupportTicket", resourceId: id, safeMetadata: { fromStatus: latest.status, status, assignedToId: assigneeId } } });
         if (changed) {
           const label = status.replaceAll("_", " ").toLowerCase().replace(/\b\w/g, (letter) => letter.toUpperCase());
@@ -384,6 +388,11 @@ export async function PATCH(request: NextRequest, context: Params) {
       return json({ ticket: result });
     }
     if (resource === "documents" && id) return json(await updateCompanyDocument(user, id, await body(request)));
+    if(resource==="profile" && !id){
+      const {fullName}=z.object({fullName:z.string().trim().min(2).max(120)}).parse(await body(request));
+      await db.$transaction([db.user.update({where:{id:user.id},data:{fullName}}),db.auditLog.create({data:{actorUserId:user.id,action:"OWNER_PROFILE_UPDATED",resourceType:"User",resourceId:user.id}})]);
+      return json({saved:true});
+    }
     if (resource === "payment-instructions" && !id) {
       const input = z.object({ body: z.string().trim().max(3000) }).parse(await body(request));
       const result = await db.$transaction(async (tx) => {

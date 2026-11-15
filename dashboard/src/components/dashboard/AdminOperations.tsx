@@ -14,30 +14,29 @@ import { DataTable, PageHeader, Panel, PreviewNotice, StatCard, StatusBadge, typ
 import type { AdminClient, AdminDocument, AdminOrder, AdminPayment } from "@/lib/admin-models";
 
 export function AdminClients() {
-  const { applications, clients } = useAdminDemo();
-  const [statusFilter, setStatusFilter] = useState("All");
-  const [query, setQuery] = useState('');
-  const [lookup, setLookup] = useState<{query:string; clients:AdminClient[]} | null>(null);
-  const [searchError, setSearchError] = useState('');
-  useEffect(() => {
-    if (!query.trim()) return;
-    const controller = new AbortController();
-    const timer = setTimeout(() => { void fetch(`/api/v1/admin/clients?search=${encodeURIComponent(query.trim())}`, {cache:'no-store',signal:controller.signal})
-      .then(async response => {if(!response.ok)throw new Error('Client search failed. Please retry.');return response.json();})
-      .then(data => {if(!controller.signal.aborted){setLookup({query,clients:data.items.map((item:{id:string;clientReference:string|null;fullName:string;email:string;phone:string|null;createdAt:string;status:string;companies:{id:string}[]})=>({id:item.id,clientReference:item.clientReference,name:item.fullName,email:item.email,phone:item.phone??'—',registeredAt:item.createdAt.slice(0,10),status:item.status==='ACTIVE'?'Active':'On Hold',companyIds:item.companies.map(c=>c.id)}))});setSearchError('');}})
-      .catch(error => {if(!controller.signal.aborted)setSearchError(error.message);});
-    }, 250);
-    return () => { clearTimeout(timer); controller.abort(); };
-  }, [query]);
-  const source = lookup?.query === query ? [...new Map([...clients, ...lookup.clients].map(client => [client.id, client])).values()] : clients;
-  const rows = source.filter((client) => statusFilter === "All" || client.status === statusFilter);
-  const columns: TableColumn<AdminClient>[] = [
+  const [page,setPage]=useState(1),[total,setTotal]=useState(0);
+  const [statusFilter,setStatusFilter]=useState('All'),[query,setQuery]=useState('');
+  const [rows,setRows]=useState<(AdminClient & {activeApplications:number})[]>([]),[searchError,setSearchError]=useState('');
+  useEffect(()=>{
+    const controller=new AbortController();
+    const timer=setTimeout(()=>{
+      const params=new URLSearchParams({page:String(page),pageSize:'6',search:query,status:statusFilter==='All'?'':statusFilter==='Active'?'ACTIVE':'SUSPENDED'});
+      void fetch('/api/v1/admin/clients?'+params,{cache:'no-store',signal:controller.signal}).then(async r=>{
+        if(!r.ok)throw new Error('Could not load clients.');
+        const data=await r.json();if(controller.signal.aborted)return;
+        setTotal(data.total);setSearchError('');
+        setRows(data.items.map((u:{id:string;clientReference:string|null;fullName:string;email:string;phone:string|null;createdAt:string;status:string;companies:{id:string}[];activeApplications:number})=>({id:u.id,clientReference:u.clientReference,name:u.fullName,email:u.email,phone:u.phone??'—',registeredAt:u.createdAt.slice(0,10),status:u.status==='ACTIVE'?'Active':'On Hold',companyIds:u.companies.map(c=>c.id),activeApplications:u.activeApplications})));
+      }).catch(()=>{if(!controller.signal.aborted){setRows([]);setTotal(0);setSearchError('Could not load clients.');}});
+    },180);
+    return ()=>{controller.abort();clearTimeout(timer);};
+  },[query,page,statusFilter]);
+  const columns: TableColumn<AdminClient & {activeApplications:number}>[] = [
     { heading: "Client", render: (row) => <><AdminClientIdentity client={{ id: row.id, fullName: row.name, clientReference: row.clientReference }} /><small>{row.email}</small></> },
     { heading: "Phone", render: (row) => row.phone }, { heading: "Registered", render: (row) => row.registeredAt },
-    { heading: "Companies", render: (row) => row.companyIds.length }, { heading: "Active applications", render: (row) => applications.filter((app) => app.clientId === row.id && !["Completed", "Cancelled", "Refunded"].includes(app.status)).length }, { heading: "Status", render: (row) => <StatusBadge status={row.status} /> },
+    { heading: "Companies", render: (row) => row.companyIds.length }, { heading: "Active applications", render: (row) => row.activeApplications }, { heading: "Status", render: (row) => <StatusBadge status={row.status} /> },
     { heading: "Action", render: (row) => <Link className="table-link" href={`/admin/clients/${row.id}`}>View profile <ArrowRight size={14} /></Link> },
   ];
-  return <><PageHeader eyebrow="CUSTOMER MANAGEMENT" title="Clients" description="Search customer profiles, companies, and applications." /><Panel title="Client directory" subtitle={`${rows.length} matching clients`}><div className="admin-filters"><label>Account status<select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}><option>All</option><option>Active</option><option>On Hold</option></select></label></div>{searchError&&<p role="alert">{searchError}</p>}<DataTable rows={rows} columns={columns} queryPlaceholder="Search client reference, name, email, or phone..." searchText={query} onSearchChange={setQuery} searchMatcher={(row,term)=>/^[1-9][0-9]{8}$/.test(term.trim())?row.clientReference===term.trim():JSON.stringify(row).toLowerCase().includes(term.trim())} /></Panel><PreviewNotice>Customer records are restricted to authorized owner accounts.</PreviewNotice></>;
+  return <><PageHeader eyebrow="CUSTOMER MANAGEMENT" title="Clients" description="Search customer profiles, companies, and applications." /><Panel title="Client directory" subtitle={`${total} matching clients`}><div className="admin-filters"><label>Account status<select value={statusFilter} onChange={(event) => {setPage(1);setStatusFilter(event.target.value);}}><option>All</option><option>Active</option><option>On Hold</option></select></label></div>{searchError&&<p role="alert">{searchError}</p>}<DataTable rows={rows} columns={columns} queryPlaceholder="Search client reference, name, email, or phone..." searchText={query} pagination={{page,total,onPage:setPage}} onSearchChange={v=>{setPage(1);setQuery(v);}} searchMatcher={(row,term)=>/^[1-9][0-9]{8}$/.test(term.trim())?row.clientReference===term.trim():JSON.stringify(row).toLowerCase().includes(term.trim())} /></Panel><PreviewNotice>Customer records are restricted to authorized owner accounts.</PreviewNotice></>;
 }
 export function AdminClientDetail({ id }: { id: string }) {
   const { applications, orders, documents, clients, companies, setClientStatus } = useAdminDemo();

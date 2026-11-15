@@ -28,7 +28,7 @@ const sections = [
   {
     heading: 'Orders, Pricing, and Payments',
     paragraphs: [
-      'The Basic LLC Formation package costs $199 and the Premium All-In package costs $299, each plus applicable state filing fees. Apex Filings service fees are separate from government filing fees and any third-party charges. Review the displayed package details or written quote before proceeding.',
+      'Published LLC formation package prices appear on the Pricing page. Applicable state filing fees are additional. Apex Filings service fees are separate from government filing fees and any third-party charges. Review the displayed package details or written quote before proceeding.',
       'The fees for other services depend on the service, state or jurisdiction, selected options, and applicable external provider costs.',
     ],
   },

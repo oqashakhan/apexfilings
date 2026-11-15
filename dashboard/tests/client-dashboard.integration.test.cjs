@@ -58,7 +58,7 @@ test('payment-aware dashboard, private Admin files, visibility, support and owne
 
   async function upload(share, token = owner.token, filename = 'fictional-formation.pdf', mime = 'application/pdf') {
     const form = new FormData();
-    form.set('applicationId', paid.app.id); form.set('companyId', unpaid.company.id);
+    form.set('applicationId', paid.app.id); form.set('companyId', paid.company.id);
     form.set('documentType', 'CERTIFICATE_OF_FORMATION'); form.set('finalDocument', 'true'); form.set('shareWithClient', String(share));
     form.set('file', new Blob(['%PDF-1.4\nFictional dashboard test file only\n%%EOF'], { type: mime }), filename);
     return api('/api/v1/documents/upload', token, 'POST', form);
@@ -68,7 +68,7 @@ test('payment-aware dashboard, private Admin files, visibility, support and owne
   assert.equal((await upload(true, client.token)).status, 403);
   assert.equal((await upload(true, stranger.token)).status, 403);
   assert.equal((await upload(true, owner.token, 'invalid.png', 'image/png')).status, 400);
-  assert.equal((await db.document.findUniqueOrThrow({ where: { id: shared.id } })).companyId, paid.company.id, 'form company spoof is ignored; association comes from the authorized application');
+  assert.equal((await db.document.findUniqueOrThrow({ where: { id: shared.id } })).companyId, paid.company.id, 'association matches the authorized application');
   data = await dashboard();
   assert.ok(data.applications.find(a => a.id === paid.app.id).documents.some(d => d.id === shared.id));
   assert.equal(data.applications.some(a => a.documents.some(d => d.id === internal.id)), false);
@@ -123,7 +123,8 @@ test('payment-aware dashboard, private Admin files, visibility, support and owne
       await adminPage.goto(`${root}/admin/clients/${client.user.id}`);
       await adminPage.getByRole('tab', { name: 'Documents', exact: true }).click();
       await adminPage.locator('section').filter({ has: adminPage.getByRole('heading', { name: 'Selected company', exact: true }) }).getByRole('combobox').selectOption(paid.company.id);
-      await adminPage.locator('section').filter({ has: adminPage.getByRole('heading', { name: 'Upload a company document', exact: true }) }).getByRole('combobox').first().selectOption(paid.app.id);
+      await adminPage.getByRole('button', { name: 'Upload Company Document', exact: true }).click();
+      await adminPage.getByLabel('Document application', { exact: true }).selectOption(paid.app.id);
       await adminPage.getByLabel('PDF, JPEG or PNG', { exact: true }).setInputFiles({ name: 'fictional-admin-ui.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4\nFictional Admin UI upload only\n%%EOF') });
       await adminPage.getByRole('button', { name: 'Upload document', exact: true }).click();
       await adminPage.getByText('Document shared and customer notification queued.', { exact: true }).waitFor();

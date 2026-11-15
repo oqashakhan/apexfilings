@@ -1,6 +1,7 @@
 import "server-only";
 import { Resend } from "resend";
 import { db } from "@/server/db";
+import { mayDispatchBroadcast } from "./broadcasts";
 import { decryptOtpEmail } from "@/server/email-otp";
 import { resendSender } from "@/server/email-from";
 
@@ -28,6 +29,17 @@ export async function dispatchEmail(id: string): Promise<DispatchResult> {
   const claimed = await db.emailOutbox.updateMany({ where: { id, status: item.status, attempts: item.attempts }, data: { status: "SENDING", attempts: { increment: 1 }, leaseUntil: new Date(Date.now() + 2 * 60_000) } });
   if (!claimed.count) return "pending";
   try {
+    if (item.eventKey.startsWith("broadcast:")) {
+      if(!await mayDispatchBroadcast(id)) {
+        await db.emailOutbox.update({where:{id},data:{status:"FAILED",lastError:"Broadcast cancelled or recipient ineligible",leaseUntil:null}});
+        await db.broadcastRecipient.updateMany({where:{outboxId:id,broadcast:{cancelledAt:null}},data:{suppressedAt:new Date()}});
+        return "expired";
+      }
+      if(item.attempts>0 && Date.now()-item.createdAt.getTime()>=23*3600000) {
+        await db.emailOutbox.update({where:{id},data:{status:"FAILED",lastError:"Delivery acceptance requires review",leaseUntil:null}});
+        return "expired";
+      }
+    }
     const testBaseUrl = process.env.TEST_EMAIL_OUTBOX === "1" && /@(?:127\.0\.0\.1|localhost):\d+\/apex_dashboard_test(?:\?|$)/.test(process.env.DATABASE_URL ?? "") ? process.env.TEST_RESEND_BASE_URL : undefined;
     const resend = new Resend(apiKey, testBaseUrl ? { baseUrl: testBaseUrl } : undefined);
     const { data, error } = await resend.emails.send({ from, to: [item.toEmail], subject: item.subject, html: decryptOtpEmail(item.html) }, { idempotencyKey: item.eventKey, signal: AbortSignal.timeout(8_000) });

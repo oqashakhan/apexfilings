@@ -33,6 +33,8 @@ export function NotificationCenter({ role }: { role: "admin" | "client" }) {
   const [typeFilter, setTypeFilter] = useState("all");
   const [items, setItems] = useState<Notice[]>([]);
   const [unread, setUnread] = useState(0);
+  const [mailbox,setMailbox]=useState(false);
+  const [canSave,setCanSave]=useState(false);
   const [preferences, setPreferences] = useState(defaults);
   const [message, setMessage] = useState("");
   const visibleItems = items.filter((item) => typeFilter === "all" || item.type === typeFilter);
@@ -40,17 +42,22 @@ export function NotificationCenter({ role }: { role: "admin" | "client" }) {
   const load = useCallback(async () => {
     const [notices, settings] = await Promise.all([fetch(`${root}/notifications?filter=${filter}`, { cache: "no-store" }), fetch(`${root}/notification-preferences`, { cache: "no-store" })]);
     if (notices.ok) { const data = await notices.json(); setItems(data.notifications); setUnread(data.unreadCount); }
-    if (settings.ok) { const data = await settings.json(); setPreferences({ ...defaults, ...data.preferences }); }
+    if (settings.ok) { const data = await settings.json(); setMailbox(!!data.managesMailbox);setPreferences({ ...defaults, ...data.preferences });setCanSave(true); } else {setCanSave(false);setMessage("Could not load notification preferences.");}
   }, [root, filter]);
-  useEffect(() => { queueMicrotask(() => { void load(); }); }, [load]);
+  useEffect(() => { queueMicrotask(() => { void load().catch(()=>setMessage("Could not load notifications.")); }); }, [load]);
   async function mark(path: string, read = true) {
     const response = await fetch(`${root}/notifications/${path}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ read }) });
     if (response.ok) await load(); else setMessage("Could not update notifications.");
   }
   async function save(next: Preferences) {
-    setPreferences(next);
-    const response = await fetch(`${root}/notification-preferences`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(next) });
-    setMessage(response.ok ? "Preferences saved." : "Could not save preferences.");
+    if(!canSave)return;
+    setCanSave(false);
+    try{
+      const response=await fetch(root+"/notification-preferences",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify(next)});
+      if(!response.ok)throw new Error("Could not save preferences.");
+      setPreferences(next);setMessage("Preferences saved.");
+    }catch{setMessage("Could not save preferences.");}finally{setCanSave(true);}
+
   }
-  return <><PageHeader eyebrow="WORKSPACE INBOX" title="Notifications" description="Account, application, document, and payment updates." /><Panel title="Updates" subtitle={`${unread} unread`}><div className="admin-filters"><label>Show<select value={filter} onChange={(event) => setFilter(event.target.value)}><option value="all">All</option><option value="unread">Unread</option><option value="read">Read</option></select></label><label>Type<select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)}><option value="all">All types</option>{[...new Set(items.map((item) => item.type))].sort().map((type) => <option key={type} value={type}>{type.replaceAll("_", " ")}</option>)}</select></label><button className="button button-secondary" disabled={!unread} onClick={() => void mark("read-all")}>Mark all as read</button></div><div className="admin-stack">{visibleItems.map((item) => <div className={`admin-row admin-subcard ${item.readAt ? "is-read" : ""}`} key={item.id}><div className="admin-notice-copy"><Bell size={18} /><div><strong>{item.title}</strong><p>{item.message}</p><small>{new Date(item.createdAt).toLocaleString()}</small></div></div><div className="admin-inline-actions">{noticeHref(role, item) && <NotificationRecordLink type={item.type} className="table-link" href={noticeHref(role, item)!}>Open</NotificationRecordLink>}<button className="table-link" onClick={() => void mark(item.id, !Boolean(item.readAt))}>{item.readAt ? "Mark unread" : <><Check size={14} /> Mark read</>}</button></div></div>)}{!visibleItems.length && <p>No notifications match these filters.</p>}</div></Panel><Panel title="Email preferences" subtitle="Security messages remain enabled for your protection"><div className="admin-stack">{([['everyLoginEmail','Email me after every login'],['applicationEmail','Application updates'],['paymentEmail','Order and payment updates'],['documentEmail','Document updates'],['supportEmail','Support updates']] as const).map(([key, label]) => <label key={key} className="admin-subcard" style={{ display: "flex", gap: 12, alignItems: "center" }}><input type="checkbox" checked={preferences[key]} onChange={(event) => void save({ ...preferences, [key]: event.target.checked })} />{label}</label>)}</div>{message && <p role="status">{message}</p>}</Panel></>;
+  return <><PageHeader eyebrow="WORKSPACE INBOX" title="Notifications" description="Account, application, document, and payment updates." /><Panel title="Updates" subtitle={`${unread} unread`}><div className="admin-filters"><label>Show<select value={filter} onChange={(event) => setFilter(event.target.value)}><option value="all">All</option><option value="unread">Unread</option><option value="read">Read</option></select></label><label>Type<select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)}><option value="all">All types</option>{[...new Set(items.map((item) => item.type))].sort().map((type) => <option key={type} value={type}>{type.replaceAll("_", " ")}</option>)}</select></label><button className="button button-secondary" disabled={!unread} onClick={() => void mark("read-all")}>Mark all as read</button></div><div className="admin-stack">{visibleItems.map((item) => <div className={`admin-row admin-subcard ${item.readAt ? "is-read" : ""}`} key={item.id}><div className="admin-notice-copy"><Bell size={18} /><div><strong>{item.title}</strong><p>{item.message}</p><small>{new Date(item.createdAt).toLocaleString()}</small></div></div><div className="admin-inline-actions">{noticeHref(role, item) && <NotificationRecordLink type={item.type} className="table-link" href={noticeHref(role, item)!}>Open</NotificationRecordLink>}<button className="table-link" onClick={() => void mark(item.id, !Boolean(item.readAt))}>{item.readAt ? "Mark unread" : <><Check size={14} /> Mark read</>}</button></div></div>)}{!visibleItems.length && <p>No notifications match these filters.</p>}</div></Panel><Panel title="Email preferences" subtitle="Security messages remain enabled for your protection"><div className="admin-stack">{([['everyLoginEmail','Email me after every login'],['applicationEmail','Application updates'],['paymentEmail','Order and payment updates'],['documentEmail','Document updates'],['supportEmail','Support updates']] as const).filter(([key])=>role==='client'||mailbox||key==='everyLoginEmail').map(([key, label]) => <label key={key} className="admin-subcard" style={{ display: "flex", gap: 12, alignItems: "center" }}><input type="checkbox" disabled={!canSave} checked={preferences[key]} onChange={(event) => void save({ ...preferences, [key]: event.target.checked })} />{label}</label>)}</div>{message && <p role="status">{message}</p>}</Panel></>;
 }

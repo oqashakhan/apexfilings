@@ -17,7 +17,7 @@ function includesFeature(plan: PricingPlan, feature: string) {
 }
 
 export function PricingSection({ onSelectPlan, asPage = false }: PricingSectionProps) {
-  const { plans: PRICING_PLANS } = usePricingCatalog();
+  const { plans: PRICING_PLANS, loading, error, services } = usePricingCatalog();
   const basicFeatures = PRICING_PLANS.find(p => p.id === 'basic')?.features ?? [];
   const comparisonFeatures = Array.from(new Set(PRICING_PLANS.flatMap(p => p.features)));
   const Heading = asPage ? 'h1' : 'h2';
@@ -52,7 +52,7 @@ export function PricingSection({ onSelectPlan, asPage = false }: PricingSectionP
         <div aria-hidden="true" className="pointer-events-none absolute -bottom-32 -left-32 h-64 w-64 rounded-[4rem] border border-[#DEE4EA] rotate-[-22deg]" />
         <div aria-hidden="true" className="pointer-events-none absolute -bottom-40 -right-10 h-[30rem] w-52 rotate-[20deg] rounded-[5rem] border border-[#DEE4EA]" />
 
-        {!PRICING_PLANS.length && <p role="status">Approved package pricing is temporarily unavailable. Please contact us or retry shortly.</p>}<div className="relative mx-auto max-w-2xl text-center">
+        <div className="relative mx-auto max-w-2xl text-center">
           <span className="text-xs font-bold uppercase tracking-[0.18em] text-[#E54723]">Clear pricing, confident choices</span>
           <Heading id="pricing-title" className="mt-4 text-4xl font-bold tracking-tight text-[#191D2A] sm:text-5xl lg:text-[3.5rem]">
             {isUsLlc ? 'Choose Your US LLC Formation Package' : 'Explore UK Ltd Formation'}
@@ -201,6 +201,8 @@ export function PricingSection({ onSelectPlan, asPage = false }: PricingSectionP
           )}
         </div>
       </div>
+    {isUsLlc && !PRICING_PLANS.length && <p role="status" className="text-center">{loading ? 'Loading package pricing…' : error ? 'Pricing is temporarily unavailable.' : 'No packages are currently available.'}</p>}
+      {asPage && isUsLlc && services.length > 0 && <details className="mx-auto mt-6 max-w-5xl rounded-xl border p-5"><summary>Additional service prices</summary><p>Package inclusions apply first. Availability depends on your formation state.</p>{services.map(s=><p key={s.slug}>{s.name} · {s.priceCents === null ? 'Quote required' : new Intl.NumberFormat('en-US',{style:'currency',currency:s.currency}).format(s.priceCents/100)}{s.availableStateCodes?.length ? ' · '+s.availableStateCodes.join(', ') : ''}</p>)}</details>}
     </section>
   );
 }

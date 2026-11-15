@@ -230,7 +230,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ ac
         const claimed = await tx.emailChange.updateMany({ where: { id: change.id, usedAt: null, expiresAt: { gt: new Date() } }, data: { usedAt: new Date() } });
         if (!claimed.count) throw new ApiError(400, "Invalid or expired email change link");
         if (await tx.user.findUnique({ where: { emailNormalized: change.newEmailNormalized }, select: { id: true } })) throw new ApiError(409, "Email address is unavailable");
-        await tx.user.update({ where: { id: change.userId }, data: { email: change.newEmail, emailNormalized: change.newEmailNormalized, emailVerifiedAt: new Date() } });
+        await tx.user.update({ where: { id: change.userId }, data: { email: change.newEmail, emailNormalized: change.newEmailNormalized, marketingConsentAt:null, marketingEmailConsent:null, emailVerifiedAt: new Date() } });
         await tx.session.updateMany({ where: { userId: change.userId, revokedAt: null }, data: { revokedAt: new Date() } });
         await tx.auditLog.create({ data: { actorUserId: change.userId, action: "EMAIL_CHANGED", resourceType: "User", resourceId: change.userId } });
         await queueEmail(tx, `email-changed:${change.id}:old`, change.user.email, "Apex Filings email address changed", emailHtml("Email address changed", ["The email address on your account was changed. If this was not you, contact our team immediately."]));

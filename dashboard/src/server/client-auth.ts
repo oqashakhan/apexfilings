@@ -4,7 +4,7 @@ import type { NextRequest } from "next/server";
 import { db } from "@/server/db";
 import { ApiError, cookieName, json } from "@/server/http";
 import { hashPassword, hashToken, normalizeEmail, passwordStrong, randomToken } from "@/server/security";
-import { emailHtml, mailConfigured, queueEmail, queueNotification } from "@/server/mail";
+import { emailHtml, mailConfigured, queueAdminEmail, queueEmail, queueNotification } from "@/server/mail";
 import { issueEmailOtp, otpDeliveryAvailable } from "@/server/email-otp";
 import { dispatchEmail } from "@/server/email-dispatch";
 import { limitRegistration } from "@/server/email-rate-limit";
@@ -29,7 +29,7 @@ export async function registerClientSession(input: ClientRegistration, request: 
       const verification = await issueEmailOtp(tx, user.id, normalized);
       const owners = await tx.user.findMany({ where: { role: "OWNER", status: "ACTIVE" }, select: { id: true } });
       for (const owner of owners) await queueNotification(tx, `registration:${user.id}:${owner.id}`, owner.id, "NEW_REGISTRATION", "New client registered", `${input.fullName} created a client account.`, user.id);
-      if (process.env.ADMIN_NOTIFICATION_EMAIL) await queueEmail(tx, `registration:${user.id}:admin`, process.env.ADMIN_NOTIFICATION_EMAIL, "New client registration — Apex Filings", emailHtml("New client registration", ["A customer created an account and must verify their email before continuing.", `Client Reference Number: ${user.clientReference}`], { label: "View client", href: `${process.env.APP_ORIGIN ?? "http://localhost:3001"}/admin/clients/${user.id}` }));
+      if (process.env.ADMIN_NOTIFICATION_EMAIL) await queueAdminEmail(tx, "applicationEmail", `registration:${user.id}:admin`, process.env.ADMIN_NOTIFICATION_EMAIL, "New client registration — Apex Filings", emailHtml("New client registration", ["A customer created an account and must verify their email before continuing.", `Client Reference Number: ${user.clientReference}`], { label: "View client", href: `${process.env.APP_ORIGIN ?? "http://localhost:3001"}/admin/clients/${user.id}` }));
       return verification.outboxId;
     });
     let emailDeliveryStatus: "accepted" | "unconfirmed" = "unconfirmed";

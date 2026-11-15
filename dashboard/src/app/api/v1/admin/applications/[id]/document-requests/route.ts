@@ -33,7 +33,7 @@ export async function GET(req:NextRequest,ctx:Context) {
     return json({requests:rows.map(r=>{const file=latest(files,r.id);return {...r,fileId:file?.id,status:r.cancelledAt?"CANCELLED":file?.reviewStatus??"NOT_PROVIDED"};})});
   } catch(e){return handleError(e);}
 }
-const inputSchema=z.object({documentType:z.enum(["CNIC","PASSPORT","OWNER_ID","PROOF_OF_ADDRESS","BUSINESS_ADDRESS_PROOF","FORMATION_SUPPORTING_DOCUMENT","OTHER_SUPPORTING_DOCUMENT"]),ownerId:z.string().optional(),reason:z.string().trim().min(5).max(500),customTitle:z.string().trim().max(160).optional(),dueDate:z.iso.date().optional(),confirmReplacement:z.boolean().default(false)});
+const inputSchema=z.object({documentType:z.string().regex(/^[A-Z_]{3,60}$/),ownerId:z.string().optional(),reason:z.string().trim().min(5).max(500),customTitle:z.string().trim().max(160).optional(),dueDate:z.iso.date().optional(),confirmReplacement:z.boolean().default(false)});
 export async function POST(req:NextRequest,ctx:Context) {
   try {
     checkOrigin(req);const user=await actor(req),{id}=await ctx.params;
@@ -65,8 +65,11 @@ export async function PATCH(req:NextRequest,ctx:Context) {
     await db.$transaction(async tx=>{
       await tx.$queryRaw`SELECT id FROM "Application" WHERE id=${id} FOR UPDATE`;
       const app=await target(tx,user,id);
-      const changed=await tx.documentRequest.updateMany({where:{id:requestId,applicationId:id,cancelledAt:null,documents:{none:{}}},data:{cancelledAt:new Date()}});
-      if(!changed.count) throw new ApiError(409,"Only requests awaiting their first upload can be cancelled.");
+      const files=await tx.document.findMany({where:{applicationId:id},select:fileFields});
+      const file=latest(files,requestId);
+      if(file && file.reviewStatus!=="REPLACEMENT_REQUIRED") throw new ApiError(409,"Only outstanding upload or replacement requests can be cancelled.");
+      const changed=await tx.documentRequest.updateMany({where:{id:requestId,applicationId:id,cancelledAt:null},data:{cancelledAt:new Date()}});
+      if(!changed.count) throw new ApiError(409,"This request is no longer available.");
       await queueNotification(tx,"document-request-cancel:"+requestId,app.customerId,"DOCUMENT_REVIEW","Document request cancelled","This document is no longer requested.",id);
       await tx.auditLog.create({data:{actorUserId:user.id,action:"DOCUMENT_REQUEST_CANCELLED",resourceType:"DocumentRequest",resourceId:requestId,safeMetadata:{applicationId:id}}});
     });return json({cancelled:true});

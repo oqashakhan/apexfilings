@@ -36,7 +36,8 @@ test("additional service requests enforce ownership, persist once and notify bot
     if (users.length) {
       await db.session.deleteMany({ where: { userId: { in: users.map((item) => item.user.id) } } });
       await db.notification.deleteMany({ where: { userId: { in: users.map((item) => item.user.id) } } });
-      await db.user.deleteMany({ where: { id: { in: users.map((item) => item.user.id) } } });
+      // Retain fictional users and their permanent reference reservations.
+      // ClientReferenceHistory deliberately prevents deleting a referenced user.
     }
     if (createdIds.length) await db.emailOutbox.deleteMany({ where: { OR: createdIds.flatMap((id) => [{ eventKey: { startsWith: `service-request-new:${id}:` } }, { eventKey: { startsWith: `service-request-status:${id}:` } }]) } });
     await db.$disconnect();

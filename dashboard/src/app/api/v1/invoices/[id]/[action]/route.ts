@@ -8,7 +8,7 @@ import {ApiError,body,checkOrigin,json,handleError} from '@/server/http';
 type Params={params:Promise<{id:string;action:string}>};
 export const runtime='nodejs';
 export async function GET(request:NextRequest,{params}:Params){try{
- const {id,action}=await params;const {invoice}=await ownInvoice(request,id);
+ const {id,action}=await params;const {invoice}=await ownInvoice(request,id,action==="pdf");
  if(action!=='pdf')throw new ApiError(404,'Action not found');
  if(!invoice.snapshot||!['ISSUED','VOIDED'].includes(invoice.lifecycle))throw new ApiError(409,'Invoice requires Owner review and approved seller details before PDF issue');
  const creditId=request.nextUrl.searchParams.get('creditNoteId');const credit=creditId?invoice.creditNotes.find(c=>c.id===creditId):undefined;if(creditId&&!credit)throw new ApiError(404,'Credit note not found');

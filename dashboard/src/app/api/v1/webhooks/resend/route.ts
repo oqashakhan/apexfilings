@@ -20,6 +20,12 @@ export async function POST(request: NextRequest) {
   const providerId = event.data?.email_id;
   if (!providerId) return json({ ok: true });
   if (event.type === "email.delivered") await db.emailOutbox.updateMany({ where: { providerId }, data: { status: "DELIVERED", deliveredAt: new Date() } });
-  if (["email.bounced", "email.suppressed", "email.complained"].includes(event.type ?? "")) await db.emailOutbox.updateMany({ where: { providerId }, data: { status: "FAILED", lastError: `Resend reported ${event.type}` } });
+  if (["email.bounced", "email.suppressed", "email.complained"].includes(event.type ?? "")) await db.$transaction(async tx=>{
+    const mail=await tx.emailOutbox.findUnique({where:{providerId},select:{id:true,toEmail:true}});
+    if(!mail)return;
+    const reason="Resend reported "+event.type,email=mail.toEmail.trim().toLowerCase();
+    await tx.emailOutbox.update({where:{id:mail.id},data:{status:"FAILED",lastError:reason}});
+    await tx.broadcastSuppression.upsert({where:{email},create:{email,reason},update:{reason}});
+  });
   return json({ ok: true });
 }

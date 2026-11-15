@@ -30,7 +30,7 @@ test('approval requires an official HTTPS source, real date, owner attestation a
 test('Admin approval UI shows reference and requires deliberate verification',()=>{
  const state={...states.find(s=>s.code==='LA')!,active:false,filingFeeCents:null,verifiedAt:null,sourceReference:'Client reference'};
  const html=renderToStaticMarkup(<StateFeeApproval state={state} onSaved={async()=>{}}/>);
- for(const text of ['$100.00','Not approved for payment','Official source URL','Verification date','Verify and approve filing fee','Save inactive draft','Recurring fees'])assert.ok(html.includes(text),text);
+ for(const text of ['$100.00','Not approved for payment','Official source URL','Verification date','Verify and approve filing fee','Save inactive fee','Recurring fees'])assert.ok(html.includes(text),text);
  assert.ok(html.includes('disabled'));
 });
 

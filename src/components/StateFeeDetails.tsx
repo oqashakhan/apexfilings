@@ -10,12 +10,12 @@ export function StateFeeDetails({ state, className = '' }: StateFeeDetailsProps)
   const { states } = usePricingCatalog();
   const record = states.find(s => s.code === state.code);
   const approved = record?.active && record.verifiedAt;
-  const fee = approved ? record.filingFeeCents : record?.referenceFilingFeeCents;
+  const fee = approved ? record.filingFeeCents : null;
   return (
     <div className={`rounded-xl border border-[#EEE2DB] bg-[#FFF9F5] p-4 ${className}`}>
       <h4 className="text-xs font-bold uppercase tracking-[0.12em] text-[#171717]">{state.name} state information</h4>
       <dl className="mt-3 grid grid-cols-1 gap-x-4 gap-y-3 text-xs sm:grid-cols-2">
-        <div><dt className="text-slate-500">State filing fee</dt><dd className="mt-0.5 font-semibold text-[#171717]">{fee == null ? 'Pending verification' : `$${(fee / 100).toFixed(2)}${approved ? '' : ' reference only — pending approval'}`}</dd></div>
+        <div><dt className="text-slate-500">State filing fee</dt><dd className="mt-0.5 font-semibold text-[#171717]">{fee == null ? 'Fee confirmation pending' : `$${(fee / 100).toFixed(2)}`}</dd></div>
         <div><dt className="text-slate-500">Annual / biennial fee</dt><dd className="mt-0.5 font-semibold text-[#171717]">{record?.recurringFeeDescription ?? 'Not provided'}</dd></div>
         <div className="sm:col-span-2"><dt className="text-slate-500">Estimated online processing</dt><dd className="mt-0.5 font-semibold text-[#171717]">{record?.processingTime ?? 'Not listed'}</dd></div>
       </dl>
