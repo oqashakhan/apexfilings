@@ -3,6 +3,7 @@ import { requirePageRole } from "@/server/session";
 import { db } from "@/server/db";
 import { DocumentRequestEditor } from "@/components/dashboard/AdminDocumentRequestForm";
 import { StaffActions } from "@/components/dashboard/StaffActions";
+import { Messages } from "@/components/dashboard/Messages";
 import { AccountSecurity } from "@/components/dashboard/AccountSecurity";
 
 export default async function StaffPage({searchParams}:{searchParams:Promise<{page?:string;q?:string}>}) {
@@ -23,5 +24,5 @@ export default async function StaffPage({searchParams}:{searchParams:Promise<{pa
       {a.documents.map(d=><div key={d.id}><a href={"/api/v1/documents/"+d.id+"?view=1"}>{d.documentType.replaceAll("_"," ")}</a> · {d.reviewStatus.replaceAll("_"," ")}{d.reviewStatus==="UNDER_REVIEW"&&<StaffActions kind="review" id={d.id}/>}</div>)}</details>)}</section>
     <section><h2>Assigned tickets ({ticketCount})</h2>{tickets.map(t=><details key={t.id} className="admin-subcard"><summary>{t.subject} · {t.customer.fullName} #{t.customer.clientReference}</summary><p>{t.status.replaceAll("_"," ")} · {t.body}</p>{t.replies.map((r,i)=><p key={i}><strong>{r.author.fullName}</strong> {r.body}</p>)}<StaffActions kind="reply" id={t.id}/><StaffActions kind="status" id={t.id}/></details>)}</section>
     <nav>{page>1&&<Link href={{pathname:"/staff",query:{q,page:page-1}}}>Previous </Link>}{page*20<Math.max(appCount,ticketCount)&&<Link href={{pathname:"/staff",query:{q,page:page+1}}}>Next</Link>}</nav>
-    <section><h2>Assignment notifications</h2>{notices.map(n=><p key={n.id}>{n.title} · {n.message}</p>)}</section><AccountSecurity/></main>;
+    <section><h2>Assignment notifications</h2>{notices.map(n=><p key={n.id}>{n.title} · {n.message}</p>)}</section><Messages role="staff"/><AccountSecurity/></main>;
 }

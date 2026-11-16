@@ -10,6 +10,7 @@ type Preferences = { everyLoginEmail: boolean; applicationEmail: boolean; paymen
 const defaults: Preferences = { everyLoginEmail: false, applicationEmail: true, paymentEmail: true, documentEmail: true, supportEmail: true };
 export function noticeHref(role: "admin" | "client", item: Pick<Notice, "type" | "relatedEntity">) {
   if (!item.relatedEntity) return null;
+  if(item.type === "CHAT_MESSAGE") return `/${role}/messages?conversation=${encodeURIComponent(item.relatedEntity)}`;
   if (item.type === "COMPANY_DOCUMENT_READY") return role === "client" ? `/client/documents?document=${encodeURIComponent(item.relatedEntity)}` : "/admin/documents";
   if (item.type === 'INVOICE_UPDATE') return `/${role}/invoices/${encodeURIComponent(item.relatedEntity)}`;
   if (item.type === "SERVICE_REQUEST") return `/${role}/services`;

@@ -94,6 +94,9 @@ model User {
   serviceRequests ServiceRequest[]
   documents       Document[]    @relation("UploadedDocuments")
   notifications   Notification[]
+  chats ChatConversation[] @relation("ChatCustomer")
+  assignedChats ChatConversation[] @relation("ChatAssignee")
+  chatMessages ChatMessage[]
   supportTickets  SupportTicket[] @relation("SupportCustomer")
   assignedSupportTickets SupportTicket[] @relation("AssignedSupportTickets")
   supportReplies  SupportReply[]
@@ -279,6 +282,7 @@ model Company {
   owners                CompanyOwner[]
   applications          Application[]
   serviceRequests       ServiceRequest[]
+  chats                 ChatConversation[]
   supportTickets        SupportTicket[]
   documents             Document[]
   @@index([customerId, createdAt])
@@ -825,4 +829,35 @@ model BroadcastSuppression {
   email String @id
   reason String
   createdAt DateTime @default(now())
+}
+
+model ChatConversation {
+  id String @id @default(cuid())
+  customerId String
+  companyId String?
+  assignedToId String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  closedAt DateTime?
+  clientReadSeq BigInt @default(0)
+  teamReadSeq BigInt @default(0)
+  customer User @relation("ChatCustomer", fields:[customerId], references:[id], onDelete:Restrict)
+  company Company? @relation(fields:[companyId], references:[id], onDelete:Restrict)
+  assignedTo User? @relation("ChatAssignee", fields:[assignedToId], references:[id], onDelete:SetNull)
+  messages ChatMessage[]
+  @@index([customerId, updatedAt])
+  @@index([assignedToId, updatedAt])
+}
+
+model ChatMessage {
+  seq BigInt @id @default(autoincrement())
+  conversationId String
+  authorId String
+  clientKey String @unique
+  body String
+  createdAt DateTime @default(now())
+  conversation ChatConversation @relation(fields:[conversationId], references:[id], onDelete:Restrict)
+  author User @relation(fields:[authorId], references:[id], onDelete:Restrict)
+  @@index([conversationId, seq])
+  @@index([authorId, createdAt])
 }

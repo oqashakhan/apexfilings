@@ -1,6 +1,7 @@
 "use client";
 import { CustomerResponses } from "./CustomerResponses";
 import { StaffManagement } from "./StaffManagement";
+import { Messages } from "./Messages";
 import { AdminActivity } from "./AdminActivity";
 import { BroadcastPreview } from "./BroadcastPreview";
 import {InvoiceCenter} from "./InvoiceCenter";
@@ -34,6 +35,7 @@ export function AdminView({ section, detailId, oauthError }: { section: string; 
   else switch (section) {
     case "responses":content=<CustomerResponses/>;break;
     case "staff": content=<StaffManagement/>;break;
+    case "messages": content = <Messages role="admin"/>; break;
     case "activity": content = <AdminActivity />; break;
     case "email-broadcasts": content = <BroadcastPreview />; break;
     case "dashboard": content = <AdminOverview />; break;

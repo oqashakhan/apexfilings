@@ -1,4 +1,5 @@
 "use client";
+import { Messages } from "./Messages";
 import {InvoiceCenter} from "./InvoiceCenter";
 /* eslint-disable @next/next/no-html-link-for-pages -- Google OAuth requires a full browser redirect. */
 
@@ -83,6 +84,7 @@ function Content({ section, detailId }: { section: string; detailId?: string }) 
   if (section === "notifications") return <NotificationCenter role="client" />;
   if (section === "profile") return <><PageHeader title="Profile" description="Your account information." /><Panel title="Personal information"><ClientReference value={data.user?.clientReference} /><div className="detail-list"><div><span>Full name</span><strong>{data.user?.fullName}</strong></div><div><span>Email</span><strong>{data.user?.email}</strong></div><div><span>Phone</span><strong>{data.user?.phone ?? "Not provided"}</strong></div><div><span>Country</span><strong>{data.user?.country ?? "Not provided"}</strong></div></div><a className="button button-secondary client-inline-button" href="/api/v1/auth/google?link=1">Link a Google account</a></Panel></>;
   if (section === "support") return <><ClientReference value={data.user?.clientReference} /><SupportCenter key={data.companyId} role="client" selectedCompanyId={data.companyId} /></>;
+  if (section === "messages") return <Messages role="client" companies={companies}/>;
   if (section === "settings") return <><PageHeader title="Settings" description="Manage your account and dashboard preferences." /><Panel title="Appearance"><div className="client-choice-row">{(["light", "dark"] as const).map((option) => <button key={option} className={`button ${theme === option ? "button-primary" : "button-secondary"}`} onClick={() => { document.documentElement.dataset.dashboardTheme = option; localStorage.setItem("apex-dashboard-theme", option); setTheme(option); }}>{option === "light" ? "Light" : "Dark"}</button>)}</div></Panel><Panel title="Connected accounts"><a className="button button-secondary client-inline-button" href="/api/v1/auth/google?link=1">Link a Google account</a></Panel><Panel title="Account security"><EmailVerificationEnrollment /><AccountSecurity /></Panel><MarketingPreference/></>;
   return <PageHeader title="Page not found" description="Choose a page from the navigation." />;
 }

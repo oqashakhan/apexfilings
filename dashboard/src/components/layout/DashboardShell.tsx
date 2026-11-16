@@ -34,10 +34,12 @@ const adminNav: NavItem[] = [
   { label: "Notifications", slug: "notifications", icon: Bell },
   { label: "Email Broadcasts", slug: "email-broadcasts", icon: MailCheck },
   { label: "Email Delivery", slug: "email-delivery", icon: MailCheck },
+  { label: "Messages", slug: "messages", icon: MailCheck },
   { label: "Support", slug: "support", icon: Headphones },
   { label: "Settings", slug: "settings", icon: Settings },
 ];
 const clientNav: NavItem[] = [
+  { label: "Messages", slug: "messages", icon: MailCheck },
   { label: "Dashboard", slug: "dashboard", icon: LayoutDashboard },
   { label: "My Companies", slug: "companies", icon: Building2 },
   { label: "My Applications", slug: "applications", icon: FileCheck2 },
@@ -169,7 +171,7 @@ export function DashboardShell({ role, title, children }: { role: PreviewRole; t
           const active = pathname === href || (pathname.startsWith(href + "/") && item.slug !== "dashboard");
           const adminGroup = role === "admin" ? ({ 0: "Overview", 1: "Operations", 6: "Management", 11: "Account" } as Record<number, string>)[index] : undefined;
           const clientGroup = role === "client" ? ({ 0: "Workspace", 5: "Services", 8: "Account" } as Record<number, string>)[index] : undefined;
-          return <Fragment key={item.slug}>{(adminGroup || clientGroup) && <span className="sidebar-group-heading">{adminGroup || clientGroup}</span>}<Link href={href} className={"nav-item" + (active ? " active" : "")} onClick={() => { setDrawerOpen(false); setOpenMenu(null); }} title={collapsed ? item.label : undefined} aria-label={collapsed ? item.label : undefined} aria-current={active ? "page" : undefined}><Icon size={18} strokeWidth={1.8} /><span>{item.label}</span></Link></Fragment>;
+          return <Fragment key={item.slug}>{(adminGroup || clientGroup) && <span className="sidebar-group-heading">{adminGroup || clientGroup}</span>}<Link href={href} className={"nav-item" + (active ? " active" : "")} onClick={() => { setDrawerOpen(false); setOpenMenu(null); }} title={collapsed ? item.label : undefined} aria-label={collapsed ? item.label : undefined} aria-current={active ? "page" : undefined}><Icon size={18} strokeWidth={1.8} /><span>{item.label}{item.slug === "messages" && notifications.filter(n=>n.type==="CHAT_MESSAGE"&&!n.readAt).length > 0 ? ` (${notifications.filter(n=>n.type==="CHAT_MESSAGE"&&!n.readAt).length})` : ""}</span></Link></Fragment>;
         })}
       </nav>
       <div className="sidebar-bottom">
