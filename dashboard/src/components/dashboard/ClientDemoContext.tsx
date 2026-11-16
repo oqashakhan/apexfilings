@@ -8,7 +8,7 @@ export type ClientRecord = {
   accountManager: string | null;
   paymentEvents: { id: string; date: string; status: string }[];
   draftQuote: import("@/lib/pricing").QuoteSnapshot | null;
-  id: string; companyId: string; company: { id: string; name: string; state: string; owners: { id: string; fullName: string }[] };
+  id: string; reference?: string; companyId: string; company: { id: string; name: string; state: string; owners: { id: string; fullName: string }[] };
   packageName: string; packageSlug: string; status: string; statusCode: string; updatedAt: string; submittedAt: string | null;
   history: { id: string; status: string; reason: string | null; date: string }[];
   responses: { id: string; requestEventId: string; body: string; createdAt: string }[];

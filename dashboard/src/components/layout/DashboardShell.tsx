@@ -22,20 +22,20 @@ const adminNav: NavItem[] = [
   { label: "Dashboard", slug: "dashboard", icon: LayoutDashboard },
   { label: "Applications", slug: "applications", icon: FileClock },
   { label: "Clients", slug: "clients", icon: Users },
-  { label:"Customer Responses",slug:"responses",icon:MailCheck },
-  { label: "Staff Management", slug:"staff", icon:Users },
-  { label: "Activity Log", slug: "activity", icon: History },
   { label: "Orders", slug: "orders", icon: Package },
   { label: "Invoices", slug: "invoices", icon: FileText },
   { label: "Documents", slug: "documents", icon: FolderOpen },
   { label: "Payments", slug: "payments", icon: Wallet },
   { label: "Services & Pricing", slug: "services", icon: BriefcaseBusiness },
+  { label: "Staff Management", slug:"staff", icon:Users },
+  { label: "Activity Log", slug: "activity", icon: History },
   { label: "Website Content", slug: "website-content", icon: PanelsTopLeft },
-  { label: "Notifications", slug: "notifications", icon: Bell },
-  { label: "Email Broadcasts", slug: "email-broadcasts", icon: MailCheck },
-  { label: "Email Delivery", slug: "email-delivery", icon: MailCheck },
+  { label:"Customer Responses",slug:"responses",icon:MailCheck },
   { label: "Messages", slug: "messages", icon: MailCheck },
   { label: "Support", slug: "support", icon: Headphones },
+  { label: "Email Broadcasts", slug: "email-broadcasts", icon: MailCheck },
+  { label: "Email Delivery", slug: "email-delivery", icon: MailCheck },
+  { label: "Notifications", slug: "notifications", icon: Bell },
   { label: "Settings", slug: "settings", icon: Settings },
 ];
 const clientNav: NavItem[] = [
@@ -169,7 +169,7 @@ export function DashboardShell({ role, title, children }: { role: PreviewRole; t
           const Icon = item.icon;
           const href = "/" + role + "/" + item.slug;
           const active = pathname === href || (pathname.startsWith(href + "/") && item.slug !== "dashboard");
-          const adminGroup = role === "admin" ? ({ 0: "Overview", 1: "Operations", 6: "Management", 11: "Account" } as Record<number, string>)[index] : undefined;
+          const adminGroup = role === "admin" ? ({ dashboard: "Dashboard", applications: "Operations", services: "Management", responses: "Communications", notifications: "Account" } as Record<string, string>)[item.slug] : undefined;
           const clientGroup = role === "client" ? ({ 0: "Workspace", 5: "Services", 8: "Account" } as Record<number, string>)[index] : undefined;
           return <Fragment key={item.slug}>{(adminGroup || clientGroup) && <span className="sidebar-group-heading">{adminGroup || clientGroup}</span>}<Link href={href} className={"nav-item" + (active ? " active" : "")} onClick={() => { setDrawerOpen(false); setOpenMenu(null); }} title={collapsed ? item.label : undefined} aria-label={collapsed ? item.label : undefined} aria-current={active ? "page" : undefined}><Icon size={18} strokeWidth={1.8} /><span>{item.label}{item.slug === "messages" && notifications.filter(n=>n.type==="CHAT_MESSAGE"&&!n.readAt).length > 0 ? ` (${notifications.filter(n=>n.type==="CHAT_MESSAGE"&&!n.readAt).length})` : ""}</span></Link></Fragment>;
         })}

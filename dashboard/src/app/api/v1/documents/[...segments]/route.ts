@@ -109,7 +109,7 @@ export async function POST(request: NextRequest, context: Params) {
       if (!finalDocument && user.role === "CLIENT") {
         const owners = await tx.user.findMany({ where: { role: "OWNER", status: "ACTIVE" }, select: { id: true } });
         for (const owner of owners) await queueNotification(tx, `document-upload:${document.id}:${owner.id}`, owner.id, "DOCUMENT_UPLOADED", "Customer document uploaded", `A document was uploaded for ${application.company.preferredName}.`, applicationId);
-        if (process.env.ADMIN_NOTIFICATION_EMAIL) await queueAdminEmail(tx, "documentEmail", `document-upload:${document.id}:admin`, process.env.ADMIN_NOTIFICATION_EMAIL, "Customer document uploaded — Apex Filings", emailHtml("Document needs review", [`Company: ${application.company.preferredName}`, `Application reference: ${applicationId}`, "Open the secure dashboard to review. Private documents are never attached to email."], { label: "Review documents", href: `${process.env.APP_ORIGIN ?? "http://localhost:3001"}/admin/applications/${applicationId}` }));
+        if (process.env.ADMIN_NOTIFICATION_EMAIL) await queueAdminEmail(tx, "documentEmail", `document-upload:${document.id}:admin`, process.env.ADMIN_NOTIFICATION_EMAIL, "Customer document uploaded — Apex Filings", emailHtml("Document needs review", [`Company: ${application.company.preferredName}`, `Application reference: ${application.reference}`, "Open the secure dashboard to review. Private documents are never attached to email."], { label: "Review documents", href: `${process.env.APP_ORIGIN ?? "http://localhost:3001"}/admin/applications/${applicationId}` }));
       }
       return { document, duplicate: false, publication };
     });

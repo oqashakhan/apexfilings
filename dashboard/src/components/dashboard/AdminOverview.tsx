@@ -27,7 +27,7 @@ export function AdminOverview() {
   ];
   const recent = [...applications].filter((item) => item.submittedAt).sort((a, b) => (b.submittedAt ?? "").localeCompare(a.submittedAt ?? "")).slice(0, 5);
   const columns: TableColumn<AdminApplication>[] = [
-    { heading: "Application ID", render: (item) => <strong>{item.id}</strong> },
+    { heading: "Application reference", render: (item) => <strong>{item.reference ?? "Reference pending"}</strong> },
     { heading: "Customer", render: (item) => <AdminClientIdentity client={item.customer} /> },
     { heading: "Company", render: (item) => companyName(item.companyId) },
     { heading: "State", render: (item) => item.state },

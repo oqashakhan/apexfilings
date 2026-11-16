@@ -9,7 +9,7 @@ export type AdminClient = { id: string; clientReference: string | null; name: st
 export type AdminCompany = { id: string; name: string; state: string; clientId: string; type: "US LLC" };
 export type AdminApplication = {
   customer?: AdminCustomer;
-  id: string; clientId: string; companyId: string; preferredName: string; alternatives: string[];
+  id: string; reference?: string; clientId: string; companyId: string; preferredName: string; alternatives: string[];
   state: string; packageName: string;
   businessActivity: string; description: string; addressRequirement: string; management: string;
   owners: AdminOwner[]; additionalServices: string[]; status: ApplicationStatus;

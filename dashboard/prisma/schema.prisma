@@ -397,6 +397,7 @@ model ServiceDocumentRequirement {
 
 model Application {
   id                    String            @id @default(cuid())
+  reference             String            @unique @default(dbgenerated("apex_next_application_reference()"))
   companyId             String
   customerId            String
   serviceId             String

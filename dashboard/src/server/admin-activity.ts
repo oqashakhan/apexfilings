@@ -28,7 +28,7 @@ export async function adminActivities(params: URLSearchParams) {
   if (input.search) {
     // Escape LIKE metacharacters: a literal '%' must never become a wildcard search.
     const search = `%${input.search.replace(/[\\%_]/g, c => `\\${c}`)}%`;
-    conditions.push(Prisma.sql`concat_ws(' ', COALESCE(actor."fullName",'System / unrecorded actor'), COALESCE(labels.label,'recorded an administrative action'), customer."fullName", customer."clientReference", company."preferredName", app.id, a."resourceId", ticket.subject, invoice.number, service.name, package.name, state.state) ILIKE ${search}`);
+    conditions.push(Prisma.sql`concat_ws(' ', COALESCE(actor."fullName",'System / unrecorded actor'), COALESCE(labels.label,'recorded an administrative action'), customer."fullName", customer."clientReference", company."preferredName", app.id, app.reference, a."resourceId", ticket.subject, invoice.number, service.name, package.name, state.state) ILIKE ${search}`);
   }
   const source = Prisma.sql`
     WITH labels(action,category,label) AS (VALUES ${Prisma.join(Object.entries(activityActions).map(([action, [category, label]]) => Prisma.sql`(${action},${category},${label})`))})

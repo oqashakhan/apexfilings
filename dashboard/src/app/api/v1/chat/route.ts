@@ -14,6 +14,12 @@ async function userFor(request: NextRequest) {
   return user;
 }
 const serialize = (value: unknown) => JSON.parse(JSON.stringify(value, (_, v) => typeof v === "bigint" ? v.toString() : v));
+function chatError(error: unknown) {
+  if (error instanceof Prisma.PrismaClientKnownRequestError && ["P2021", "P2022"].includes(error.code)) {
+    return json({ error: "Messages are temporarily unavailable. Please contact support." }, 503);
+  }
+  return handleError(error);
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -21,7 +27,10 @@ export async function GET(request: NextRequest) {
     const params = request.nextUrl.searchParams;
     const id = params.get("id");
     if (id) {
-      const chat = await db.chatConversation.findFirst({ where: { id, ...access(user) } });
+      const chat = await db.chatConversation.findFirst({ where: { id, ...access(user) }, include: {
+        customer: { select: { fullName: true, clientReference: true } },
+        company: { select: { preferredName: true } },
+      } });
       if (!chat) throw new ApiError(404, "Conversation not found");
       const after = params.get("after"), before = params.get("before");
       if ((after && !/^\d{1,18}$/.test(after)) || (before && !/^\d{1,18}$/.test(before)) || (after && before)) throw new ApiError(400, "Invalid message cursor");
@@ -32,7 +41,8 @@ export async function GET(request: NextRequest) {
       });
       const hasMore = messages.length > 50;
       const page = messages.slice(0, 50);
-      return json(serialize({ messages: after ? page : page.reverse(), hasMore, userId: user.id }));
+      return json(serialize({ messages: after ? page : page.reverse(), hasMore, userId: user.id,
+        chat: { id: chat.id, customer: chat.customer, company: chat.company, assignedToId: chat.assignedToId, closedAt: chat.closedAt } }));
     }
     const search = params.get("search")?.trim().slice(0, 100) ?? "";
     const page = z.coerce.number().int().min(1).max(10000).parse(params.get("page") ?? "1");
@@ -51,7 +61,7 @@ export async function GET(request: NextRequest) {
     const counts = await Promise.all(chats.map(chat => db.chatMessage.count({ where: { conversationId: chat.id, seq: { gt: user.role === "CLIENT" ? chat.clientReadSeq : chat.teamReadSeq }, author: { role: user.role === "CLIENT" ? { in: ["OWNER", "STAFF"] } : "CLIENT" } } })));
     const staff = user.role === "OWNER" ? await db.user.findMany({ where: { role: "STAFF", status: "ACTIVE" }, select: { id: true, fullName: true }, orderBy: { fullName: "asc" } }) : [];
     return json(serialize({ chats: chats.map((c, i) => ({ id: c.id, customer: c.customer, company: c.company, assignedToId: c.assignedToId, assignedTo: c.assignedTo, closedAt: c.closedAt, lastMessage: c.messages[0]?.body ?? "", unread: counts[i] })), staff, page, hasMore }));
-  } catch (error) { return handleError(error); }
+  } catch (error) { return chatError(error); }
 }
 
 export async function POST(request: NextRequest) {
@@ -83,7 +93,7 @@ export async function POST(request: NextRequest) {
         const old = await tx.chatMessage.findUnique({ where: { clientKey: key } });
         if (old) {
           if (old.conversationId !== chat.id || old.body !== input.message) throw new ApiError(409, "Retry key already used");
-          return { sent: true };
+          return { sent: true, message: { seq: old.seq.toString(), body: old.body, createdAt: old.createdAt, authorId: user.id, author: { role: user.role, fullName: user.fullName } } };
         }
         await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${"chat-rate:" + user.id}))`;
         if (await tx.chatMessage.count({ where: { authorId: user.id, createdAt: { gt: new Date(Date.now() - 60000) } } }) >= 30) throw new ApiError(429, "Please wait before sending another message");
@@ -92,7 +102,7 @@ export async function POST(request: NextRequest) {
         await tx.chatConversation.update({ where: { id: chat.id }, data: { updatedAt: new Date() } });
         const recipients = user.role === "CLIENT" ? await tx.user.findMany({ where: { status: "ACTIVE", OR: [{ role: "OWNER" }, ...(chat.assignedToId ? [{ id: chat.assignedToId, role: "STAFF" as const }] : [])] }, select: { id: true } }) : [{ id: chat.customerId }];
         for (const recipient of recipients) await queueNotification(tx, `chat:${message.seq}:${recipient.id}`, recipient.id, "CHAT_MESSAGE", "New message", "You have a new support message.", chat.id);
-        return { sent: true };
+        return { sent: true, message: { seq: message.seq.toString(), body: message.body, createdAt: message.createdAt, authorId: user.id, author: { role: user.role, fullName: user.fullName } } };
       }
       if (input.action === "read") {
         const through = BigInt(input.through);
@@ -122,5 +132,5 @@ export async function POST(request: NextRequest) {
       return { saved: true };
     });
     return json(result);
-  } catch (error) { return handleError(error); }
+  } catch (error) { return chatError(error); }
 }

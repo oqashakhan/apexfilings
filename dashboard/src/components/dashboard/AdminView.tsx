@@ -20,7 +20,7 @@ import { EmailDeliveryView } from "@/components/dashboard/EmailDeliveryView";
 import { SupportCenter } from "@/components/dashboard/SupportCenter";
 import { AdminClientWorkspace } from "@/components/dashboard/AdminClientWorkspace";
 
-const titles: Record<string, string> = {
+const titles: Record<string, string> = { messages: "Messages",
   responses:"Customer responses", staff:"Staff management", activity: "Activity Log", "email-broadcasts": "Email Broadcasts", invoices:"Invoices", dashboard: "Dashboard", applications: "Applications", clients: "Clients", orders: "Orders",
   documents: "Documents", payments: "Payments", services: "Services & Pricing",
   "website-content": "Website Content", notifications: "Notifications", "email-delivery": "Email Delivery", support: "Support", settings: "Settings",

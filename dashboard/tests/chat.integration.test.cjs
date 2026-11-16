@@ -18,16 +18,24 @@ async function call(user,method='GET',value,query=''){
 }
 test('chat ownership, assignment, retries, incremental delivery and read counts',async()=>{
  const client=await person('CLIENT'),other=await person('CLIENT'),owner=await person('OWNER'),staff=await person('STAFF');
+ const company=await db.company.create({data:{customerId:client.id,preferredName:'Chat fixture LLC',formationState:'Florida',businessActivity:'Test',businessDescription:'Isolated chat fixture'}});
+ assert.equal((await call(other,'POST',{action:'start',companyId:company.id})).status,404);
+ const companyStarts=await Promise.all([call(client,'POST',{action:'start',companyId:company.id}),call(client,'POST',{action:'start',companyId:company.id})]);
+ assert.equal(companyStarts[0].status,200);assert.equal(companyStarts[0].data.id,companyStarts[1].data.id);
+ const companyView=await call(client,'GET',null,'?id='+companyStarts[0].data.id);assert.equal(companyView.data.chat.company.preferredName,'Chat fixture LLC');
  const started=await call(client,'POST',{action:'start',companyId:null});assert.equal(started.status,200);
+ const retryStart=await call(client,'POST',{action:'start',companyId:null});assert.equal(retryStart.data.id,started.data.id);
  const id=started.data.id,key=randomUUID(),message={action:'send',id,key,message:'Hello support'};
- assert.equal((await call(client,'POST',message)).status,200);
- assert.equal((await call(client,'POST',message)).status,200);
+ const sent=await call(client,'POST',message);assert.equal(sent.status,200);
+ assert.equal(sent.data.message.body,'Hello support');
+ const retry=await call(client,'POST',message);assert.equal(retry.status,200);assert.equal(retry.data.message.seq,sent.data.message.seq);
  assert.equal(await db.chatMessage.count({where:{conversationId:id}}),1);
  assert.equal((await call(other,'GET',null,'?id='+id)).status,404);
  assert.equal((await call(staff,'GET',null,'?id='+id)).status,404);
  assert.equal((await call(owner)).data.chats.find(c=>c.id===id).unread,1);
  assert.equal((await call(owner,'POST',{action:'assign',id,staffId:staff.id})).status,200);
  const first=await call(staff,'GET',null,'?id='+id);assert.equal(first.data.messages.length,1);
+ assert.equal(first.data.chat.assignedToId,staff.id);
  const seq=first.data.messages[0].seq;
  assert.equal((await call(staff,'POST',{action:'read',id,through:seq})).status,200);
  assert.equal((await call(staff)).data.chats.find(c=>c.id===id).unread,0);
@@ -52,7 +60,7 @@ test('chat ownership, assignment, retries, incremental delivery and read counts'
  const page1=await call(owner,'GET',null,'?search='+encodeURIComponent(label)+'&page=1');
  const page2=await call(owner,'GET',null,'?search='+encodeURIComponent(label)+'&page=2');
  assert.equal(page1.data.chats.length,25);assert.equal(page1.data.hasMore,true);
- assert.equal(page2.data.chats.length,7);assert.equal(page2.data.hasMore,false);
+ assert.equal(page2.data.chats.length,8);assert.equal(page2.data.hasMore,false);
  assert.equal(page1.data.chats.some(c=>page2.data.chats.some(d=>d.id===c.id)),false);
  const unreadOnly=await call(owner,'GET',null,'?search='+encodeURIComponent(label)+'&unread=true');
  assert.equal(unreadOnly.data.chats.length,1);
@@ -70,14 +78,27 @@ test('mobile client and desktop admin exchange messages through the UI',{skip:!p
  }
  const c=await pageFor(client,{width:390,height:844}),a=await pageFor(owner,{width:1440,height:900});
  await c.goto(root+'/client/messages');await c.getByRole('button',{name:'Start conversation'}).click();
+ await c.locator('.topbar-crumb').getByText('Messages',{exact:true}).waitFor();
  await c.getByLabel('Message',{exact:true}).fill('Browser message');
  await c.getByRole('button',{name:'Send',exact:true}).click();
  await c.getByText('Browser message',{exact:true}).waitFor();
  await a.goto(root+'/admin/messages');
+ await a.locator('.topbar-crumb').getByText('Messages',{exact:true}).waitFor();
  await a.getByText('Browser message',{exact:true}).first().click();
  await a.getByLabel('Message',{exact:true}).fill('Browser reply');
  await a.getByRole('button',{name:'Send',exact:true}).click();
  await c.getByRole('paragraph').filter({hasText:'Browser reply'}).waitFor({timeout:20000});
  await c.reload();await c.getByRole('button',{name:/Apex Filings Support/}).first().click();
+ await c.getByRole('paragraph').filter({hasText:'Browser reply'}).waitFor();
+ const password='ChatTestPassword123!';
+ const user=await db.user.update({where:{id:client.id},data:{passwordHash:await require('argon2').hash(password)},select:{email:true}});
+ const login=await c.evaluate(async ({email,password})=>{
+   await fetch('/api/v1/auth/logout',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});
+   const response=await fetch('/api/v1/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password})});
+   return response.status;
+ },{email:user.email,password});
+ assert.equal(login,200);
+ await c.goto(root+'/client/messages');
+ await c.getByRole('button',{name:/Apex Filings Support/}).first().click();
  await c.getByRole('paragraph').filter({hasText:'Browser reply'}).waitFor();
 });

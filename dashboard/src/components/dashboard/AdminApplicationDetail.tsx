@@ -52,8 +52,8 @@ export function AdminApplicationDetail({ id }: { id: string }) {
     finally { setNoteBusy(false); }
   }
   return <>
-    <div className="backline"><Link href="/admin/applications">← Applications</Link><span>/</span><span>{id}</span></div>
-    <PageHeader eyebrow="APPLICATION REVIEW" title={company?.name ?? item.preferredName} description={`${id} · ${client?.name ?? "Unknown client"} · ${item.submittedAt ?? "Draft"}`} />
+    <div className="backline"><Link href="/admin/applications">← Applications</Link><span>/</span><span>{item.reference ?? "Reference pending"}</span></div>
+    <PageHeader eyebrow="APPLICATION REVIEW" title={company?.name ?? item.preferredName} description={`${item.reference ?? "Reference pending"} · ${client?.name ?? "Unknown client"} · ${item.submittedAt ?? "Draft"}`} />
     <ClientReference value={client?.clientReference} /><div className="detail-banner"><div><span className="eyebrow">CURRENT STATUS</span><StatusBadge status={item.status} /></div><div><span className="eyebrow">FORMATION STATE</span><strong>{item.state}</strong></div><div><span className="eyebrow">PACKAGE</span><strong>{item.packageName}</strong></div><div><span className="eyebrow">PAYMENT</span><StatusBadge status={order?.paymentStatus ?? "Pending"} /></div></div>
     <StaffManagement applicationId={id}/>
     <div className="two-grid application-review-grid">
