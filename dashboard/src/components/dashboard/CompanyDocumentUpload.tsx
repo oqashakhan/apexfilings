@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 type Props = {
   clientId: string; clientName: string; companyId: string;
   companies: { id: string; name: string }[]; onCompany: (id: string) => void;
-  applicationId: string; applications: { id: string; preferredName: string }[]; onApplication: (id: string) => void;
+  applicationId: string; applications: { id: string; preferredName: string; reference?: string }[]; onApplication: (id: string) => void;
   onClose: () => void; onUploaded: (visible: boolean) => Promise<void>;
 };
 export function CompanyDocumentUpload(props: Props) {
@@ -45,7 +45,7 @@ export function CompanyDocumentUpload(props: Props) {
       <form onSubmit={event => void submit(event)} className="admin-stack">
         <fieldset disabled={busy} className="company-document-fields"><div className="form-grid">
           <label>Company<select aria-label="Document company" value={props.companyId} onChange={event => { changed(); props.onCompany(event.target.value); }}>{props.companies.map(company => <option value={company.id} key={company.id}>{company.name}</option>)}</select></label>
-          <label>Application<select aria-label="Document application" value={props.applicationId} onChange={event => { changed(); props.onApplication(event.target.value); }} required><option value="" disabled>Choose an application</option>{props.applications.map(app => <option value={app.id} key={app.id}>{app.preferredName} · {app.id}</option>)}</select></label>
+          <label>Application<select aria-label="Document application" value={props.applicationId} onChange={event => { changed(); props.onApplication(event.target.value); }} required><option value="" disabled>Choose an application</option>{props.applications.map(app => <option value={app.id} key={app.id}>{app.preferredName} · {app.reference ?? 'Reference pending'}</option>)}</select></label>
           <label>Document title<input value={title} onChange={event => { changed(); setTitle(event.target.value); }} maxLength={160} required /></label>
           <label>Document type<select value={type} onChange={event => { changed(); setType(event.target.value); }}>{[['COMPANY_DOCUMENT','Company document'],['CERTIFICATE_OF_FORMATION','Certificate of Formation'],['ARTICLES_OF_ORGANIZATION','Articles of Organization'],['OPERATING_AGREEMENT','Operating Agreement'],['EIN_CONFIRMATION','EIN confirmation'],['FILING_RECEIPT','Filing receipt']].map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select></label>
           <label>PDF, JPEG or PNG<input type="file" accept="application/pdf,image/jpeg,image/png" onChange={event => { changed(); const next = event.target.files?.[0] ?? null; setFile(next); if (!title.trim() && next) setTitle(next.name.slice(0,160)); }} required /></label>

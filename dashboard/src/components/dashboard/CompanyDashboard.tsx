@@ -52,7 +52,7 @@ export function CompanyWorkspace({ application, applications, onSelect, data }: 
   return <div className="company-workspace" data-payment-experience={paid ? 'verified' : 'prepayment'}>
     <PageHeader eyebrow="CLIENT WORKSPACE" title={`Welcome back${data.user ? `, ${data.user.fullName.split(' ')[0]}` : ''}`} description={app ? paid ? `Manage ${app.company.name} and track your US business formation.` : `Review ${app.company.name} and complete your formation payment.` : 'Start your US company formation when you are ready.'} action={{ label: 'Start New Application', href: '/client/applications/new' }} />
     <div className="workspace-toolbar">
-      {applications.length > 1 && <label>Application<select value={app?.id ?? ''} onChange={event => onSelect(event.target.value)}>{applications.map(item => <option key={item.id} value={item.id}>{item.packageName} · {item.id} · {item.status}</option>)}</select></label>}
+      {applications.length > 1 && <label>Application<select value={app?.id ?? ''} onChange={event => onSelect(event.target.value)}>{applications.map(item => <option key={item.id} value={item.id}>{item.packageName} · {item.reference ?? 'Reference pending'} · {item.status}</option>)}</select></label>}
       <button className="button button-secondary" type="button" onClick={() => void data.refresh()}><RefreshCw size={15} /> Refresh updates</button>
     </div>
     {!app ? <Panel><EmptyState title="Ready to start your business?" description="Create an application to choose your package and receive a server-calculated quote." /><Link className="button button-primary" href="/client/applications/new">Start LLC Formation</Link></Panel> : <>

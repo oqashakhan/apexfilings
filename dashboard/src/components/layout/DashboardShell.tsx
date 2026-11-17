@@ -39,7 +39,6 @@ const adminNav: NavItem[] = [
   { label: "Settings", slug: "settings", icon: Settings },
 ];
 const clientNav: NavItem[] = [
-  { label: "Messages", slug: "messages", icon: MailCheck },
   { label: "Dashboard", slug: "dashboard", icon: LayoutDashboard },
   { label: "My Companies", slug: "companies", icon: Building2 },
   { label: "My Applications", slug: "applications", icon: FileCheck2 },
@@ -48,6 +47,7 @@ const clientNav: NavItem[] = [
   { label: "Documents", slug: "documents", icon: FileText },
   { label: "Payments", slug: "payments", icon: CreditCard },
   { label: "Additional Services", slug: "services", icon: BriefcaseBusiness },
+  { label: "Messages", slug: "messages", icon: MailCheck },
   { label: "Support", slug: "support", icon: Headphones },
   { label: "Profile", slug: "profile", icon: UserRound },
   { label: "Settings", slug: "settings", icon: Settings },
@@ -165,12 +165,12 @@ export function DashboardShell({ role, title, children }: { role: PreviewRole; t
         <button className="icon-button sidebar-close" aria-label="Close menu" onClick={() => setDrawerOpen(false)}><X size={19} /></button>
       </div>
       <nav className="sidebar-nav" aria-label={role === "admin" ? "Admin navigation" : "Client navigation"}>
-        {nav.map((item, index) => {
+        {nav.map((item) => {
           const Icon = item.icon;
           const href = "/" + role + "/" + item.slug;
-          const active = pathname === href || (pathname.startsWith(href + "/") && item.slug !== "dashboard");
+          const active = pathname === href || (item.slug === "dashboard" && pathname === `/${role}`) || (pathname.startsWith(href + "/") && item.slug !== "dashboard");
           const adminGroup = role === "admin" ? ({ dashboard: "Dashboard", applications: "Operations", services: "Management", responses: "Communications", notifications: "Account" } as Record<string, string>)[item.slug] : undefined;
-          const clientGroup = role === "client" ? ({ 0: "Workspace", 5: "Services", 8: "Account" } as Record<number, string>)[index] : undefined;
+          const clientGroup = role === "client" ? ({ dashboard: "Workspace", orders: "Billing", services: "Services", messages: "Communications", profile: "Account" } as Record<string, string>)[item.slug] : undefined;
           return <Fragment key={item.slug}>{(adminGroup || clientGroup) && <span className="sidebar-group-heading">{adminGroup || clientGroup}</span>}<Link href={href} className={"nav-item" + (active ? " active" : "")} onClick={() => { setDrawerOpen(false); setOpenMenu(null); }} title={collapsed ? item.label : undefined} aria-label={collapsed ? item.label : undefined} aria-current={active ? "page" : undefined}><Icon size={18} strokeWidth={1.8} /><span>{item.label}{item.slug === "messages" && notifications.filter(n=>n.type==="CHAT_MESSAGE"&&!n.readAt).length > 0 ? ` (${notifications.filter(n=>n.type==="CHAT_MESSAGE"&&!n.readAt).length})` : ""}</span></Link></Fragment>;
         })}
       </nav>
@@ -190,12 +190,12 @@ export function DashboardShell({ role, title, children }: { role: PreviewRole; t
   return (
     <div className={"dashboard-app role-" + role + (collapsed ? " is-collapsed" : "")}>
       {drawerOpen && <button className="drawer-backdrop" aria-label="Close navigation" onClick={() => setDrawerOpen(false)} />}
-      <aside className={"sidebar" + (drawerOpen ? " mobile-open" : "")}>{sidebar}</aside>
+      <aside id="dashboard-navigation" className={"sidebar" + (drawerOpen ? " mobile-open" : "")}>{sidebar}</aside>
       <div className="dashboard-main">
         <header className="topbar">
           <div className="topbar-left">
             <button className="icon-button desktop-collapse" aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"} onClick={toggleSidebar}>{collapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}</button>
-            <button className="icon-button mobile-menu" aria-label="Open navigation" onClick={() => setDrawerOpen(true)}><Menu size={22} /></button>
+            <button className="icon-button mobile-menu" aria-label="Open navigation" aria-controls="dashboard-navigation" aria-expanded={drawerOpen} onClick={() => setDrawerOpen(true)}><Menu size={22} /></button>
             <span className="topbar-crumb">{role === "admin" ? "Admin" : "Client"} <ChevronRight size={14} /> <strong>{title}</strong></span>
           </div>
           <div className="topbar-actions">

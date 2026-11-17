@@ -24,21 +24,21 @@
 
 .dashboard-app { grid-template-columns: 244px minmax(0, 1fr); }
 .dashboard-app.is-collapsed { grid-template-columns: 74px minmax(0, 1fr); }
-.sidebar { padding: 20px 12px 14px; }
+.sidebar { padding: 20px 12px 14px; height: 100dvh; }
 .sidebar-brand { margin: 0 7px 24px; height: 44px; }
 .brand-icon { width: 34px; height: 34px; }
 .brand-name { font-size: 16px; letter-spacing: -.035em; }
 .brand-subtitle { margin-top: 3px; font-size: 9px; letter-spacing: .1em; }
-.sidebar-nav { gap: 2px; padding: 0 3px 10px; }
+.sidebar-nav { min-height: 0; gap: 2px; padding: 0 3px 10px; overscroll-behavior: contain; }
 .sidebar-group-heading { display: block; margin: 20px 11px 8px; color: var(--subtle); font-size: 10px; font-weight: 750; letter-spacing: .1em; text-transform: uppercase; white-space: nowrap; }
 .sidebar-group-heading:first-child { margin-top: 4px; }
-.nav-item { height: 40px; gap: 11px; padding: 0 12px; border-radius: 9px; font-size: 12.5px; font-weight: 580; }
+.nav-item { flex: 0 0 40px; height: 40px; gap: 11px; padding: 0 12px; border-radius: 9px; font-size: 12.5px; font-weight: 580; }
 .nav-item svg { color: var(--subtle); }
 .nav-item:hover { background: var(--soft); color: var(--text); }
 .nav-item:hover svg { color: var(--text); }
 .nav-item.active { background: var(--orange-soft); color: #d7401f; font-weight: 700; }
 .nav-item.active svg { color: var(--orange); }
-.sidebar-bottom { margin: 8px 3px 0; padding-top: 10px; position: relative; }
+.sidebar-bottom { flex: none; margin: 8px 3px 0; padding-top: 10px; position: relative; }
 .sidebar-account-anchor { position: relative; }
 .sidebar-account { width: 100%; display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 6px; border: 0; border-radius: 10px; text-align: left; background: transparent; color: var(--text); }
 .sidebar-account:hover, .sidebar-account[aria-expanded="true"] { background: var(--soft); }
@@ -92,6 +92,9 @@
 .page-header p, .admin-welcome p { font-size: 13px; }
 .eyebrow { color: var(--subtle); font-size: 10px; letter-spacing: .095em; }
 .button { min-height: 38px; padding: 0 14px; border-radius: 9px; font-size: 12px; font-weight: 680; box-shadow: none; }
+.dashboard-app :is(.button, .icon-button, .nav-item, .sidebar-account, .table-link):focus-visible { outline: 2px solid var(--orange); outline-offset: 2px; }
+.dashboard-app :is(input, select, textarea):focus-visible { outline: 2px solid var(--orange); outline-offset: 1px; }
+.dashboard-app :is(.button, .icon-button):disabled { cursor: not-allowed; opacity: .55; }
 .button-primary { box-shadow: 0 4px 10px rgba(240, 70, 35, .12); }
 .button-primary:hover:not(:disabled) { box-shadow: 0 5px 14px rgba(240, 70, 35, .18); }
 .panel { padding: 20px 22px; border-radius: 13px; box-shadow: var(--shadow); }

@@ -30,6 +30,8 @@ test('chat ownership, assignment, retries, incremental delivery and read counts'
  assert.equal(sent.data.message.body,'Hello support');
  const retry=await call(client,'POST',message);assert.equal(retry.status,200);assert.equal(retry.data.message.seq,sent.data.message.seq);
  assert.equal(await db.chatMessage.count({where:{conversationId:id}}),1);
+ assert.equal(await db.notification.count({where:{eventKey:`chat:${sent.data.message.seq}:${owner.id}`,userId:owner.id}}),1);
+ assert.equal(await db.notification.count({where:{eventKey:`chat:${sent.data.message.seq}:${other.id}`,userId:other.id}}),0);
  assert.equal((await call(other,'GET',null,'?id='+id)).status,404);
  assert.equal((await call(staff,'GET',null,'?id='+id)).status,404);
  assert.equal((await call(owner)).data.chats.find(c=>c.id===id).unread,1);
@@ -39,7 +41,8 @@ test('chat ownership, assignment, retries, incremental delivery and read counts'
  const seq=first.data.messages[0].seq;
  assert.equal((await call(staff,'POST',{action:'read',id,through:seq})).status,200);
  assert.equal((await call(staff)).data.chats.find(c=>c.id===id).unread,0);
- assert.equal((await call(staff,'POST',{action:'send',id,key:randomUUID(),message:'Hello client'})).status,200);
+ const staffReply=await call(staff,'POST',{action:'send',id,key:randomUUID(),message:'Hello client'});assert.equal(staffReply.status,200);
+ assert.equal(await db.notification.count({where:{eventKey:`chat:${staffReply.data.message.seq}:${client.id}`,userId:client.id}}),1);
  const next=await call(client,'GET',null,'?id='+id+'&after='+seq);
  assert.equal(next.data.messages.length,1);assert.equal(next.data.messages[0].body,'Hello client');
  assert.equal((await call(client)).data.chats.find(c=>c.id===id).unread,1);
@@ -65,6 +68,15 @@ test('chat ownership, assignment, retries, incremental delivery and read counts'
  const unreadOnly=await call(owner,'GET',null,'?search='+encodeURIComponent(label)+'&unread=true');
  assert.equal(unreadOnly.data.chats.length,1);
 
+});
+
+test('chat rejects invalid content, unauthenticated access and excess message sends',async()=>{
+ const client=await person('CLIENT');
+ const unauthenticated=await fetch(root+'/api/v1/chat');assert.equal(unauthenticated.status,401);
+ const id=(await call(client,'POST',{action:'start',companyId:null})).data.id;
+ assert.equal((await call(client,'POST',{action:'send',id,key:randomUUID(),message:'   '})).status,400);
+ for(let i=0;i<30;i++)assert.equal((await call(client,'POST',{action:'send',id,key:randomUUID(),message:`Rate limit fixture ${i}`})).status,200);
+ assert.equal((await call(client,'POST',{action:'send',id,key:randomUUID(),message:'Rate limit fixture overflow'})).status,429);
 });
 
 test('mobile client and desktop admin exchange messages through the UI',{skip:!process.env.APEX_PLAYWRIGHT_MODULE},async t=>{

@@ -43,13 +43,34 @@ test('database references remain stable and concurrent normal application creati
      await admin.getByText(reference,{exact:true}).first().waitFor();
      await admin.getByRole('button',{name:'Upload Company Document'}).click();
      await admin.getByRole('dialog').waitFor();
+     assert.match(await admin.getByLabel('Document application').locator('option:checked').innerText(), /APP-\d{6,}/);
      await admin.getByRole('button',{name:'Close upload form'}).click();
      if(viewport.width>=1000) {
        const a=await admin.locator('.sidebar').boundingBox(),c=await client.locator('.sidebar').boundingBox();
        assert.equal(a.width,c.width);
        for(const text of ['Dashboard','Operations','Management','Communications','Account'])await admin.locator('.sidebar-group-heading').getByText(text,{exact:true}).waitFor();
      }
+     await client.goto(root+'/client/messages');
+     await client.locator('.topbar-crumb').getByText('Messages',{exact:true}).waitFor();
+     if (viewport.width <= 900) {
+       const menu=client.getByRole('button',{name:'Open navigation'}); await menu.click();
+       assert.equal(await menu.getAttribute('aria-expanded'),'true');
+       await client.locator('.sidebar-nav').getByRole('link',{name:/Messages/}).waitFor();
+       await client.getByRole('button',{name:'Close menu'}).click();
+       assert.equal(await menu.getAttribute('aria-expanded'),'false');
+     }
      assert.equal(await admin.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth),true);
+     if (viewport.width !== 768) {
+       const sections = {admin:['dashboard','applications','clients','orders','invoices','documents','payments','services','staff','activity','website-content','responses','messages','support','email-broadcasts','email-delivery','notifications','settings'],client:['dashboard','companies','applications','orders','invoices','documents','payments','services','messages','support','profile','settings']};
+       for (const [role,page] of [['admin',admin],['client',client]]) {
+         for (const section of sections[role]) {
+           const response=await page.goto(`${root}/${role}/${section}`); assert.equal(response.status(),200,`${role}/${section}`);
+           await page.locator('.page-content').waitFor();
+           assert.equal(await page.locator(`.sidebar-nav a[href="/${role}/${section}"]`).getAttribute('aria-current'),'page',`${role}/${section}`);
+           assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth),true,`${role}/${section} width ${viewport.width}`);
+         }
+       }
+     }
      await client.close();await admin.close();
    }
  }
