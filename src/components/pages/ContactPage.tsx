@@ -27,8 +27,8 @@ export function ContactPage({ consultation = false }: { consultation?: boolean }
   const schema = {
     '@context': 'https://schema.org',
     '@graph': [
-      { '@type': 'Organization', '@id': 'https://apexfiling.com/#organization', name: 'Apex Filings', url: 'https://apexfiling.com/' },
-      { '@type': 'ContactPage', '@id': `https://apexfiling.com/${consultation ? 'consultation' : 'contact'}#webpage`, name: 'Contact Apex Filings', url: `https://apexfiling.com/${consultation ? 'consultation' : 'contact'}`, description: ukLtd ? 'Ask about UK Ltd formation packages and pricing.' : 'Request a free consultation for your US LLC.', about: { '@id': 'https://apexfiling.com/#organization' } },
+      { '@type': 'Organization', '@id': 'https://apexfilings.com/#organization', name: 'Apex Filings', url: 'https://apexfilings.com/' },
+      { '@type': 'ContactPage', '@id': `https://apexfilings.com/${consultation ? 'consultation' : 'contact'}#webpage`, name: 'Contact Apex Filings', url: `https://apexfilings.com/${consultation ? 'consultation' : 'contact'}`, description: ukLtd ? 'Ask about UK Ltd formation packages and pricing.' : 'Request a free consultation for your US LLC.', about: { '@id': 'https://apexfilings.com/#organization' } },
     ],
   };
 
