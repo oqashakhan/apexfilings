@@ -2,7 +2,7 @@
 
 **Effective Date:** October 16, 2026
 
-Apex Filings helps entrepreneurs establish and manage US businesses through company formation and related business services. This Privacy Policy explains how Apex Filings collects, uses, stores, and shares information when you visit https://apexfiling.com, submit a service request, create an account, make a payment, or communicate with our team.
+Apex Filings helps entrepreneurs establish and manage US businesses through company formation and related business services. This Privacy Policy explains how Apex Filings collects, uses, stores, and shares information when you visit https://apexfilings.com, submit a service request, create an account, make a payment, or communicate with our team.
 
 By using our website, you acknowledge this Policy. Where applicable law requires consent, we will obtain it separately.
 
@@ -165,5 +165,5 @@ The latest version will be published on this page with an updated effective date
 For questions about this Privacy Policy or requests concerning your personal information, contact us:
 
 **Company:** Apex Filings  
-**Website:** https://apexfiling.com  
+**Website:** https://apexfilings.com
 **Email:** info@apexfilings.com

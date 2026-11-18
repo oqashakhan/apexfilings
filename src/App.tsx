@@ -28,6 +28,7 @@ import { getServiceBySlug } from './data/services';
 import { getUsServicePage } from './data/usServicePages';
 import { getManagementServicePage } from './data/managementServicePages';
 import { PricingPlan, TopState } from './types';
+import { canonicalUrl, findSeoPage } from './lib/seo';
 
 const WhyApexPage = lazy(() => import('./components/why/WhyApexPage').then((module) => ({ default: module.WhyApexPage })));
 const StartPage = lazy(() => import('./components/start/StartPage').then((module) => ({ default: module.StartPage })));
@@ -69,10 +70,20 @@ export default function App() {
 
   useEffect(() => {
     const canonicalPath = routePath === '/about' ? '/why-us' : routePath;
-    const canonicalDomain = routePath === '/terms-and-conditions' ? 'https://apexfilings.com' : 'https://apexfiling.com';
-    const canonicalUrl = `${canonicalDomain}${canonicalPath}`;
-    document.querySelector<HTMLLinkElement>('link[rel="canonical"]')?.setAttribute('href', canonicalUrl);
-    document.querySelector<HTMLMetaElement>('meta[property="og:url"]')?.setAttribute('content', canonicalUrl);
+    const url = canonicalUrl(canonicalPath);
+    const page = findSeoPage(canonicalPath);
+    const knownOther = ['/start', '/formation/start', '/consultation', '/privacy-policy', '/refund-policy', '/terms-and-conditions', '/services/uk-ltd-formation'].includes(routePath);
+    document.querySelector<HTMLLinkElement>('link[rel="canonical"]')?.setAttribute('href', url);
+    document.querySelector<HTMLMetaElement>('meta[property="og:url"]')?.setAttribute('content', url);
+    let robots = document.querySelector<HTMLMetaElement>('meta[name="robots"]');
+    if (!robots) { robots = document.createElement('meta'); robots.name = 'robots'; document.head.append(robots); }
+    robots.content = (!page && !knownOther) || ['/start', '/formation/start', '/consultation'].includes(routePath) ? 'noindex,follow' : 'index,follow';
+    if (page) {
+      document.title = page.title;
+      for (const [selector, value] of [['meta[name="description"]', page.description], ['meta[property="og:title"]', page.title], ['meta[property="og:description"]', page.description], ['meta[name="twitter:title"]', page.title], ['meta[name="twitter:description"]', page.description]]) {
+        document.querySelector<HTMLMetaElement>(selector)?.setAttribute('content', value);
+      }
+    }
   }, [routePath]);
 
   const navigateToHowItWorks = () => {
@@ -130,7 +141,7 @@ export default function App() {
           : routePath === '/privacy-policy' ? <PrivacyPolicyPage />
           : routePath === '/terms-and-conditions' ? <TermsConditionsPage />
           : routePath === '/contact' || routePath === '/consultation' ? <ContactPage consultation={routePath === '/consultation'} />
-          : routePath === '/why-us' || routePath === '/about' ? <Suspense fallback={<div className="min-h-screen bg-white" />}><WhyApexPage /></Suspense> : <>
+          : routePath === '/why-us' || routePath === '/about' ? <Suspense fallback={<div className="min-h-screen bg-white" />}><WhyApexPage /></Suspense> : routePath !== '/' ? <section className="mx-auto min-h-[60vh] max-w-7xl px-4 py-24 text-center"><h1 className="text-3xl font-bold">Page not found</h1><a href="/" className="mt-6 inline-flex font-semibold text-[#F04623] underline">Return to home</a></section> : <>
         {/* 1. Hero Section */}
         <HeroSection
           onStart={navigateToHowItWorks}
