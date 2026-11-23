@@ -200,3 +200,19 @@
 .document-requests-anchor{scroll-margin-top:95px;margin-bottom:20px}.document-request-list{display:grid;gap:10px}.document-request-item{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px;border:1px solid var(--border);border-radius:11px}.document-request-item strong{font-size:13px}.document-request-item p{margin:5px 0 0;color:var(--muted);font-size:12px}.document-request-item label{cursor:pointer;flex:none}.document-request-item input{position:absolute;width:1px;height:1px;opacity:0}.document-request-error{color:var(--orange)}
 .document-request-item label:focus-within{outline:2px solid var(--orange);outline-offset:3px}
 @media(max-width:600px){.next-action-card{padding:18px}.next-action-heading{flex-wrap:wrap}.next-action-heading .status-badge{margin-left:56px}.document-request-item,.client-application-switch{align-items:stretch;flex-direction:column}.document-request-item label{justify-content:center}}
+
+/* Admin controls: Tailwind preflight resets native borders; give unclassed
+   workspace forms the same visible controls as the shared dashboard fields. */
+.role-admin .page-content :where(label:has(> input:not([type=checkbox]):not([type=radio]):not([type=file])), label:has(> select), label:has(> textarea)) { display:grid; gap:7px; min-width:0; color:var(--muted); font-size:12px; font-weight:650; }
+.role-admin .page-content :where(input:not([type=checkbox]):not([type=radio]):not([type=file]), select, textarea) { min-width:0; min-height:40px; padding:9px 12px; border:1px solid var(--border); border-radius:9px; background:var(--surface); color:var(--text); }
+.role-admin .page-content :where(textarea) { min-height:90px; resize:vertical; }
+.role-admin .page-content :where(input[type=checkbox],input[type=radio]) { width:17px; height:17px; flex:none; accent-color:var(--orange); }
+.role-admin .page-content :where(form > label) { margin-bottom:12px; }
+.role-admin .page-content :where(form button:not([class])) { min-height:38px; padding:0 14px; border:1px solid var(--border); border-radius:9px; background:var(--surface); color:var(--text); font-weight:650; }
+.role-admin .page-content :where(form button:not([class]):hover:not(:disabled)) { background:var(--soft); }
+.role-admin .page-content :where(form > div:has(> button)) { display:flex; flex-wrap:wrap; align-items:center; gap:9px; }
+.role-admin .page-content :where(.table-scroll) { max-width:100%; overflow-x:auto; }
+.role-admin .page-content :where(.table-footer, .invoice-pagination, .activity-pagination) { gap:12px; }
+.role-admin .page-content :where(.table-footer button, .invoice-pagination button, .activity-pagination button) { border:1px solid var(--border); border-radius:8px; background:var(--surface); color:var(--text); }
+.role-admin .page-content :where(input,select,textarea,button):focus-visible { outline:2px solid var(--orange); outline-offset:2px; }
+@media(max-width:700px) { .role-admin .page-content :where(.panel) { min-width:0; } .role-admin .page-content :where(form > div:has(> button)) { justify-content:flex-start; } }
