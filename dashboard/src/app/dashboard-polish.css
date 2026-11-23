@@ -203,7 +203,7 @@
 
 /* Admin controls: Tailwind preflight resets native borders; give unclassed
    workspace forms the same visible controls as the shared dashboard fields. */
-.role-admin .page-content :where(label:has(> input:not([type=checkbox]):not([type=radio]):not([type=file])), label:has(> select), label:has(> textarea)) { display:grid; gap:7px; min-width:0; color:var(--muted); font-size:12px; font-weight:650; }
+.role-admin .page-content :where(label:not(.table-search):not(.invoice-search):has(> input:not([type=checkbox]):not([type=radio]):not([type=file])), label:has(> select), label:has(> textarea)) { display:grid; gap:7px; min-width:0; color:var(--muted); font-size:12px; font-weight:650; }
 .role-admin .page-content :where(input:not([type=checkbox]):not([type=radio]):not([type=file]), select, textarea) { min-width:0; min-height:40px; padding:9px 12px; border:1px solid var(--border); border-radius:9px; background:var(--surface); color:var(--text); }
 .role-admin .page-content :where(textarea) { min-height:90px; resize:vertical; }
 .role-admin .page-content :where(input[type=checkbox],input[type=radio]) { width:17px; height:17px; flex:none; accent-color:var(--orange); }
@@ -216,3 +216,10 @@
 .role-admin .page-content :where(.table-footer button, .invoice-pagination button, .activity-pagination button) { border:1px solid var(--border); border-radius:8px; background:var(--surface); color:var(--text); }
 .role-admin .page-content :where(input,select,textarea,button):focus-visible { outline:2px solid var(--orange); outline-offset:2px; }
 @media(max-width:700px) { .role-admin .page-content :where(.panel) { min-width:0; } .role-admin .page-content :where(form > div:has(> button)) { justify-content:flex-start; } }
+
+/* Search wrappers provide the border; their input must not create a second one. */
+.dashboard-app :is(.table-search, .invoice-search, .topbar-search) { display:flex; align-items:center; gap:8px; }
+.dashboard-app :is(.table-search, .invoice-search, .topbar-search) > svg { flex:none; }
+.dashboard-app :is(.table-search, .invoice-search, .topbar-search) > input { flex:1; width:100%; min-width:0; min-height:0; padding:0; border:0; border-radius:0; background:transparent; box-shadow:none; outline:none; }
+.dashboard-app :is(.table-search, .invoice-search, .topbar-search):focus-within { outline:2px solid var(--orange); outline-offset:2px; }
+.notification-unread{display:inline-block;margin-left:8px;padding:3px 7px;border-radius:999px;background:var(--orange-soft);color:var(--orange);font-size:10px;font-weight:700}.admin-notice-copy>div{min-width:0;overflow-wrap:anywhere}.company-document-upload-dialog .client-service-dialog-head{margin:-24px -24px 18px;padding:18px 24px}.company-document-fields label:has(input[type=checkbox]){display:flex;align-items:center;gap:9px}.company-document-fields input[type=checkbox]{flex:none}@media(max-width:600px){.company-document-upload-dialog .client-service-dialog-head{margin:-18px -18px 16px;padding:16px 18px}.admin-notice-copy{width:100%}.admin-inline-actions{flex-wrap:wrap}}
