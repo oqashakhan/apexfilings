@@ -5,12 +5,13 @@ type Props = {
   clientId: string; clientName: string; companyId: string;
   companies: { id: string; name: string }[]; onCompany: (id: string) => void;
   applicationId: string; applications: { id: string; preferredName: string; reference?: string }[]; onApplication: (id: string) => void;
-  onClose: () => void; onUploaded: (visible: boolean) => Promise<void>;
+  inline?: boolean; onClose: () => void; onUploaded: (visible: boolean) => Promise<void>;
 };
 export function CompanyDocumentUpload(props: Props) {
   const [title, setTitle] = useState(''), [description, setDescription] = useState(''), [type, setType] = useState('COMPANY_DOCUMENT');
   const [file, setFile] = useState<File | null>(null), [visible, setVisible] = useState(true), [busy, setBusy] = useState(false), [progress, setProgress] = useState(0), [error, setError] = useState('');
   const key = useRef(''), active = useRef(false);
+  const fileInput = useRef<HTMLInputElement>(null);
   const onClose = props.onClose;
   useEffect(() => { const escape = (event: KeyboardEvent) => { if (event.key === 'Escape' && !active.current) onClose(); }; window.addEventListener('keydown', escape); return () => window.removeEventListener('keydown', escape); }, [onClose]);
   function changed() { key.current = ''; setError(''); }
@@ -33,13 +34,14 @@ export function CompanyDocumentUpload(props: Props) {
         request.send(form);
       });
       await props.onUploaded(actualVisible);
-      props.onClose();
+      if (props.inline) { setTitle(''); setDescription(''); setFile(null); if (fileInput.current) fileInput.current.value = ''; key.current = ''; }
+      else props.onClose();
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'Upload failed. Please try again.'); }
     finally { active.current = false; setBusy(false); }
   }
-  return <div className="client-dialog-backdrop" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget && !busy) props.onClose(); }}>
-    <section role="dialog" aria-modal="true" aria-labelledby="company-document-upload-title" className="company-document-upload-dialog">
-      <div className="client-service-dialog-head"><h2 id="company-document-upload-title">Upload a company document</h2><button type="button" className="icon-button" disabled={busy} onClick={props.onClose} aria-label="Close upload form">×</button></div>
+  return <div className={props.inline ? "company-upload-inline" : "client-dialog-backdrop"} role="presentation" onMouseDown={event => { if (event.target === event.currentTarget && !busy) props.onClose(); }}>
+    <section role={props.inline ? undefined : "dialog"} aria-modal={props.inline ? undefined : "true"} aria-labelledby="company-document-upload-title" className="company-document-upload-dialog">
+      <div className="client-service-dialog-head"><h2 id="company-document-upload-title">Upload a company document</h2>{!props.inline && <button type="button" className="icon-button" disabled={busy} onClick={props.onClose} aria-label="Close upload form">×</button>}</div>
       <p>Client: <strong>{props.clientName}</strong></p>
       {!props.applications.length && <p role="alert">Choose a company with an existing application before uploading a company document.</p>}
       <form onSubmit={event => void submit(event)} className="admin-stack">
@@ -48,12 +50,12 @@ export function CompanyDocumentUpload(props: Props) {
           <label>Application<select aria-label="Document application" value={props.applicationId} onChange={event => { changed(); props.onApplication(event.target.value); }} required><option value="" disabled>Choose an application</option>{props.applications.map(app => <option value={app.id} key={app.id}>{app.preferredName} · {app.reference ?? 'Reference pending'}</option>)}</select></label>
           <label>Document title<input value={title} onChange={event => { changed(); setTitle(event.target.value); }} maxLength={160} required /></label>
           <label>Document type<select value={type} onChange={event => { changed(); setType(event.target.value); }}>{[['COMPANY_DOCUMENT','Company document'],['CERTIFICATE_OF_FORMATION','Certificate of Formation'],['ARTICLES_OF_ORGANIZATION','Articles of Organization'],['OPERATING_AGREEMENT','Operating Agreement'],['EIN_CONFIRMATION','EIN confirmation'],['FILING_RECEIPT','Filing receipt']].map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select></label>
-          <label>PDF, JPEG or PNG<input type="file" accept="application/pdf,image/jpeg,image/png" onChange={event => { changed(); const next = event.target.files?.[0] ?? null; setFile(next); if (!title.trim() && next) setTitle(next.name.slice(0,160)); }} required /></label>
-        </div><small>Maximum 8 MB. Stored privately; never attached to email.</small><label className="admin-form-field">Description (optional)<textarea rows={3} value={description} onChange={event => { changed(); setDescription(event.target.value); }} maxLength={2000} /></label>
+          <label className="document-dropzone" onDragOver={event => event.preventDefault()} onDrop={event => { event.preventDefault(); changed(); const next = event.dataTransfer.files?.[0] ?? null; setFile(next); if (!title.trim() && next) setTitle(next.name.slice(0,160)); }}>Drop a file here or choose a PDF, JPEG or PNG<input ref={fileInput} aria-label="PDF, JPEG or PNG" type="file" accept="application/pdf,image/jpeg,image/png" onChange={event => { changed(); const next = event.target.files?.[0] ?? null; setFile(next); if (!title.trim() && next) setTitle(next.name.slice(0,160)); }} /></label>
+        </div>{file && <small>Selected: {file.name}</small>}<small>Maximum 8 MB. Stored privately; never attached to email.</small><label className="admin-form-field">Description (optional)<textarea rows={3} value={description} onChange={event => { changed(); setDescription(event.target.value); }} maxLength={2000} /></label>
         <label className="admin-form-field"><span><input type="checkbox" checked={visible} onChange={event => { changed(); setVisible(event.target.checked); }} /> Visible to client</span></label></fieldset>
         {busy && <div role="status"><progress max={100} value={progress} aria-label="Document upload progress" /><p>{progress < 100 ? `Uploading ${progress}%` : visible ? 'Saving document and notification…' : 'Saving private document…'}</p></div>}
         {error && <p role="alert" className="form-error">{error}</p>}
-        <div className="admin-inline-actions"><button type="button" className="button button-secondary" disabled={busy} onClick={props.onClose}>Cancel</button><button type="submit" className="button button-primary" disabled={busy || !props.applicationId}>{busy ? 'Uploading…' : 'Upload document'}</button></div>
+        <div className="admin-inline-actions">{!props.inline && <button type="button" className="button button-secondary" disabled={busy} onClick={props.onClose}>Cancel</button>}<button type="submit" className="button button-primary" disabled={busy || !props.applicationId}>{busy ? 'Uploading…' : 'Upload document'}</button></div>
       </form>
     </section>
   </div>;

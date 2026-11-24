@@ -176,13 +176,17 @@ test('company upload, publication deduplication, private access, notifications a
       await page.getByRole('button',{name:'Cancel',exact:true}).click();
       await page.goto(`${root}/admin/documents`);
       await page.locator('.panel').filter({hasText:'Upload document'}).locator('select').first().selectOption(a.application.id);
-      await page.getByRole('button',{name:'Upload document',exact:true}).click();
       await page.getByLabel('Document title',{exact:true}).fill('Global document queue upload');
       await page.getByLabel('PDF, JPEG or PNG',{exact:true}).setInputFiles({name:'global.pdf',mimeType:'application/pdf',buffer:Buffer.from('%PDF-1.4\nGlobal browser QA\n%%EOF')});
-      await page.getByRole('button',{name:'Upload document',exact:true}).last().click();
+      await page.getByRole('button',{name:'Upload document',exact:true}).click();
       await page.getByText('Document shared with the client.',{exact:true}).waitFor();
       const globalDoc=await db.document.findFirstOrThrow({where:{applicationId:a.application.id,title:'Global document queue upload'}});
       assert.equal(globalDoc.clientVisible,true);
+      await page.getByRole('tab',{name:'Document queue'}).click();
+      await page.getByText('Global document queue upload',{exact:true}).first().waitFor();
+      await page.getByRole('tab',{name:'Request document'}).click();
+      await page.getByRole('tabpanel',{name:'Request document'}).locator('select').first().selectOption(a.application.id);
+      await page.getByPlaceholder('Describe the document needed and why').waitFor();
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth>innerWidth),false);
       console.log('Admin form, title/description, client document deep link and company switching verified in Edge');
     } finally { await browser.close(); }
